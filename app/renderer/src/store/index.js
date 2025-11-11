@@ -1,0 +1,1 @@
+// Aquí se exportarán todas las stores globales (Zustand)

@@ -1,0 +1,111 @@
+@config "../tailwind.config.js";
+@import "tailwindcss";
+
+/* 🎨 Tema Mirai POS */
+@theme {
+    --color-dark: #0f172a;
+    --color-primary: #00bfff;
+    --color-secondary: #1e293b;
+    --color-success: #10b981;
+    --color-warning: #f59e0b;
+    --color-error: #ef4444;
+
+    /* 🌟 Sombras personalizadas */
+    --shadow-soft: 0 2px 8px rgba(0, 0, 0, 0.15);
+    --shadow-hard: 0 4px 16px rgba(0, 0, 0, 0.25);
+}
+
+/* 🌙 Estilos globales base */
+:root {
+    color-scheme: dark;
+}
+
+body {
+    @apply bg-[var(--color-dark)] text-slate-50 font-sans antialiased;
+}
+
+/* Evita scroll horizontal global */
+html, body {
+    overflow-x: hidden;
+}
+
+/* 🎛️ Componentes globales */
+.btn {
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl font-medium transition-colors duration-200;
+}
+
+.btn-primary {
+    @apply bg-primary text-white hover:bg-sky-400 active:bg-sky-500 shadow-soft;
+}
+
+.btn-secondary {
+    @apply bg-secondary text-slate-100 hover:bg-slate-700 active:bg-slate-800 shadow-soft;
+}
+
+.input {
+    @apply w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-primary;
+}
+
+@keyframes pulseRing {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(0, 191, 255, 0.4); }
+    50% { box-shadow: 0 0 10px 2px rgba(0, 191, 255, 0.5); }
+}
+
+.btn-selected {
+    animation: pulseRing 1s infinite ease-in-out;
+}
+
+.label-required::after {
+    content: " *";
+    color: #f87171;
+}
+.text-error {
+    color: #f87171;
+}
+.input {
+    @apply w-full rounded-lg border border-slate-700 bg-dark px-3 py-2 text-sm text-slate-200 outline-none focus:ring-2 focus:ring-primary transition;
+}
+/* 🎯 Colores de validación consistentes */
+.border-error {
+    border-color: var(--color-error) !important;
+}
+
+.ring-error\/50 {
+    --tw-ring-color: color-mix(in srgb, var(--color-error) 50%, transparent);
+}
+
+.ring-error\/70 {
+    --tw-ring-color: color-mix(in srgb, var(--color-error) 70%, transparent);
+}
+
+.text-error {
+    color: var(--color-error) !important;
+}
+
+.input.border-error:focus {
+    --tw-ring-color: var(--color-error);
+}
+button:focus {
+    outline: none;
+}
+button:focus-visible {
+    ring: 2px solid var(--color-primary);
+}
+
+/* 🧊 Campos solo lectura (readOnly o disabled) */
+.input[readonly],
+.input:disabled {
+    @apply bg-slate-800 border-slate-700 text-slate-400 cursor-not-allowed select-none;
+}
+
+/* 🧠 Opcional: mostrar texto más tenue si está vacío */
+.input[readonly]::placeholder,
+.input:disabled::placeholder {
+    @apply text-slate-500;
+}
+
+/* ✨ En hover no debe parecer interactivo */
+.input[readonly]:hover,
+.input:disabled:hover {
+    @apply bg-slate-800 border-slate-700 text-slate-400;
+}

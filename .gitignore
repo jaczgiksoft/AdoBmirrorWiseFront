@@ -1,0 +1,29 @@
+# Node modules
+node_modules/
+
+# Build / dist
+dist/
+out/
+build/
+
+# Environment files
+.env
+.env.*.local
+
+# IDE / Editors
+.idea/
+.vscode/
+*.iml
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Electron build artifacts
+release/
+*.asar
