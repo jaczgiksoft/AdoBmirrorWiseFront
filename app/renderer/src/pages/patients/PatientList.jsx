@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { Pagination } from "@/components/ui";
 import { API_BASE } from "@/utils/apiBase";
+import { getContrastColor } from "@/utils/helpers";
 
 export default function PatientList() {
     const navigate = useNavigate();
@@ -367,16 +368,41 @@ export default function PatientList() {
                                                 </p>
                                                 <p className="text-[10px] text-slate-500">Estado</p>
                                             </div>
+                                            {/* 🏷️ Tipos de paciente (cuadros sólidos con iniciales) */}
                                             <div className="bg-dark/40 rounded-lg p-2 border border-slate-700 text-center">
-                                                <p
-                                                    className="text-xs font-medium truncate max-w-[90px] mx-auto"
-                                                    style={{ color: p.type?.color || "#9ca3af" }}
-                                                    title={p.type?.name || "Sin asignar"}
-                                                >
-                                                    {p.type?.name || "Sin asignar"}
-                                                </p>
-                                                <p className="text-[10px] text-slate-500">Tipo</p>
+                                                {Array.isArray(p.types) && p.types.length > 0 ? (
+                                                    <div className="flex justify-center flex-wrap gap-1">
+                                                        {p.types.map((t) => {
+                                                            const initials = t.name
+                                                                .split(" ")
+                                                                .map((w) => w[0])
+                                                                .join("")
+                                                                .toUpperCase();
+
+                                                            // 🔹 Determinar color de texto según brillo del fondo
+                                                            const textColor = getContrastColor(t.color);
+
+                                                            return (
+                                                                <span
+                                                                    key={t.id}
+                                                                    className="w-5 h-5 rounded-md text-[10px] font-bold flex items-center justify-center shadow-sm"
+                                                                    style={{
+                                                                        backgroundColor: t.color,
+                                                                        color: textColor,
+                                                                    }}
+                                                                    title={t.name}
+                                                                >
+            {initials}
+          </span>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                ) : (
+                                                    <p className="text-xs text-slate-400">Sin tipo</p>
+                                                )}
+                                                <p className="text-[10px] text-slate-500 mt-1">Tipos</p>
                                             </div>
+
                                         </div>
 
                                         {/* 🔧 Acciones */}

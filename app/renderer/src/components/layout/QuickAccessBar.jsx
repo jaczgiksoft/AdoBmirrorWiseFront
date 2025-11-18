@@ -1,15 +1,66 @@
 // src/components/layout/QuickAccessBar.jsx
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus } from "lucide-react";
+import { Plus, Home } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useState, useMemo } from "react";
+import { useAuthStore } from "@/store/useAuthStore";
+import { generateHarmoniousColor } from "@/utils/helpers";
 
-export default function QuickAccessBar({ items = [], onAdd }) {
+export default function QuickAccessBar({ onAdd }) {
     const navigate = useNavigate();
     const [hoveredIndex, setHoveredIndex] = useState(null);
+    const { user } = useAuthStore();
+
+    // 🚫 Módulos que NO deben aparecer en la barra
+    const BLACKLIST = [
+        "auth",
+        "logs",
+        "permissions",
+        "roles",
+        "billing",
+        "patient_alerts",
+        "bracket_types",
+    ];
+
+    // 🧠 Construir módulos dinámicamente
+    const items = useMemo(() => {
+        if (!user?.modules?.length || !user?.permissions) return [];
+
+        const dynamicModules = user.modules
+            // 1️⃣ Filtrar los que el usuario puede leer
+            .filter((m) => user.permissions[m]?.read)
+            // 2️⃣ Excluir los de la blacklist
+            .filter((m) => !BLACKLIST.includes(m))
+            // 3️⃣ Generar configuración visual
+            .map((m) => {
+                const colors = generateHarmoniousColor();
+                return {
+                    name: m
+                        .replace(/_/g, " ")
+                        .replace(/\b\w/g, (l) => l.toUpperCase()),
+                    label: m[0].toUpperCase(),
+                    path: `/${m}`,
+                    bg: colors.bg,
+                    color: colors.color,
+                };
+            });
+
+        // Agregar "Inicio" al principio
+        return [
+            {
+                name: "Inicio",
+                label: <Home size={18} />,
+                path: "/dashboard",
+                bg: "hsl(220, 45%, 20%)",
+                color: "hsl(220, 90%, 70%)",
+            },
+            ...dynamicModules,
+        ];
+    }, [user]);
 
     return (
         <div className="fixed left-0 top-0 h-full w-[60px] bg-slate-900 border-r border-slate-800 flex flex-col items-center py-4 gap-3 z-[60]">
+            {/* 🔹 Módulos dinámicos */}
             {items.map((item, idx) => (
                 <div key={idx} className="relative">
                     <motion.button
@@ -44,7 +95,7 @@ export default function QuickAccessBar({ items = [], onAdd }) {
                 </div>
             ))}
 
-            {/* Botón agregar acceso */}
+            {/* ➕ Botón agregar acceso */}
             <motion.button
                 onClick={onAdd}
                 whileHover={{ rotate: 90 }}

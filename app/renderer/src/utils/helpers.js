@@ -109,3 +109,43 @@ export function fileToBase64(file) {
         reader.readAsDataURL(file);
     });
 }
+
+/**
+ * Genera un par de colores armónicos (fondo y texto)
+ * para mantener contraste y estética consistente.
+ *
+ * @param {number} [saturationBg=45] Saturación del fondo (0–100)
+ * @param {number} [lightnessBg=20] Luminosidad del fondo (0–100)
+ * @param {number} [saturationText=80] Saturación del texto (0–100)
+ * @param {number} [lightnessText=70] Luminosidad del texto (0–100)
+ * @returns {{ bg: string, color: string }}
+ */
+export function generateHarmoniousColor(
+    saturationBg = 45,
+    lightnessBg = 20,
+    saturationText = 80,
+    lightnessText = 70
+) {
+    // Hue aleatorio (0–360)
+    const hue = Math.floor(Math.random() * 360);
+
+    return {
+        bg: `hsl(${hue}, ${saturationBg}%, ${lightnessBg}%)`,
+        color: `hsl(${hue}, ${saturationText}%, ${lightnessText}%)`,
+    };
+}
+/**
+ * Devuelve un color de texto (blanco o negro) legible según el color de fondo.
+ * @param {string} hexColor
+ * @returns {string}
+ */
+export function getContrastColor(hexColor) {
+    if (!hexColor) return "#fff";
+    const c = hexColor.replace("#", "");
+    const r = parseInt(c.substr(0, 2), 16);
+    const g = parseInt(c.substr(2, 2), 16);
+    const b = parseInt(c.substr(4, 2), 16);
+    // Algoritmo de luminancia perceptual
+    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    return luminance > 0.6 ? "#000" : "#fff";
+}

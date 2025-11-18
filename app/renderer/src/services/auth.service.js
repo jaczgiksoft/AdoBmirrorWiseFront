@@ -3,7 +3,7 @@ import api from "@/services/api";
 export async function fetchCurrentUser() {
     try {
         const res = await api.get("/auth/me");
-        return res.data;
+        return res.data.data;
     } catch (err) {
         console.error("❌ Error al obtener perfil de usuario:", err);
         throw err;

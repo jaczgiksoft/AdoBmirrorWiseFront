@@ -1,20 +1,14 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Bell, LogOut, User } from "lucide-react";
+import { Bell, LogOut, User, Globe, Phone } from "lucide-react";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useNotificationStore } from "@/store/useNotificationStore";
 import { NotificationPanel, ConfirmDialog } from "@/components/feedback";
 import { useToastStore } from "@/store/useToastStore";
 import { API_BASE } from "@/utils/apiBase";
-export default function Header() {
-    const {
-        user,
-        currentStore,
-        currentRegister, // 🆕 Caja activa
-        setCurrentStore,
-        logout,
-    } = useAuthStore();
 
+export default function Header() {
+    const { user, logout } = useAuthStore();
     const tenant = user?.tenant;
 
     const {
@@ -38,12 +32,12 @@ export default function Header() {
     // 🧠 Cargar notificaciones iniciales y conectar al WebSocket
     useEffect(() => {
         if (!user?.id) return;
-        fetchNotifications(); // carga inicial desde la API
-        connectSocket(); // 🔌 conexión WebSocket
-        return () => disconnectSocket(); // limpieza al salir o cerrar sesión
+        fetchNotifications();
+        connectSocket();
+        return () => disconnectSocket();
     }, [user]);
 
-    // 🔔 Detectar nuevas notificaciones y mostrar toast
+    // 🔔 Detectar nuevas notificaciones
     useEffect(() => {
         if (notifications.length > prevCount && prevCount !== 0) {
             addToast({
@@ -55,7 +49,7 @@ export default function Header() {
         setPrevCount(notifications.length);
     }, [notifications]);
 
-    // 🕒 Actualizar hora cada segundo
+    // 🕒 Actualizar hora
     useEffect(() => {
         const updateClock = () => {
             const now = new Date();
@@ -72,7 +66,6 @@ export default function Header() {
         return () => clearInterval(timer);
     }, []);
 
-    // 🧹 Logout
     const handleLogout = () => {
         clear();
         logout();
@@ -92,71 +85,58 @@ export default function Header() {
                         />
                     )}
                     <div className="flex flex-col leading-tight">
-                        <span className="text-sm text-slate-300 font-medium">
-                            {tenant?.name}
-                        </span>
-
-                        {currentStore && (
-                            <span className="text-xs text-slate-500">
-                                {currentStore.code} — {currentStore.name}
-                            </span>
-                        )}
-
-                        {/* 🆕 Mostrar caja activa */}
-                        {currentRegister && (
-                            <span className="text-[11px] text-slate-500">
-                                {currentRegister.code} · {currentRegister.name}
-                            </span>
-                        )}
+    <span className="text-sm text-slate-300 font-medium">
+      {tenant?.name}
+    </span>
+                        <span className="text-xs text-slate-500">
+      {tenant?.city}, {tenant?.state}
+    </span>
                     </div>
                 </div>
 
-                {/* Selector de sucursal */}
-                {user?.stores?.length > 1 && (
-                    <select
-                        value={currentStore?.id || ""}
-                        onChange={(e) => {
-                            const selected = user.stores.find(
-                                (s) => s.id === +e.target.value
-                            );
-                            setCurrentStore(selected);
-                        }}
-                        className="bg-slate-800 text-white text-sm rounded-lg px-2 py-1 border border-slate-700 focus:outline-none"
-                    >
-                        {user.stores.map((store) => (
-                            <option key={store.id} value={store.id}>
-                                {store.name}
-                            </option>
-                        ))}
-                    </select>
-                )}
 
                 {/* Bienvenida + acciones */}
                 <div className="flex items-center md:gap-6 gap-3 justify-between md:justify-end w-full md:w-auto">
-                    {/* 👋 Bienvenida y foto */}
+                    {/* 👋 Bienvenida y roles */}
                     <div className="flex items-center gap-3">
                         <div className="flex flex-col text-right">
                             <p className="text-sm text-slate-300">
-                                Bienvenido,{" "}
+                                Bienvenida,{" "}
                                 <span className="font-semibold">{user.full_name}</span>
                             </p>
-                            <p className="text-xs text-slate-500">Rol: {user.role}</p>
+
+                            {user?.roles?.length > 0 ? (
+                                <div className="flex flex-wrap gap-1 mt-[2px] justify-end">
+                                    {user.roles.map((role) => (
+                                        <span
+                                            key={role.id}
+                                            className="px-2 py-[1px] bg-slate-700 text-[10px] text-slate-300 rounded-full"
+                                        >
+                      {role.name}
+                    </span>
+                                    ))}
+                                </div>
+                            ) : (
+                                <p className="text-xs text-slate-500 mt-[2px]">
+                                    Sin roles asignados
+                                </p>
+                            )}
                         </div>
+
                         {/* 🧑 Foto o ícono */}
                         {user?.profile_image ? (
                             <img
                                 src={`${API_BASE}${user.profile_image}`}
                                 alt="Foto de perfil"
                                 className="w-9 h-9 rounded-lg object-cover border border-slate-700 shadow-sm"
-                                onError={(e) => (e.target.style.display = 'none')}
+                                onError={(e) => (e.target.style.display = "none")}
                             />
                         ) : (
-                            <div className="w-9 h-9 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center">
+                            <div className="w-9 h-9 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center">
                                 <User size={18} className="text-slate-400" />
                             </div>
                         )}
                     </div>
-
 
                     {/* Botón de notificaciones */}
                     <div className="relative">
@@ -181,8 +161,8 @@ export default function Header() {
 
                             {unreadCount > 0 && (
                                 <span className="absolute -top-1 -right-1 bg-red-500 text-[10px] px-1 rounded-full text-white shadow-md">
-                                    {unreadCount}
-                                </span>
+                  {unreadCount}
+                </span>
                             )}
 
                             <AnimatePresence>
@@ -212,24 +192,38 @@ export default function Header() {
                 </div>
             </header>
 
-            {/* 🔸 Segundo header fijo */}
+            {/* 🔸 Segunda barra: datos del tenant */}
             <div className="bg-slate-800/80 backdrop-blur-sm px-6 py-2 flex items-center justify-between border-t border-slate-700/50">
-                <span className="text-xs text-slate-400">
-                    {currentStore?.city || "Ubicación desconocida"} ·{" "}
-                    {user?.config?.currency || "MXN"} ·{" "}
-                    {user?.config?.exchange_rate
-                        ? `TC: ${user.config.exchange_rate}`
-                        : "Sin tipo de cambio"}
-                </span>
+<span className="text-xs text-slate-400 flex items-center gap-1">
+  {tenant?.code && <span>{tenant.code}</span>}
+    <span>•</span>
+  <span>{tenant?.currency || "MXN"}</span>
+  <span>•</span>
+<span
+    className={
+        tenant?.exchange_rate
+            ? "text-green-400 font-medium"
+            : "text-red-400 italic"
+    }
+>
+  {tenant?.exchange_rate
+      ? `TC: ${Number(tenant.exchange_rate).toFixed(2)}`
+      : "Sin tipo de cambio"}
+</span>
+
+  <span>•</span>
+  <span>{tenant?.tax_id ? `RFC: ${tenant.tax_id}` : "Sin RFC"}</span>
+</span>
+
                 <span className="text-xs text-slate-400 font-mono">
-                    {clock},{" "}
+          {clock},{" "}
                     {new Date().toLocaleDateString("es-MX", {
                         weekday: "long",
                         day: "2-digit",
                         month: "short",
                         year: "numeric",
                     })}
-                </span>
+        </span>
             </div>
 
             {/* Panel de notificaciones */}

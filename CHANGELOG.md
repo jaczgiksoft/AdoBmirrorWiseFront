@@ -10,6 +10,49 @@ Este proyecto sigue [Semantic Versioning](https://semver.org/lang/es/).
 
 ---
 
+## [0.3.1] - 2025-11-18
+
+### Added
+- **Reestructuración completa del `Header.jsx`:**
+    - Adaptación total al nuevo endpoint `auth/me`.
+    - Eliminación de lógica de tiendas, cajas y sesiones (no aplican al módulo clínico).
+    - Visualización moderna y compacta del tenant:
+        - Logo, nombre, ciudad y estado.
+        - Código del tenant, moneda, tipo de cambio (verde si existe, rojo si falta) y RFC.
+        - Sitio web con acceso directo.
+    - Roles múltiples mostrados como chips estilizados.
+    - Foto de usuario cuadrada con fallback por defecto.
+    - Barra secundaria informativa con fecha y hora, coherente con modo oscuro.
+
+- **QuickAccessBar dinámica con soporte de permisos:**
+    - Construcción automática a partir de `user.modules` y permisos `read`.
+    - Se agregó el botón fijo de **Inicio**.
+    - Cada módulo recibe un color armónico generado desde `helpers.js`.
+    - Tooltip animado con nombre completo del módulo.
+    - Sistema de **blacklist** para ocultar módulos no deseados (`auth`, `logs`, `roles`, `settings`, etc.).
+
+- **Mejoras visuales en tipos de pacientes (`PatientList.jsx`):**
+    - Ahora soporta múltiples `patient_types` por paciente.
+    - Visualización compacta tipo “quick-access”:  
+      cuadritos sólidos con iniciales y color correspondiente.
+    - Ajuste responsivo que evita desalineación entre tarjetas.
+
+- **Nueva utilidad en `helpers.js`:**
+    - `generateHarmoniousColor()` para colores sólidos/armónicos.
+    - `getContrastColor()` para determinar texto blanco/negro según el fondo.
+
+### Changed
+- **Actualización de `PatientList.jsx`:**
+    - Ajuste de diseño para soportar varios tipos por paciente sin aumentar la altura de las tarjetas.
+    - Limpieza de código y estandarización visual con el resto del sistema clínico.
+    - Corrección del estado visual seleccionado y de los tooltips.
+
+- **Mejor integración UI/UX general:**
+    - Consistencia de colores, bordes y sombras en todos los módulos clínicos.
+    - Comportamiento más predecible en búsquedas, navegaciones y tooltips.
+
+---
+
 ## [0.3.0] - 2025-11-11
 
 ### Added
