@@ -4,7 +4,7 @@ import { Plus, Home } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useState, useMemo } from "react";
 import { useAuthStore } from "@/store/useAuthStore";
-import { generateHarmoniousColor } from "@/utils/helpers";
+import { generateHarmoniousBlue } from "@/utils/helpers";
 
 export default function QuickAccessBar({ onAdd }) {
     const navigate = useNavigate();
@@ -33,7 +33,7 @@ export default function QuickAccessBar({ onAdd }) {
             .filter((m) => !BLACKLIST.includes(m))
             // 3️⃣ Generar configuración visual
             .map((m) => {
-                const colors = generateHarmoniousColor();
+                const colors = generateHarmoniousBlue();
                 return {
                     name: m
                         .replace(/_/g, " ")

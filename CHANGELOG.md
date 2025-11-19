@@ -10,6 +10,48 @@ Este proyecto sigue [Semantic Versioning](https://semver.org/lang/es/).
 
 ---
 
+## [0.3.2] - 2025-11-18
+
+### Added
+- **Formulario multipaso completo para registro de pacientes (`PatientForm.jsx`):**
+  - 5 pasos organizados:
+    1) Información general
+    2) Información fiscal
+    3) Representantes legales
+    4) Alertas del paciente
+    5) Acceso móvil
+  - Sistema de navegación entre pasos con botones "Atrás" y "Siguiente".
+  - Validaciones por paso y prevención de avance si hay errores.
+  - Visualización moderna del formulario dentro de modal tipo wizard.
+
+- **Nuevo sistema visual de tabs para pasos:**
+  - Números a la izquierda con diseño compacto.
+  - Indicador animado del paso activo.
+  - **Efecto de “pulse ring”** alrededor del número del paso activo.
+  - Línea inferior destacando el tab seleccionado.
+  - Hover suave y coherente con la UI oscura.
+
+- **Selección inicial del tipo de paciente:**
+  - Modal previo que pregunta si el paciente será **Prospecto** o **Consulta Única**.
+  - Identificador del tipo cargado automáticamente en `patient_type_ids`.
+
+- **Modal ampliado al 80% del ancho de la pantalla:**
+  - Nuevo diseño más cómodo para formularios amplios.
+  - Ancho responsivo con `max-w-[1100px]`.
+
+- **Mejoras en la captura de foto:**
+  - Vista previa inmediata (`photo_preview`).
+  - Soporte para archivo local con fallback de ícono.
+
+### Changed
+- **Reestructuración interna del formulario de pacientes:**
+  - Sustituido el modal único por un wizard multipaso.
+  - Código reorganizado para facilitar integración futura con endpoints reales.
+  - Diseño refinado y consistente con el estilo clínico del sistema.
+
+
+---
+
 ## [0.3.1] - 2025-11-18
 
 ### Added

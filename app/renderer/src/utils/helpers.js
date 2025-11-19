@@ -134,6 +134,67 @@ export function generateHarmoniousColor(
         color: `hsl(${hue}, ${saturationText}%, ${lightnessText}%)`,
     };
 }
+
+/**
+ * Genera un par de colores armónicos (fondo y texto)
+ * muy cercanos al color #10b981 (verde esmeralda),
+ * con ligeras variaciones en saturación y luminosidad.
+ *
+ * @param {number} [saturationBg=80] Saturación del fondo (0–100)
+ * @param {number} [lightnessBg=48] Luminosidad del fondo (0–100)
+ * @param {number} [saturationText=95] Saturación del texto (0–100)
+ * @param {number} [lightnessText=92] Luminosidad del texto (0–100)
+ * @returns {{ bg: string, color: string }}
+ */
+export function generateHarmoniousGreen(
+    saturationBg = 80,
+    lightnessBg = 48,
+    saturationText = 95,
+    lightnessText = 92
+) {
+    // 🎨 Hue base del color #10b981 ≈ 160°
+    const baseHue = 160;
+
+    // Variación leve para no salir de la gama verde (±5°)
+    const hueSpread = 5;
+
+    const hue = baseHue - hueSpread + Math.floor(Math.random() * (hueSpread * 2 + 1));
+
+    return {
+        bg: `hsl(${hue}, ${saturationBg}%, ${lightnessBg}%)`,
+        color: `hsl(${hue}, ${saturationText}%, ${lightnessText}%)`,
+    };
+}
+/**
+ * Genera un par de colores armónicos (fondo y texto)
+ * muy cercanos al color #00bfff (azul/cyan brillante),
+ * con ligeras variaciones en saturación y luminosidad.
+ *
+ * @param {number} [saturationBg=75] Saturación del fondo (0–100)
+ * @param {number} [lightnessBg=50] Luminosidad del fondo (0–100)
+ * @param {number} [saturationText=95] Saturación del texto (0–100)
+ * @param {number} [lightnessText=92] Luminosidad del texto (0–100)
+ * @returns {{ bg: string, color: string }}
+ */
+export function generateHarmoniousBlue(
+    saturationBg = 75,
+    lightnessBg = 50,
+    saturationText = 95,
+    lightnessText = 92
+) {
+    // 🎨 Hue base del color #00bfff ≈ 195°
+    const baseHue = 195;
+
+    // Variación leve para no salir de la gama azul (±5°)
+    const hueSpread = 5;
+
+    const hue = baseHue - hueSpread + Math.floor(Math.random() * (hueSpread * 2 + 1));
+
+    return {
+        bg: `hsl(${hue}, ${saturationBg}%, ${lightnessBg}%)`,
+        color: `hsl(${hue}, ${saturationText}%, ${lightnessText}%)`,
+    };
+}
 /**
  * Devuelve un color de texto (blanco o negro) legible según el color de fondo.
  * @param {string} hexColor

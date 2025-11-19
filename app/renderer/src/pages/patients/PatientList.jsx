@@ -37,6 +37,8 @@ export default function PatientList() {
     const [showForm, setShowForm] = useState(false);
     const [filters, setFilters] = useState({});
     const searchRef = useRef(null);
+    const [selectTypeOpen, setSelectTypeOpen] = useState(false);
+    const [newPatientType, setNewPatientType] = useState(null);
     const { addToast } = useToastStore();
     const limit = 8;
 
@@ -248,7 +250,7 @@ export default function PatientList() {
                 <motion.button
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.97 }}
-                    onClick={() => setShowForm(true)}
+                    onClick={() => setSelectTypeOpen(true)}
                     className="flex items-center gap-2 bg-primary text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-sky-500 transition"
                 >
                     <PlusCircle size={18} />
@@ -454,9 +456,60 @@ export default function PatientList() {
                 confirmVariant="error"
             />
 
+            {selectTypeOpen && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center">
+                    <motion.div
+                        initial={{ scale: 0.9, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        className="bg-secondary rounded-2xl p-6 w-[400px] border border-slate-700 shadow-xl"
+                    >
+                        <h3 className="text-lg font-semibold text-primary mb-4">
+                            Tipo de paciente
+                        </h3>
+
+                        <p className="text-sm text-slate-300 mb-6">
+                            Selecciona el tipo de paciente que deseas registrar.
+                        </p>
+
+                        <div className="flex flex-col gap-3">
+                            <button
+                                className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-sky-500 transition"
+                                onClick={() => {
+                                    setNewPatientType("prospecto");
+                                    setSelectTypeOpen(false);
+                                    setShowForm(true);
+                                }}
+                            >
+                                Prospecto
+                            </button>
+
+                            <button
+                                className="px-4 py-2 bg-slate-700 text-slate-200 rounded-lg hover:bg-slate-600 transition"
+                                onClick={() => {
+                                    setNewPatientType("consulta_unica");
+                                    setSelectTypeOpen(false);
+                                    setShowForm(true);
+                                }}
+                            >
+                                Consulta única
+                            </button>
+
+                            <button
+                                className="px-4 py-2 text-slate-400 hover:text-white"
+                                onClick={() => setSelectTypeOpen(false)}
+                            >
+                                Cancelar
+                            </button>
+                        </div>
+                    </motion.div>
+                </div>
+            )}
+
+
             {/* 🧾 Formulario de creación */}
             <PatientForm
                 open={showForm}
+                patientType={newPatientType}
                 onClose={() => setShowForm(false)}
                 onCreated={handlePatientCreated}
             />
