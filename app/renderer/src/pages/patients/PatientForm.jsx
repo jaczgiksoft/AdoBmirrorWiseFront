@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { motion } from "framer-motion";
-import { X, Upload } from "lucide-react";
+import { X, Upload, TriangleAlert } from "lucide-react";
 import { useToastStore } from "@/store/useToastStore";
 import { createPatient } from "@/services/patient.service";
 import { useHotkeys } from "@/hooks/useHotkeys";
@@ -62,6 +62,9 @@ export default function PatientForm({ open, onClose, onCreated, patientType }) {
 
     const firstRef = useRef(null);
 
+    const hasFormChanges = () =>
+        JSON.stringify(form) !== JSON.stringify(initialForm);
+
     // ⬇️ Asignar tipo según selección previa
     useEffect(() => {
         if (patientType) {
@@ -84,17 +87,48 @@ export default function PatientForm({ open, onClose, onCreated, patientType }) {
     useHotkeys(
         {
             escape: () => {
-                if (!open) return;
-                if (Object.values(form).some((v) => v)) setConfirmCancel(true);
-                else handleExit();
+                if (!open) return "prevent";
+                if (alertModalOpen || confirmCancel) return "prevent";
+
+                if (hasFormChanges()) {
+                    setConfirmCancel(true);
+                    return "prevent";
+                }
+
+                handleExit();
+                return "prevent";
             },
+
             enter: () => {
-                if (!open || confirmCancel) return;
+                if (!open) return "prevent";
+                if (alertModalOpen || confirmCancel) return "prevent";
+
                 handleNextStep();
+                return "prevent";
             },
         },
-        [open, form, confirmCancel, step]
+
+        // dependencias SIEMPRE presentes
+        [form, step, alertModalOpen, confirmCancel, open],
+
+        // enabled SIEMPRE presente
+        open && !alertModalOpen && !confirmCancel
     );
+
+
+    // ⚡ F5 desde Electron — GUARDA igual que ENTER
+    useEffect(() => {
+        if (!open) return;
+
+        // Registramos listener seguro del preload
+        window.electronAPI?.onSaveShortcut(() => {
+            if (!open) return;
+            if (alertModalOpen || confirmCancel) return;
+
+            handleNextStep(); // valida → avanza / guarda
+        });
+
+    }, [open, alertModalOpen, confirmCancel, form, step]);
 
     // 🔧 Manejo de cambios
     const handleChange = (e) => {
@@ -213,6 +247,13 @@ export default function PatientForm({ open, onClose, onCreated, patientType }) {
     };
 
     if (!open) return null;
+
+/*    useEffect(() => {
+        if (open) {
+            const modal = document.querySelector("#patientFormModal");
+            modal?.focus();
+        }
+    }, [open]);*/
 
     // ------------------------------------------------------
     // STEPS VISUALES
@@ -563,7 +604,7 @@ export default function PatientForm({ open, onClose, onCreated, patientType }) {
                         <div className="flex items-center justify-between">
                             <div>
                                 <h3 className="text-lg font-semibold text-primary flex items-center gap-2">
-                                    ⚠️ Alertas del paciente
+                                    Alertas del paciente
                                 </h3>
                                 <p className="text-xs text-slate-400 mt-1">
                                     Registra advertencias importantes para su atención clínica o administrativa.
@@ -574,10 +615,8 @@ export default function PatientForm({ open, onClose, onCreated, patientType }) {
                                 onClick={handleAddAlert}
                                 className="
                         flex items-center gap-2 px-4 py-2
-                        rounded-lg bg-primary/10 text-primary border border-primary/20
-                        hover:bg-primary hover:text-white hover:border-primary/40
-                        transition-all
-                    "
+                        rounded-lg bg-primary text-white border border-primary/20
+                        hover:bg-primary/80 hover:text-white cursor-pointer"
                             >
                                 <span className="text-base leading-none">+</span>
                                 <span className="text-sm font-medium">Nueva alerta</span>
@@ -593,7 +632,9 @@ export default function PatientForm({ open, onClose, onCreated, patientType }) {
                         >
                             {form.alerts.length === 0 ? (
                                 <div className="flex flex-col items-center justify-center py-10 text-center">
-                                    <div className="text-4xl mb-2 opacity-70">⚠️</div>
+                                    <div className="text-4xl mb-2 opacity-70">
+                                        <TriangleAlert size={45} className="text-yellow-500" />
+                                    </div>
                                     <p className="text-slate-400 text-sm max-w-[300px]">
                                         Aquí aparecerán las alertas que registres para este paciente.
                                         Puedes agregar alertas clínicas o administrativas.
@@ -736,11 +777,13 @@ export default function PatientForm({ open, onClose, onCreated, patientType }) {
         <>
             <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center">
                 <motion.div
+                    id="patientFormModal"
+                    tabIndex={-1}
                     initial={{ scale: 0.9, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
                     transition={{ duration: 0.3 }}
                     className="
-        bg-secondary rounded-2xl shadow-xl border border-slate-700
+        bg-secondary outline-none rounded-2xl shadow-xl border border-slate-700
         w-[80%] max-w-[1100px]
         max-h-[90vh]
         overflow-y-auto

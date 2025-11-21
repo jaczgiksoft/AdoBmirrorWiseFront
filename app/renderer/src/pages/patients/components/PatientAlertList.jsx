@@ -13,7 +13,7 @@ export default function PatientAlertList({ alerts, onEdit, onDelete }) {
                 {alerts.map((a, i) => (
                     <div
                         key={i}
-                        className="relative p-4 rounded-xl border-primary border-1 bg-slate-800"
+                        className="relative p-4 rounded-xl border-yellow-500 border-1 bg-yellow-500/20"
                     >
                         {/* ICONO ADMIN (izquierda arriba) */}
                         {a.is_admin_alert && (
@@ -58,7 +58,7 @@ export default function PatientAlertList({ alerts, onEdit, onDelete }) {
 
                         {/* CONTENIDO */}
                         <div className="mt-8">
-                            <div className="text-sm font-semibold text-primary">
+                            <div className="text-sm font-semibold text-yellow-500">
                                 {a.title}
                             </div>
 

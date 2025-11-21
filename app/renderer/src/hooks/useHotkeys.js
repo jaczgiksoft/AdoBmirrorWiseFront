@@ -1,39 +1,51 @@
-import { useEffect } from "react";
+import { useEffect, useCallback } from "react";
 
 /**
- * Hook global para registrar atajos de teclado.
- * - Si un handler devuelve `true`, el evento no se propaga.
- * - Si el handler devuelve `"prevent"`, también se previene el comportamiento del navegador.
+ * Hook global avanzado para registrar atajos de teclado.
+ *
+ * Características:
+ * - Modo CAPTURE (true) para interceptar antes que otros listeners.
+ * - Memoización del handler mediante useCallback.
+ * - “enabled” permite bloquear o activar hotkeys dinámicamente.
+ * - Si un handler retorna "prevent" o true → se detiene todo el evento.
+ * - Automáticamente previene que F11 active el fullscreen del navegador.
  */
 export function useHotkeys(handlers = {}, deps = [], enabled = true) {
+    const handleKey = useCallback(
+        (e) => {
+            if (!enabled) return;
+
+            const key = e.key.toLowerCase();
+
+            // Bloquear F11 fullscreen del navegador
+            if (key === "f11") {
+                e.preventDefault();
+            }
+
+            const fn = handlers[key];
+            if (!fn) return;
+
+            const result = fn(e);
+
+            // 🔒 Control total del evento
+            if (result === "prevent" || result === true) {
+                e.preventDefault();
+                e.stopPropagation();
+                if (typeof e.stopImmediatePropagation === "function") {
+                    e.stopImmediatePropagation();
+                }
+            }
+        },
+        [enabled, ...deps] // Mantiene el handler sincronizado con el estado actual
+    );
+
     useEffect(() => {
         if (!enabled) return;
 
-        const handleKey = (e) => {
-            const key = e.key.toLowerCase();
+        window.addEventListener("keydown", handleKey, true); // CAPTURE MODE
 
-            // ⚙️ F11 — anular pantalla completa del navegador
-            if (key === "f11") {
-                e.preventDefault(); // evita que active fullscreen
-            }
-
-            if (handlers[key]) {
-                const result = handlers[key](e);
-
-                if (result === "prevent" || result === true) {
-                    e.preventDefault();
-                    e.stopPropagation();
-
-                    // 🚫 Evita que otros listeners globales también reciban el evento
-                    if (typeof e.stopImmediatePropagation === "function") {
-                        e.stopImmediatePropagation();
-                    }
-                }
-            }
+        return () => {
+            window.removeEventListener("keydown", handleKey, true);
         };
-
-        window.addEventListener("keydown", handleKey);
-        return () => window.removeEventListener("keydown", handleKey);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, deps);
+    }, [handleKey, enabled]);
 }

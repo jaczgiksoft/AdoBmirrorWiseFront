@@ -9,6 +9,8 @@ import PatientForm from "./PatientForm";
 import FilterDropdown from "./PatientFilterDropdown";
 import PatientDashboard from "./components/PatientDashboard";
 import PatientAgeChart from "./components/PatientAgeChart";
+import PatientTypeSelectorModal from "./components/PatientTypeSelectorModal";
+
 import {
     PlusCircle,
     ChevronLeft,
@@ -18,37 +20,46 @@ import {
     Search,
     Home,
 } from "lucide-react";
+
 import { Pagination } from "@/components/ui";
-import { API_BASE } from "@/utils/apiBase";
 import { getContrastColor } from "@/utils/helpers";
 
 export default function PatientList() {
     const navigate = useNavigate();
     const [patients, setPatients] = useState([]);
     const [selectedIndex, setSelectedIndex] = useState(0);
+
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+
     const [searchTerm, setSearchTerm] = useState("");
     const [debouncedSearch, setDebouncedSearch] = useState("");
+
     const [page, setPage] = useState(1);
     const [pagination, setPagination] = useState({ totalPages: 1 });
+
     const [confirmOpen, setConfirmOpen] = useState(false);
     const [patientToDelete, setPatientToDelete] = useState(null);
+
     const [showForm, setShowForm] = useState(false);
     const [filters, setFilters] = useState({});
+
     const searchRef = useRef(null);
+
+    // Nuevo modal
     const [selectTypeOpen, setSelectTypeOpen] = useState(false);
     const [newPatientType, setNewPatientType] = useState(null);
+
     const { addToast } = useToastStore();
     const limit = 8;
 
-    // 🔹 Debounce de búsqueda
+    // Debounce search
     useEffect(() => {
         const delay = setTimeout(() => setDebouncedSearch(searchTerm), 400);
         return () => clearTimeout(delay);
     }, [searchTerm]);
 
-    // 🔹 Cargar pacientes paginados
+    // Load patients
     useEffect(() => {
         async function loadPatients() {
             try {
@@ -73,7 +84,6 @@ export default function PatientList() {
                 });
                 setSelectedIndex(0);
             } catch (err) {
-                console.error("❌ Error al cargar pacientes:", err);
                 setError("No se pudieron cargar los pacientes.");
                 addToast({
                     type: "error",
@@ -88,72 +98,84 @@ export default function PatientList() {
         loadPatients();
     }, [page, debouncedSearch, filters]);
 
-    // 🎹 Atajos de teclado
+    // 🎹 LISTADO — Hotkeys
     useHotkeys(
         {
-            escape: () => {
-                if (confirmOpen || showForm) return "prevent";
-                navigate("/dashboard");
-            },
             arrowdown: (e) => {
-                if (confirmOpen || showForm) return "prevent";
-                e.preventDefault();
-                setSelectedIndex((prev) => (prev + 1) % patients.length);
-            },
-            arrowup: (e) => {
-                if (confirmOpen || showForm) return "prevent";
-                e.preventDefault();
-                setSelectedIndex((prev) => (prev - 1 + patients.length) % patients.length);
-            },
-            arrowleft: (e) => {
-                if (confirmOpen || showForm) return "prevent";
-                e.preventDefault();
-                if (page > 1) setPage((p) => p - 1);
-            },
-            arrowright: (e) => {
-                if (confirmOpen || showForm) return "prevent";
-                e.preventDefault();
-                if (page < pagination.totalPages) setPage((p) => p + 1);
-            },
-            enter: (e) => {
-                if (confirmOpen || showForm) return "prevent";
-                e.preventDefault();
-                const patient = patients[selectedIndex];
-                if (patient) navigate(`/patients/${patient.id}`);
-            },
-            f12: (e) => {
-                if (confirmOpen) return "prevent";
-                e.preventDefault();
-                setShowForm(true);
-            },
-            delete: (e) => {
-                e.preventDefault();
-                const patient = patients[selectedIndex];
-                if (patient) handleDeleteClick(patient);
-            },
-            f1: (e) => {
-                if (confirmOpen || showForm) return "prevent";
+                if (selectTypeOpen || showForm || confirmOpen) return;
                 e.preventDefault();
 
-                if (e.ctrlKey) {
-                    const btn = document.querySelector(".filter-toggle-btn");
-                    btn?.click();
-                } else {
-                    searchRef.current?.focus();
-                    searchRef.current?.select();
-                }
+                setSelectedIndex((prev) => {
+                    const next = prev + 1;
+                    return next < patients.length ? next : prev;
+                });
+                return "prevent";
+            },
+
+            arrowup: (e) => {
+                if (selectTypeOpen || showForm || confirmOpen) return;
+                e.preventDefault();
+
+                setSelectedIndex((prev) => {
+                    const next = prev - 1;
+                    return next >= 0 ? next : 0;
+                });
+                return "prevent";
+            },
+
+            enter: (e) => {
+                if (selectTypeOpen || showForm || confirmOpen) return;
+                e.preventDefault();
+
+                const patient = patients[selectedIndex];
+                if (patient) navigate(`/patients/${patient.id}`);
+                return "prevent";
+            },
+
+            escape: (e) => {
+                if (selectTypeOpen || showForm || confirmOpen) return;
+                e.preventDefault();
+                setSelectedIndex(0);
+                return "prevent";
+            },
+
+            delete: (e) => {
+                if (selectTypeOpen || showForm || confirmOpen) return;
+                e.preventDefault();
+
+                const p = patients[selectedIndex];
+                if (p) handleDeleteClick(p);
 
                 return "prevent";
             },
+
+            arrowleft: (e) => {
+                if (selectTypeOpen || showForm || confirmOpen) return;
+                if (page > 1) {
+                    e.preventDefault();
+                    setPage((p) => p - 1);
+                }
+            },
+
+            arrowright: (e) => {
+                if (selectTypeOpen || showForm || confirmOpen) return;
+                if (page < pagination.totalPages) {
+                    e.preventDefault();
+                    setPage((p) => p + 1);
+                }
+            },
+
+            f12: (e) => {
+                if (selectTypeOpen || showForm || confirmOpen) return;
+                e.preventDefault();
+                setSelectTypeOpen(true);
+                return "prevent";
+            },
         },
-        [patients, selectedIndex, confirmOpen, showForm]
+        [patients, selectedIndex, showForm, confirmOpen, selectTypeOpen]
     );
 
-    useEffect(() => {
-        document.title = "Pacientes | BWISE Dental";
-    }, []);
-
-    // 🗑 Confirmar eliminación
+    // Delete logic
     const handleDeleteClick = (patient) => {
         setPatientToDelete(patient);
         setConfirmOpen(true);
@@ -166,33 +188,19 @@ export default function PatientList() {
             setPatients((prev) => prev.filter((p) => p.id !== patientToDelete.id));
             setConfirmOpen(false);
             setPatientToDelete(null);
-            addToast({
-                type: "success",
-                title: "Paciente eliminado",
-                message: `${patientToDelete.first_name} ${patientToDelete.last_name} fue eliminado correctamente.`,
-            });
         } catch (err) {
-            console.error("❌ Error al eliminar paciente:", err);
             addToast({
                 type: "error",
                 title: "Error al eliminar paciente",
-                message:
-                    err.response?.data?.message ||
-                    "No se pudo eliminar el paciente. Verifica tu conexión o permisos.",
+                message: err.response?.data?.message || "No se pudo eliminar.",
             });
         }
     };
 
-    const handlePatientCreated = () => {
-        setShowForm(false);
-        setPage(1);
-    };
-
-    // 🌀 Estados de carga y error
     if (loading) {
         return (
             <div className="flex h-screen items-center justify-center text-slate-400">
-                <p>Cargando pacientes...</p>
+                Cargando pacientes...
             </div>
         );
     }
@@ -200,31 +208,31 @@ export default function PatientList() {
     if (error) {
         return (
             <div className="flex h-screen items-center justify-center text-red-400">
-                <p>{error}</p>
+                {error}
             </div>
         );
     }
 
     return (
         <div className="bg-dark flex flex-col font-sans text-slate-50">
-            {/* 🔙 Volver + Buscar + Agregar — encabezado principal */}
+            {/* ---------- HEADER ---------- */}
             <div className="w-full max-w-[110rem] mx-auto px-10 mt-6 flex items-center gap-4 flex-wrap">
                 <button
                     onClick={() => navigate("/dashboard")}
                     className="relative group flex items-center gap-1 text-slate-400 hover:text-white transition cursor-pointer"
                 >
-                    <Home size={18} className="relative top-[1px]" />
-                    <ChevronLeft size={16} className="relative top-[1px]" />
+                    <Home size={18} />
+                    <ChevronLeft size={16} />
                     <span className="absolute left-full ml-3 whitespace-nowrap px-3 py-1.5 text-xs bg-black/85 text-white rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-all duration-200">
-                    Ir al panel principal
-                </span>
+                        Ir al panel principal
+                    </span>
                 </button>
 
                 <h1 className="text-2xl font-semibold text-primary leading-none flex-1">
                     Gestión de pacientes
                 </h1>
 
-                {/* 🔍 Buscar + Filtros */}
+                {/* Search */}
                 <div className="relative flex items-center bg-secondary rounded-lg border border-slate-700">
                     <Search size={16} className="absolute left-2 text-slate-400" />
                     <input
@@ -246,7 +254,7 @@ export default function PatientList() {
                     </div>
                 </div>
 
-                {/* ➕ Nuevo paciente */}
+                {/* Add new */}
                 <motion.button
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.97 }}
@@ -258,9 +266,10 @@ export default function PatientList() {
                     <span>Agregar paciente</span>
                 </motion.button>
             </div>
-            {/* 🔹 Contenedor de las dos columnas */}
+
+            {/* ---------- BODY (dashboard + list) ---------- */}
             <div className="w-full max-w-[110rem] mx-auto px-10 mt-6 flex flex-col md:flex-row gap-6">
-                {/* 📊 Dashboard lateral */}
+                {/* Dashboard */}
                 <div className="w-full md:w-1/4 self-start">
                     <div className="sticky top-6">
                         <PatientDashboard patients={patients} />
@@ -268,27 +277,23 @@ export default function PatientList() {
                     </div>
                 </div>
 
-                {/* 📋 LISTADO PRINCIPAL */}
+                {/* LIST */}
                 <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.3 }}
                     className="w-full md:w-3/4"
                 >
-                    {/* 📋 Listado de tarjetas */}
                     {patients.length === 0 ? (
                         <p className="text-center text-slate-400">No se encontraron pacientes.</p>
                     ) : (
                         <motion.div
                             key={page}
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.25 }}
-                            className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4 gap-6 place-items-stretch"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4 gap-6"
                         >
                             {patients.map((p, index) => {
                                 const isSelected = index === selectedIndex;
-                                const profileSrc = p.photo_url || null;
 
                                 return (
                                     <motion.div
@@ -297,18 +302,17 @@ export default function PatientList() {
                                         onClick={() => navigate(`/patients/${p.id}`)}
                                         className={`relative bg-secondary rounded-2xl p-6 shadow-md cursor-pointer border transition-all flex flex-col items-center justify-between aspect-square ${
                                             isSelected
-                                                ? "border-primary ring-2 ring-primary/40 shadow-hard"
+                                                ? "border-primary ring-2 ring-primary/40"
                                                 : "border-slate-700 hover:border-primary/60"
                                         }`}
                                     >
-                                        {/* 📸 Imagen */}
+                                        {/* Imagen */}
                                         <div className="flex flex-col items-center mb-3">
-                                            {profileSrc ? (
+                                            {p.photo_url ? (
                                                 <img
-                                                    src={profileSrc}
+                                                    src={p.photo_url}
                                                     alt={p.first_name}
                                                     className="w-20 h-20 rounded-xl object-cover border border-slate-700 bg-slate-800"
-                                                    onError={(e) => (e.target.style.display = "none")}
                                                 />
                                             ) : (
                                                 <div className="w-20 h-20 rounded-xl border border-slate-700 bg-slate-800 flex items-center justify-center">
@@ -317,12 +321,9 @@ export default function PatientList() {
                                             )}
                                         </div>
 
-                                        {/* 👤 Datos principales */}
+                                        {/* Datos */}
                                         <div className="text-center mb-4">
-                                            <p
-                                                className="text-base font-semibold text-primary truncate max-w-[160px] mx-auto"
-                                                title={`${p.first_name} ${p.last_name}`}
-                                            >
+                                            <p className="text-base font-semibold text-primary truncate max-w-[160px] mx-auto">
                                                 {p.first_name} {p.last_name}
                                             </p>
                                             <p className="text-xs text-slate-400">
@@ -330,15 +331,7 @@ export default function PatientList() {
                                             </p>
                                         </div>
 
-                                        {/* 🕓 Tiempo de tratamiento */}
-                                        <div className="flex flex-col items-center text-center mb-4">
-                                            <p className="text-xs font-medium text-slate-300">
-                                                Tiempo de tratamiento
-                                            </p>
-                                            <div className="w-24 h-[2px] bg-slate-700 rounded mt-1" />
-                                        </div>
-
-                                        {/* 🏷️ Etiquetas */}
+                                        {/* Etiquetas */}
                                         <div className="grid grid-cols-2 gap-2 w-full">
                                             <div className="bg-dark/40 rounded-lg p-2 border border-slate-700 text-center">
                                                 <p className="text-xs font-medium text-slate-200">
@@ -346,6 +339,7 @@ export default function PatientList() {
                                                 </p>
                                                 <p className="text-[10px] text-slate-500">Teléfono</p>
                                             </div>
+
                                             <div className="bg-dark/40 rounded-lg p-2 border border-slate-700 text-center">
                                                 <p
                                                     className={`text-xs font-semibold ${
@@ -364,13 +358,14 @@ export default function PatientList() {
                                                 </p>
                                                 <p className="text-[10px] text-slate-500">Género</p>
                                             </div>
+
                                             <div className="bg-dark/40 rounded-lg p-2 border border-slate-700 text-center">
                                                 <p className="text-xs font-medium text-slate-200">
                                                     {p.status?.name || "Prospecto"}
                                                 </p>
                                                 <p className="text-[10px] text-slate-500">Estado</p>
                                             </div>
-                                            {/* 🏷️ Tipos de paciente (cuadros sólidos con iniciales) */}
+
                                             <div className="bg-dark/40 rounded-lg p-2 border border-slate-700 text-center">
                                                 {Array.isArray(p.types) && p.types.length > 0 ? (
                                                     <div className="flex justify-center flex-wrap gap-1">
@@ -381,7 +376,6 @@ export default function PatientList() {
                                                                 .join("")
                                                                 .toUpperCase();
 
-                                                            // 🔹 Determinar color de texto según brillo del fondo
                                                             const textColor = getContrastColor(t.color);
 
                                                             return (
@@ -392,10 +386,9 @@ export default function PatientList() {
                                                                         backgroundColor: t.color,
                                                                         color: textColor,
                                                                     }}
-                                                                    title={t.name}
                                                                 >
-            {initials}
-          </span>
+                                                                    {initials}
+                                                                </span>
                                                             );
                                                         })}
                                                     </div>
@@ -404,12 +397,19 @@ export default function PatientList() {
                                                 )}
                                                 <p className="text-[10px] text-slate-500 mt-1">Tipos</p>
                                             </div>
-
                                         </div>
 
-                                        {/* 🔧 Acciones */}
+                                        {/* Acciones */}
                                         <div className="absolute top-3 right-3 flex gap-2 text-slate-400">
-                                            <Edit2 size={16} className="hover:text-primary cursor-pointer" />
+                                            <Edit2
+                                                size={16}
+                                                className="hover:text-primary cursor-pointer"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    navigate(`/patients/${p.id}`);
+                                                }}
+                                            />
+
                                             <Trash2
                                                 size={16}
                                                 className="hover:text-error cursor-pointer"
@@ -425,7 +425,6 @@ export default function PatientList() {
                         </motion.div>
                     )}
 
-                    {/* 📄 Paginación */}
                     <Pagination
                         page={page}
                         totalPages={pagination.totalPages}
@@ -433,14 +432,12 @@ export default function PatientList() {
                     />
 
                     <p className="text-center text-xs text-slate-500 mt-6">
-                        Usa ↑ ↓ para navegar · Enter para editar · F12 para nuevo · Supr para eliminar
+                        Usa ↑ ↓ para navegar · Enter para abrir · F12 para nuevo · Supr para eliminar
                     </p>
                 </motion.div>
             </div>
 
-
-
-            {/* 🧱 Confirmación de eliminación */}
+            {/* Confirmación */}
             <ConfirmDialog
                 open={confirmOpen}
                 title="Eliminar paciente"
@@ -456,62 +453,26 @@ export default function PatientList() {
                 confirmVariant="error"
             />
 
-            {selectTypeOpen && (
-                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center">
-                    <motion.div
-                        initial={{ scale: 0.9, opacity: 0 }}
-                        animate={{ scale: 1, opacity: 1 }}
-                        className="bg-secondary rounded-2xl p-6 w-[400px] border border-slate-700 shadow-xl"
-                    >
-                        <h3 className="text-lg font-semibold text-primary mb-4">
-                            Tipo de paciente
-                        </h3>
+            {/* Modal de tipo de paciente — componente separado */}
+            <PatientTypeSelectorModal
+                open={selectTypeOpen}
+                onClose={() => setSelectTypeOpen(false)}
+                onSelect={(type) => {
+                    setNewPatientType(type);
+                    setSelectTypeOpen(false);
+                    setShowForm(true);
+                }}
+            />
 
-                        <p className="text-sm text-slate-300 mb-6">
-                            Selecciona el tipo de paciente que deseas registrar.
-                        </p>
-
-                        <div className="flex flex-col gap-3">
-                            <button
-                                className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-sky-500 transition"
-                                onClick={() => {
-                                    setNewPatientType("prospecto");
-                                    setSelectTypeOpen(false);
-                                    setShowForm(true);
-                                }}
-                            >
-                                Prospecto
-                            </button>
-
-                            <button
-                                className="px-4 py-2 bg-slate-700 text-slate-200 rounded-lg hover:bg-slate-600 transition"
-                                onClick={() => {
-                                    setNewPatientType("consulta_unica");
-                                    setSelectTypeOpen(false);
-                                    setShowForm(true);
-                                }}
-                            >
-                                Consulta única
-                            </button>
-
-                            <button
-                                className="px-4 py-2 text-slate-400 hover:text-white"
-                                onClick={() => setSelectTypeOpen(false)}
-                            >
-                                Cancelar
-                            </button>
-                        </div>
-                    </motion.div>
-                </div>
-            )}
-
-
-            {/* 🧾 Formulario de creación */}
+            {/* Formulario */}
             <PatientForm
                 open={showForm}
                 patientType={newPatientType}
                 onClose={() => setShowForm(false)}
-                onCreated={handlePatientCreated}
+                onCreated={() => {
+                    setShowForm(false);
+                    setPage(1);
+                }}
             />
         </div>
     );

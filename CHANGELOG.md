@@ -47,6 +47,60 @@ Este proyecto sigue [Semantic Versioning](https://semver.org/lang/es/).
 
 ---
 
+## [0.4.0] - 2025-11-20
+
+### Added
+- **Soporte completo de navegación por teclado en `PatientList.jsx`:**
+    - ↑ / ↓ → Mover selección entre tarjetas.
+    - Enter → Abrir expediente del paciente seleccionado.
+    - Delete → Eliminar paciente seleccionado.
+    - ESC → Regresar al dashboard.
+    - ← / → → Cambiar página.
+    - F12 → Abrir el modal de selección de tipo de paciente.
+
+- **Nuevo componente `PatientTypeSelectorModal.jsx`:**
+    - Modal independiente para elegir: **Prospecto** / **Consulta Única**.
+    - Diseño consistente con el estilo clínico.
+    - Soporte de navegación por teclado:
+        - ↑ / ↓ para moverse entre opciones.
+        - Enter para confirmar selección.
+        - ESC para cancelar.
+    - Comportamiento completamente independiente sin interferir con `PatientList`.
+
+- **Mejoras en `PatientForm.jsx`:**
+    - Aislamiento total de hotkeys del wizard.
+    - Prevención de conflictos con el listado o con el modal de tipo.
+    - Comportamiento correcto de `ESC`, `Enter` y `F5`.
+    - Validación por paso totalmente funcional.
+    - Eliminación de warning crítico: *Rendered more hooks than during the previous render*.
+
+### Changed
+- **Refactor estructural del sistema de hotkeys (`useHotkeys`) en el módulo de Pacientes:**
+    - Cada componente ahora maneja solo sus propios atajos.
+    - Se eliminaron duplicados y listeners residuales.
+    - Los atajos del listado ya no se ejecutan cuando:
+        - Está abierto el wizard.
+        - Está abierto el modal de tipo de paciente.
+        - Está activo un diálogo de confirmación.
+    - Navegación más clara, estable y predecible.
+
+- **Flujo corregido de creación de nuevo paciente:**
+    - F12 ya **no abre directamente el formulario**, sino el **modal de tipo**.
+    - El wizard solo se abre después de elegir el tipo.
+
+- **Mejoras de UX en la interacción con modales:**
+    - Ningún atajo del listado afecta al modal de registro.
+    - Delete ya no puede disparar eliminaciones mientras el formulario está abierto.
+
+### Fixed
+- Problema donde F12 abría el formulario ignorando el modal de tipo.
+- Conflicto donde `Delete` pedía eliminar paciente incluso con el formulario abierto.
+- Hotkeys del formulario bloqueando el listado incluso cuando estaba cerrado.
+- Listeners huérfanos que seguían activos después de cerrar modales.
+
+
+---
+
 ## [0.3.2] - 2025-11-18
 
 ### Added
