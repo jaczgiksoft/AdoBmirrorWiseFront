@@ -8,7 +8,8 @@ import { useHotkeys } from "@/hooks/useHotkeys";
 import { ConfirmDialog } from "@/components/feedback";
 import PatientAlertModal from "./components/PatientAlertModal";
 import PatientAlertList from "./components/PatientAlertList";
-
+import { getReferrals } from "@/services/referral.service";
+import Datepicker from "react-tailwindcss-datepicker";
 
 export default function PatientForm({ open, onClose, onCreated, patientType }) {
     const { addToast } = useToastStore();
@@ -60,7 +61,12 @@ export default function PatientForm({ open, onClose, onCreated, patientType }) {
     const [step, setStep] = useState(1);
     const [alertModalOpen, setAlertModalOpen] = useState(false);
     const [alertEditingIndex, setAlertEditingIndex] = useState(null);
-
+    const [referrals, setReferrals] = useState([]);
+    const [birthDatePicker, setBirthDatePicker] = useState({
+        startDate: null,
+        endDate: null,
+    });
+    const today = new Date().toISOString().split("T")[0];
     const firstRef = useRef(null);
 
     const hasFormChanges = () =>
@@ -162,6 +168,50 @@ export default function PatientForm({ open, onClose, onCreated, patientType }) {
             fetchNextMedicalRecordNumber();
         }
     }, [open]);
+
+    useEffect(() => {
+        if (!open) return;
+
+        if (form.birth_date) {
+            setBirthDatePicker({
+                startDate: form.birth_date,
+                endDate: form.birth_date,
+            });
+        } else {
+            setBirthDatePicker({
+                startDate: null,
+                endDate: null,
+            });
+        }
+    }, [open]);
+
+
+    useEffect(() => {
+        if (!open) return;
+
+        async function loadReferrals() {
+            try {
+                const data = await getReferrals();
+                setReferrals(data);
+            } catch (err) {
+                console.error("Error cargando referidores:", err);
+            }
+        }
+
+        loadReferrals();
+    }, [open]);
+
+    const handleBirthDateChange = (value) => {
+        setBirthDatePicker(value);
+
+        const date = value?.startDate || "";
+        setForm((f) => ({
+            ...f,
+            birth_date: date,
+        }));
+
+        setErrors((prev) => ({ ...prev, birth_date: "" }));
+    };
 
     // 🔧 Manejo de cambios
     const handleChange = (e) => {
@@ -568,33 +618,60 @@ export default function PatientForm({ open, onClose, onCreated, patientType }) {
                                     )}
                                 </div>
 
-                                <input
-                                    type="date"
-                                    name="birth_date"
-                                    value={form.birth_date}
-                                    onChange={handleChange}
-                                    className={`input ${errors.birth_date ? "border-error" : ""}`}
+                                <Datepicker
+                                    value={birthDatePicker}
+                                    onChange={handleBirthDateChange}
+                                    useRange={false}
+                                    asSingle={true}
+                                    displayFormat={"YYYY-MM-DD"}
+                                    placeholder="Seleccionar fecha..."
+                                    readOnly={true}
+                                    i18n={"es"}
+                                    maxDate={new Date()}
+                                    inputClassName={`input ${errors.birth_date ? "border-error ring-1 ring-error/50" : ""}`}
                                 />
+
                             </div>
                         </div>
 
-                        {/* Estado civil */}
-                        <div>
-                            <label className="block text-sm mb-1">Estado civil</label>
-                            <select
-                                name="marital_status"
-                                value={form.marital_status}
-                                onChange={handleChange}
-                                className="input"
-                            >
-                                <option value="">Seleccionar...</option>
-                                <option value="soltero">Soltero/a</option>
-                                <option value="casado">Casado/a</option>
-                                <option value="divorciado">Divorciado/a</option>
-                                <option value="viudo">Viudo/a</option>
-                                <option value="union libre">Unión libre</option>
-                            </select>
+                        <div className="grid grid-cols-2 gap-3">
+                            {/* Estado civil */}
+                            <div>
+                                <label className="block text-sm mb-1">Estado civil</label>
+                                <select
+                                    name="marital_status"
+                                    value={form.marital_status}
+                                    onChange={handleChange}
+                                    className="input"
+                                >
+                                    <option value="">Seleccionar...</option>
+                                    <option value="soltero">Soltero/a</option>
+                                    <option value="casado">Casado/a</option>
+                                    <option value="divorciado">Divorciado/a</option>
+                                    <option value="viudo">Viudo/a</option>
+                                    <option value="union libre">Unión libre</option>
+                                </select>
+                            </div>
+
+                            {/* Referidor */}
+                            <div>
+                                <label className="block text-sm mb-1">Referido por</label>
+                                <select
+                                    name="referral_id"
+                                    value={form.referral_id || ""}
+                                    onChange={handleChange}
+                                    className="input"
+                                >
+                                    <option value="">Sin referidor</option>
+                                    {referrals.map(r => (
+                                        <option key={r.id} value={r.id}>
+                                            {r.name}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
                         </div>
+
 
                         {/* Teléfono y correo */}
                         <div className="grid grid-cols-2 gap-3">

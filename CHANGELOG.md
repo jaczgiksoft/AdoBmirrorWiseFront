@@ -10,7 +10,115 @@ Este proyecto sigue [Semantic Versioning](https://semver.org/lang/es/).
 
 ---
 
-## [3.3.0] - 2025-11-20
+## [0.6.1] - 2025-11-20
+
+### Added
+- **Nuevo módulo clínico `Referrals`** (`referrals`):
+  - Permite registrar las fuentes de referencia del paciente (personas, empresas, campañas, otros médicos, etc.).
+  - Modelo `referral.model.js` con soporte multi-tenant (`tenant_id`) y campos:
+    - `name` (obligatorio, máx. 120)
+    - `contact_name`, `contact_phone`, `contact_email`
+    - `notes` (texto opcional)
+  - Validación de email incluida (`isEmail`).
+  - Índice único por tenant:
+    ```sql
+    unique (tenant_id, name)
+    ```
+
+- **Migración `create-referrals.js`**:
+  - Crea tabla `referrals` con `paranoid: true` para soft delete.
+  - Índices optimizados:
+    - `tenant_id`
+    - `name`
+    - `contact_email`
+    - `uq_referrals_tenant_name` (único)
+
+- **Asociaciones agregadas en `associations.js`**:
+  - `Tenant.hasMany(Referral, { as: 'referrals' })`
+  - `Referral.belongsTo(Tenant, { as: 'tenant' })`
+  - `Patient.belongsTo(Referral, { as: 'referral' })`
+
+- **Repositorios y servicios del módulo**:
+  - `referral.repository.js`:
+    - CRUD básico: `findAll`, `findById`, `findByName`, `createReferral`, `updateReferral`, `deleteReferral`
+    - Filtra automáticamente por `tenant_id`
+  - `referral.service.js`:
+    - Lógica de negocio con validación de duplicados por tenant
+    - Manejo de errores consistente
+    - Auditoría con `createLog` / `logApiError`
+
+- **Controlador y rutas REST**:
+  - `referral.controller.js`:
+    - `GET /referrals` → listar todos
+    - `POST /referrals` → crear
+    - `PUT /referrals/:id` → actualizar
+    - `DELETE /referrals/:id` → eliminar (soft delete)
+  - `referral.routes.js` protegido con:
+    - `validateToken`
+    - `loadPermissions`
+    - `checkPermissions('read' | 'write' | 'edit' | 'delete', 'referrals')`
+    - `validateRequest`
+
+- **Integración completa con el módulo de Pacientes**:
+  - Se añade el campo `referral_id` al modelo `patient.model.js`
+  - En la creación/actualización de pacientes ya se admite asignar un referidor
+  - Nuevos includes en:
+    - `patient.repository.js` (include: { model: Referral, as: 'referral' })
+    - `patient.controller.js`, `patient.service.js` para entregar datos completos
+
+### Changed
+- Revisión de validadores de paciente (`patient.validator.js`) para permitir `referral_id` como campo opcional.
+- Ajustes en `patient.routes.js` y `patient.controller.js` para aceptar la propiedad sin romper compatibilidad previa.
+- Se documenta en código la relación clínica “Patient → Referral”.
+
+### Notes
+- Este módulo permite construir métricas internas como:
+  - Principales fuentes de referidos
+  - Efectividad por campaña o canal
+  - Ranking de médicos o empresas que envían pacientes
+- Compatible con auditoría, soft delete y multi-tenant.
+- 
+---
+
+## [0.5.1] - 2025-11-21
+
+### Added
+- **Nuevo Datepicker en el Paso 1 (`PatientForm.jsx`)**
+  - Integrado `react-tailwindcss-datepicker` en el campo “Fecha de nacimiento”.
+  - Soporte para formato `YYYY-MM-DD`.
+  - Campo en modo `readOnly` con estilo unificado a `.input`.
+  - Localización en **español** (`i18n="es"`).
+  - **Fecha máxima = hoy** para evitar selección futura.
+  - Se conserva el cálculo de edad dinámico junto al label.
+
+- **Nuevo catálogo de Referidores**
+  - Carga automática vía `getReferrals()` al abrir el formulario.
+  - Nuevo select **“Referido por”** ubicado junto al campo “Estado civil”.
+  - Integración completa con backend mediante `referral_id`.
+
+### Changed
+- **Ajustes globales de estilos**
+  - Fix a `.opacity-1` para corregir opacidad incorrecta generada por Tailwind (antes 1% → ahora 100%).
+    ```css
+    .opacity-1 {
+        opacity: 1 !important;
+    }
+    ```
+  - Mejor compatibilidad visual del datepicker con el tema oscuro de la aplicación.
+
+- **Mejoras de UX dentro del modal**
+  - Se evita que el calendario empuje el contenido del modal hacia abajo.
+  - Se corrige la interacción del popup dentro del wizard.
+  - Mejor soporte para el esquema visual clínico de BWISE.
+
+### Fixed
+- Problema donde el calendario aparecía **casi invisible** debido a una regla errónea de opacidad.
+- Fondo blanco incorrecto del datepicker cuando la app está en modo oscuro.
+- Ajuste del contenedor del datepicker para evitar desplazamiento interno no deseado.
+
+---
+
+## [0.5.0] - 2025-11-20
 
 ### Added
 - **Sistema completo de Alertas del Paciente (Paso 4 del formulario):**

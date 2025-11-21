@@ -1,13 +1,12 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
     content: [
-        "./index.html",
+        "./app/renderer/index.html",
         "./app/renderer/src/**/*.{js,jsx,ts,tsx}",
+        "../../node_modules/react-tailwindcss-datepicker/dist/index.esm.{js,ts}",
     ],
     theme: {
-        extend: {
-            // aún puedes definir colores o tamaños aquí si lo deseas
-        },
+        extend: {},
     },
     plugins: [],
 };
