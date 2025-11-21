@@ -10,6 +10,45 @@ Este proyecto sigue [Semantic Versioning](https://semver.org/lang/es/).
 
 ---
 
+## [0.8.0] - 2025-11-21
+
+### Added
+- **Soporte completo de Light/Dark Mode en el módulo de Alertas del paciente:**
+    - **`PatientAlertModal.jsx`:**
+        - Adaptación total del modal a ambos temas (fondos, bordes, textos y sombras).
+        - Nuevo diseño visual de toggle *administrativa / clínica* compatible con tema claro y oscuro.
+        - Inputs, textarea y acciones actualizados para respetar el sistema UI del wizard principal.
+        - Todos los elementos (labels, botones, contenedor, íconos) ahora responden correctamente al modo seleccionado.
+
+    - **`PatientAlertList.jsx`:**
+        - Nuevo esquema visual para alertas con tarjetas diferenciadas:
+            - **Amarillas** → alertas **administrativas**.
+            - **Rojas** → alertas **clínicas / generales**.
+        - Fondos, bordes y texto adaptados para light/dark.
+        - Tooltip administrativo modernizado y compatible con ambos temas.
+        - Botones de editar y eliminar rediseñados con variantes duales.
+        - Espaciados y contraste ajustados para mejor lectura en el panel del Paso 4.
+
+### Changed
+- Reemplazo completo del estilo previo de `PatientAlertList.jsx` por un diseño profesional:
+    - Mejor estructura visual.
+    - Colores con significado claro.
+    - Sombra y borde acordes al diseño clínico.
+    - Cohesión con los paneles de contenido del wizard multipaso.
+
+- Ajustes en `PatientAlertModal.jsx` para alinear su estilo al nuevo estándar del formulario:
+    - Uso de `bg-white / dark:bg-secondary`.
+    - Bordes `border-slate-300 / dark:border-slate-700`.
+    - Botones coherentes con el diseño del wizard.
+
+### Fixed
+- Tooltip administrativo que no era legible en modo oscuro.
+- Bordes amarillos y rojos demasiado saturados al usar variaciones fijas sin soporte dark.
+- Botones de acción con colores incorrectos para el modo claro.
+- Contraste insuficiente en títulos de tarjetas (alertas administrativas y clínicas).
+
+---
+
 ## [0.7.0] - 2025-11-21
 
 ### Added

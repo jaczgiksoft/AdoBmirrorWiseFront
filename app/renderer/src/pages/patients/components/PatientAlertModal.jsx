@@ -114,12 +114,17 @@ export default function PatientAlertModal({ open, onClose, onSave, alert }) {
 
     return createPortal(
         <>
-            <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
                 <motion.div
                     initial={{ scale: 0.9, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
                     transition={{ duration: 0.25 }}
-                    className="bg-secondary rounded-xl border border-slate-700 p-6 w-[450px] shadow-xl"
+                    className="
+                        bg-white dark:bg-secondary
+                        rounded-xl border
+                        border-slate-300 dark:border-slate-700
+                        p-6 w-[450px] shadow-xl
+                    "
                 >
                     {/* HEADER */}
                     <div className="flex justify-between items-start mb-5">
@@ -127,12 +132,12 @@ export default function PatientAlertModal({ open, onClose, onSave, alert }) {
                             <h2 className="text-lg font-semibold text-primary flex items-center gap-2">
                                 {form.is_admin_alert ? (
                                     <>
-                                        <ShieldAlert size={20} className="text-yellow-400" />
+                                        <ShieldAlert size={20} className="text-yellow-500 dark:text-yellow-400" />
                                         {alert ? "Editar alerta administrativa" : "Nueva alerta administrativa"}
                                     </>
                                 ) : (
                                     <>
-                                        <AlertCircle size={20} className="text-blue-400" />
+                                        <AlertCircle size={20} className="text-blue-500 dark:text-blue-400" />
                                         {alert ? "Editar alerta" : "Nueva alerta"}
                                     </>
                                 )}
@@ -145,7 +150,10 @@ export default function PatientAlertModal({ open, onClose, onSave, alert }) {
                                     ? setConfirmCancel(true)
                                     : closeForm()
                             }
-                            className="text-slate-400 hover:text-white"
+                            className="
+                                text-slate-500 hover:text-slate-900
+                                dark:text-slate-400 dark:hover:text-white
+                            "
                         >
                             <X size={18} />
                         </button>
@@ -183,13 +191,22 @@ export default function PatientAlertModal({ open, onClose, onSave, alert }) {
                                     setForm((f) => ({ ...f, description: e.target.value }))
                                 }
                                 rows={3}
-                                className="input resize-none"
+                                className="
+                                    input resize-none
+                                    text-slate-700 dark:text-slate-100
+                                "
                             />
                         </div>
 
                         {/* TOGGLE ADMIN */}
                         <label
-                            className="flex items-center justify-between bg-slate-800 p-3 rounded-xl border border-slate-700 cursor-pointer"
+                            className="
+                                flex items-center justify-between
+                                p-3 rounded-xl cursor-pointer
+                                bg-slate-100 dark:bg-slate-800
+                                border border-slate-300 dark:border-slate-700
+                                transition
+                            "
                             onClick={() =>
                                 setForm((f) => ({
                                     ...f,
@@ -200,13 +217,13 @@ export default function PatientAlertModal({ open, onClose, onSave, alert }) {
                             <span className="text-sm flex items-center gap-2">
                                 {form.is_admin_alert ? (
                                     <>
-                                        <ShieldAlert size={18} className="text-yellow-400" />
-                                        <span className="text-yellow-300">Administrativa</span>
+                                        <ShieldAlert size={18} className="text-yellow-500 dark:text-yellow-400" />
+                                        <span className="text-yellow-600 dark:text-yellow-300">Administrativa</span>
                                     </>
                                 ) : (
                                     <>
-                                        <AlertCircle size={18} className="text-blue-400" />
-                                        <span className="text-blue-300">Clínica</span>
+                                        <AlertCircle size={18} className="text-blue-500 dark:text-blue-300" />
+                                        <span className="text-blue-600 dark:text-blue-300">Clínica</span>
                                     </>
                                 )}
                             </span>
@@ -214,12 +231,17 @@ export default function PatientAlertModal({ open, onClose, onSave, alert }) {
                             <div
                                 className={`
                                     w-10 h-5 rounded-full relative transition-all
-                                    ${form.is_admin_alert ? "bg-yellow-500/60" : "bg-slate-600"}
+                                    ${form.is_admin_alert
+                                    ? "bg-yellow-500/60"
+                                    : "bg-slate-400 dark:bg-slate-600"
+                                }
                                 `}
                             >
                                 <div
                                     className={`
-                                        absolute top-[2px] left-[2px] w-4 h-4 rounded-full bg-white transition-all
+                                        absolute top-[2px] left-[2px] w-4 h-4 rounded-full 
+                                        bg-white dark:bg-slate-200 shadow
+                                        transition-all
                                         ${form.is_admin_alert ? "translate-x-5" : ""}
                                     `}
                                 ></div>
@@ -235,14 +257,21 @@ export default function PatientAlertModal({ open, onClose, onSave, alert }) {
                                     ? setConfirmCancel(true)
                                     : closeForm()
                             }
-                            className="px-3 py-2 rounded-lg bg-slate-700 text-slate-200 hover:bg-slate-600"
+                            className="
+                                px-3 py-2 rounded-lg
+                                bg-slate-200 text-slate-700 hover:bg-slate-300
+                                dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600
+                            "
                         >
                             Cancelar
                         </button>
 
                         <button
                             onClick={handleConfirmSave}
-                            className="px-3 py-2 rounded-lg bg-primary text-white hover:bg-primary/90"
+                            className="
+                                px-3 py-2 rounded-lg
+                                bg-primary text-white hover:bg-primary/90
+                            "
                         >
                             Guardar
                         </button>

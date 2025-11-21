@@ -463,21 +463,21 @@ export default function PatientForm({ open, onClose, onCreated, patientType }) {
         ${active ? "text-primary" : ""}
     `}
                     >
-    {s.title}
-</span>
+                                    {s.title}
+                                </span>
 
 
                                 <span
                                     className={`
-        text-xs transition-all duration-200
-        ${active
+                                        text-xs transition-all duration-200
+                                        ${active
                                         ? "text-slate-700 dark:text-slate-300"
                                         : "text-slate-500 dark:text-slate-500"
                                     }
-    `}
+                                    `}
                                 >
-    {s.desc}
-</span>
+                                    {s.desc}
+                                </span>
 
 
                                 {/* Línea inferior */}
