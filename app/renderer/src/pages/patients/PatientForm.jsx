@@ -52,6 +52,15 @@ export default function PatientForm({ open, onClose, onCreated, patientType }) {
         can_login: false,
         // Tipo (N:M)
         patient_type_ids: [],
+        address_street_name: "",
+        address_neighborhood: "",
+        address_apartment_number: "",
+        address_street_number: "",
+        address_zip_code: "",
+        address_city: "",
+        address_state: "",
+        address_country: "",
+
     };
 
     const [form, setForm] = useState(initialForm);
@@ -696,6 +705,108 @@ export default function PatientForm({ open, onClose, onCreated, patientType }) {
                                 />
                             </div>
                         </div>
+
+                        {/* Dirección */}
+                        <div className="mt-4">
+                            <h4 className="text-primary font-semibold text-sm mb-2">🏠 Dirección</h4>
+
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block text-sm mb-1">Calle</label>
+                                    <input
+                                        name="address_street_name"
+                                        placeholder="Ej: Av. Reforma"
+                                        value={form.address_street_name}
+                                        onChange={handleChange}
+                                        className="input"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm mb-1">Número exterior</label>
+                                    <input
+                                        name="address_street_number"
+                                        placeholder="Ej: 123"
+                                        value={form.address_street_number}
+                                        onChange={handleChange}
+                                        className="input"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-3 mt-3">
+                                <div>
+                                    <label className="block text-sm mb-1">Número interior / Departamento</label>
+                                    <input
+                                        name="address_apartment_number"
+                                        placeholder="Ej: 4B"
+                                        value={form.address_apartment_number}
+                                        onChange={handleChange}
+                                        className="input"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm mb-1">Colonia</label>
+                                    <input
+                                        name="address_neighborhood"
+                                        placeholder="Ej: Centro"
+                                        value={form.address_neighborhood}
+                                        onChange={handleChange}
+                                        className="input"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-3 mt-3">
+                                <div>
+                                    <label className="block text-sm mb-1">Código postal</label>
+                                    <input
+                                        name="address_zip_code"
+                                        placeholder="Ej: 06000"
+                                        value={form.address_zip_code}
+                                        onChange={handleChange}
+                                        className="input"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm mb-1">Ciudad</label>
+                                    <input
+                                        name="address_city"
+                                        placeholder="Ej: Ciudad de México"
+                                        value={form.address_city}
+                                        onChange={handleChange}
+                                        className="input"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-3 mt-3">
+                                <div>
+                                    <label className="block text-sm mb-1">Estado</label>
+                                    <input
+                                        name="address_state"
+                                        placeholder="Ej: CDMX"
+                                        value={form.address_state}
+                                        onChange={handleChange}
+                                        className="input"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm mb-1">País</label>
+                                    <input
+                                        name="address_country"
+                                        placeholder="Ej: México"
+                                        value={form.address_country}
+                                        onChange={handleChange}
+                                        className="input"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
 
                     </div>
                 );

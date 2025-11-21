@@ -10,6 +10,33 @@ Este proyecto sigue [Semantic Versioning](https://semver.org/lang/es/).
 
 ---
 
+## [0.6.2] - 2025-11-21
+
+### Added
+- **Nuevos campos de dirección en el formulario de registro de pacientes (`PatientForm.jsx`):**
+  - Se añadió una sección completa de dirección dentro del **Paso 1 – Información general**, ubicada después de los campos de teléfono y correo.
+  - Campos agregados, todos enlazados al modelo del backend y soportados por validación:
+    - `address_street_name`
+    - `address_street_number`
+    - `address_apartment_number`
+    - `address_neighborhood`
+    - `address_zip_code`
+    - `address_city`
+    - `address_state`
+    - `address_country`
+  - Diseño limpio y consistente con el wizard:
+    - Agrupación en grids de 2 columnas.
+    - Subtítulo “🏠 Dirección” con jerarquía visual.
+    - Placeholders descriptivos y formato homogéneo con `.input`.
+  - Totalmente integrado al `initialForm`, `handleChange`, validación de paso y `payload` final enviado al API.
+
+### Changed
+- Ajuste del diseño del Paso 1 para mantener legibilidad y espaciados al añadir la nueva sección de dirección.
+- Uniformidad visual del formulario con la estructura del wizard multipaso.
+
+
+---
+
 ## [0.6.1] - 2025-11-20
 
 ### Added

@@ -133,3 +133,7 @@ button:focus-visible {
 .opacity-1 {
     opacity: 1 !important;
 }
+
+.bg-white {
+    @apply bg-[var(--color-dark)] text-slate-500 border-slate-700;
+}
