@@ -247,7 +247,11 @@ function PrivateLayout({ children }) {
     ];
 
     return (
-        <div className="min-h-screen bg-dark text-slate-50 flex">
+        <div className="
+    min-h-screen flex
+    bg-slate-100 text-slate-900
+    dark:bg-dark dark:text-slate-50
+        ">
             <QuickAccessBar
                 items={shortcuts}
                 onAdd={() => console.log("➕ Nuevo acceso directo")}
@@ -259,5 +263,6 @@ function PrivateLayout({ children }) {
         </div>
     );
 }
+
 
 

@@ -98,7 +98,7 @@ export default function PatientList() {
         loadPatients();
     }, [page, debouncedSearch, filters]);
 
-    // 🎹 LISTADO — Hotkeys
+    // Hotkeys LISTADO
     useHotkeys(
         {
             arrowdown: (e) => {
@@ -126,7 +126,6 @@ export default function PatientList() {
             enter: (e) => {
                 if (selectTypeOpen || showForm || confirmOpen) return;
                 e.preventDefault();
-
                 const patient = patients[selectedIndex];
                 if (patient) navigate(`/patients/${patient.id}`);
                 return "prevent";
@@ -199,7 +198,7 @@ export default function PatientList() {
 
     if (loading) {
         return (
-            <div className="flex h-screen items-center justify-center text-slate-400">
+            <div className="flex h-screen items-center justify-center text-slate-500 dark:text-slate-400">
                 Cargando pacientes...
             </div>
         );
@@ -207,42 +206,61 @@ export default function PatientList() {
 
     if (error) {
         return (
-            <div className="flex h-screen items-center justify-center text-red-400">
+            <div className="flex h-screen items-center justify-center text-red-500 dark:text-red-400">
                 {error}
             </div>
         );
     }
 
     return (
-        <div className="bg-dark flex flex-col font-sans text-slate-50">
+        <div className="bg-slate-100 dark:bg-dark flex flex-col font-sans text-slate-900 dark:text-slate-50">
+
             {/* ---------- HEADER ---------- */}
             <div className="w-full max-w-[110rem] mx-auto px-10 mt-6 flex items-center gap-4 flex-wrap">
+
                 <button
                     onClick={() => navigate("/dashboard")}
-                    className="relative group flex items-center gap-1 text-slate-400 hover:text-white transition cursor-pointer"
+                    className="relative group flex items-center gap-1
+                        text-slate-600 hover:text-slate-900
+                        dark:text-slate-400 dark:hover:text-white
+                        transition cursor-pointer"
                 >
                     <Home size={18} />
                     <ChevronLeft size={16} />
-                    <span className="absolute left-full ml-3 whitespace-nowrap px-3 py-1.5 text-xs bg-black/85 text-white rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-all duration-200">
+                    <span className="absolute left-full ml-3 whitespace-nowrap px-3 py-1.5 text-xs
+                        bg-white text-slate-700 dark:bg-black/85 dark:text-white
+                        rounded-lg shadow-lg opacity-0 group-hover:opacity-100
+                        transition-all duration-200">
                         Ir al panel principal
                     </span>
                 </button>
 
-                <h1 className="text-2xl font-semibold text-primary leading-none flex-1">
+                <h1 className="text-2xl font-semibold text-cyan-600 dark:text-primary leading-none flex-1">
                     Gestión de pacientes
                 </h1>
 
                 {/* Search */}
-                <div className="relative flex items-center bg-secondary rounded-lg border border-slate-700">
-                    <Search size={16} className="absolute left-2 text-slate-400" />
+                <div className="relative flex items-center
+                    bg-white border border-slate-300
+                    dark:bg-secondary dark:border-slate-700
+                    rounded-lg">
+
+                    <Search size={16} className="absolute left-2 text-slate-500 dark:text-slate-400" />
+
                     <input
                         ref={searchRef}
                         type="text"
                         placeholder="Buscar paciente..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        className="pl-7 pr-16 py-1 bg-transparent text-slate-200 text-sm outline-none placeholder:text-slate-500"
+                        className="
+                            pl-7 pr-16 py-1 bg-transparent
+                            text-slate-700 dark:text-slate-200
+                            text-sm outline-none
+                            placeholder:text-slate-500 dark:placeholder:text-slate-500
+                        "
                     />
+
                     <div className="absolute right-1">
                         <FilterDropdown
                             filters={filters}
@@ -259,7 +277,9 @@ export default function PatientList() {
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.97 }}
                     onClick={() => setSelectTypeOpen(true)}
-                    className="flex items-center gap-2 bg-primary text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-sky-500 transition"
+                    className="flex items-center gap-2
+                        bg-cyan-600 hover:bg-cyan-700 text-white
+                        px-3 py-2 rounded-lg text-sm font-medium transition"
                 >
                     <PlusCircle size={18} />
                     <span className="font-semibold">F12</span>
@@ -269,11 +289,25 @@ export default function PatientList() {
 
             {/* ---------- BODY (dashboard + list) ---------- */}
             <div className="w-full max-w-[110rem] mx-auto px-10 mt-6 flex flex-col md:flex-row gap-6">
+
                 {/* Dashboard */}
                 <div className="w-full md:w-1/4 self-start">
-                    <div className="sticky top-6">
-                        <PatientDashboard patients={patients} />
-                        <PatientAgeChart patients={patients} />
+                    <div className="sticky top-6 space-y-6">
+
+                        <div className="
+                            bg-white border border-slate-300 rounded-xl p-4
+                            dark:bg-secondary dark:border-slate-700
+                            shadow-sm">
+                            <PatientDashboard patients={patients} />
+                        </div>
+
+                        <div className="
+                            bg-white border border-slate-300 rounded-xl p-4
+                            dark:bg-secondary dark:border-slate-700
+                            shadow-sm">
+                            <PatientAgeChart patients={patients} />
+                        </div>
+
                     </div>
                 </div>
 
@@ -284,13 +318,19 @@ export default function PatientList() {
                     className="w-full md:w-3/4"
                 >
                     {patients.length === 0 ? (
-                        <p className="text-center text-slate-400">No se encontraron pacientes.</p>
+                        <p className="text-center text-slate-500 dark:text-slate-400">
+                            No se encontraron pacientes.
+                        </p>
                     ) : (
                         <motion.div
                             key={page}
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
-                            className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4 gap-6"
+                            className="
+                                grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2
+                                lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4
+                                gap-6
+                            "
                         >
                             {patients.map((p, index) => {
                                 const isSelected = index === selectedIndex;
@@ -300,11 +340,19 @@ export default function PatientList() {
                                         key={p.id}
                                         whileHover={{ scale: 1.02 }}
                                         onClick={() => navigate(`/patients/${p.id}`)}
-                                        className={`relative bg-secondary rounded-2xl p-6 shadow-md cursor-pointer border transition-all flex flex-col items-center justify-between aspect-square ${
+                                        className={`
+                                            relative rounded-2xl p-6 cursor-pointer border
+                                            flex flex-col items-center justify-between aspect-square
+                                            
+                                            bg-white border-slate-300 text-slate-800 shadow-sm
+                                            dark:bg-secondary dark:border-slate-700 dark:text-slate-50
+                                            
+                                            ${
                                             isSelected
-                                                ? "border-primary ring-2 ring-primary/40"
-                                                : "border-slate-700 hover:border-primary/60"
-                                        }`}
+                                                ? "ring-2 ring-cyan-500 ring-offset-4 ring-offset-slate-100 dark:ring-offset-dark"
+                                                : "hover:border-cyan-500"
+                                        }
+                                        `}
                                     >
                                         {/* Imagen */}
                                         <div className="flex flex-col items-center mb-3">
@@ -312,10 +360,19 @@ export default function PatientList() {
                                                 <img
                                                     src={p.photo_url}
                                                     alt={p.first_name}
-                                                    className="w-20 h-20 rounded-xl object-cover border border-slate-700 bg-slate-800"
+                                                    className="
+                                                        w-20 h-20 rounded-xl object-cover
+                                                        border border-slate-300 dark:border-slate-700
+                                                        bg-slate-100 dark:bg-slate-800
+                                                    "
                                                 />
                                             ) : (
-                                                <div className="w-20 h-20 rounded-xl border border-slate-700 bg-slate-800 flex items-center justify-center">
+                                                <div className="
+                                                    w-20 h-20 rounded-xl border
+                                                    border-slate-300 dark:border-slate-700
+                                                    bg-slate-100 dark:bg-slate-800
+                                                    flex items-center justify-center
+                                                ">
                                                     <UserIcon size={40} className="text-slate-500" />
                                                 </div>
                                             )}
@@ -323,32 +380,44 @@ export default function PatientList() {
 
                                         {/* Datos */}
                                         <div className="text-center mb-4">
-                                            <p className="text-base font-semibold text-primary truncate max-w-[160px] mx-auto">
+                                            <p className="text-base font-semibold text-cyan-600 dark:text-cyan-400 truncate max-w-[160px] mx-auto">
                                                 {p.first_name} {p.last_name}
                                             </p>
-                                            <p className="text-xs text-slate-400">
+                                            <p className="text-xs text-slate-500 dark:text-slate-400">
                                                 MRN: {p.medical_record_number}
                                             </p>
                                         </div>
 
                                         {/* Etiquetas */}
                                         <div className="grid grid-cols-2 gap-2 w-full">
-                                            <div className="bg-dark/40 rounded-lg p-2 border border-slate-700 text-center">
-                                                <p className="text-xs font-medium text-slate-200">
+
+                                            <div className="
+                                                bg-slate-100 dark:bg-dark/40
+                                                border border-slate-300 dark:border-slate-700
+                                                rounded-lg p-2 text-center
+                                            ">
+                                                <p className="text-xs font-medium text-slate-700 dark:text-slate-200">
                                                     {p.phone_number || "Sin teléfono"}
                                                 </p>
-                                                <p className="text-[10px] text-slate-500">Teléfono</p>
+                                                <p className="text-[10px] text-slate-500 dark:text-slate-500">Teléfono</p>
                                             </div>
 
-                                            <div className="bg-dark/40 rounded-lg p-2 border border-slate-700 text-center">
+                                            <div className="
+                                                bg-slate-100 dark:bg-dark/40
+                                                border border-slate-300 dark:border-slate-700
+                                                rounded-lg p-2 text-center
+                                            ">
                                                 <p
-                                                    className={`text-xs font-semibold ${
+                                                    className={`
+                                                        text-xs font-semibold
+                                                        ${
                                                         p.genre === "female"
-                                                            ? "text-pink-400"
+                                                            ? "text-pink-500"
                                                             : p.genre === "male"
-                                                                ? "text-sky-400"
-                                                                : "text-slate-400"
-                                                    }`}
+                                                                ? "text-sky-500"
+                                                                : "text-slate-500"
+                                                    }
+                                                    `}
                                                 >
                                                     {p.genre === "female"
                                                         ? "Femenino"
@@ -356,17 +425,25 @@ export default function PatientList() {
                                                             ? "Masculino"
                                                             : "Otro"}
                                                 </p>
-                                                <p className="text-[10px] text-slate-500">Género</p>
+                                                <p className="text-[10px] text-slate-500 dark:text-slate-500">Género</p>
                                             </div>
 
-                                            <div className="bg-dark/40 rounded-lg p-2 border border-slate-700 text-center">
-                                                <p className="text-xs font-medium text-slate-200">
+                                            <div className="
+                                                bg-slate-100 dark:bg-dark/40
+                                                border border-slate-300 dark:border-slate-700
+                                                rounded-lg p-2 text-center
+                                            ">
+                                                <p className="text-xs font-medium text-slate-700 dark:text-slate-200">
                                                     {p.status?.name || "Prospecto"}
                                                 </p>
-                                                <p className="text-[10px] text-slate-500">Estado</p>
+                                                <p className="text-[10px] text-slate-500 dark:text-slate-500">Estado</p>
                                             </div>
 
-                                            <div className="bg-dark/40 rounded-lg p-2 border border-slate-700 text-center">
+                                            <div className="
+                                                bg-slate-100 dark:bg-dark/40
+                                                border border-slate-300 dark:border-slate-700
+                                                rounded-lg p-2 text-center
+                                            ">
                                                 {Array.isArray(p.types) && p.types.length > 0 ? (
                                                     <div className="flex justify-center flex-wrap gap-1">
                                                         {p.types.map((t) => {
@@ -393,17 +470,18 @@ export default function PatientList() {
                                                         })}
                                                     </div>
                                                 ) : (
-                                                    <p className="text-xs text-slate-400">Sin tipo</p>
+                                                    <p className="text-xs text-slate-500 dark:text-slate-500">Sin tipo</p>
                                                 )}
-                                                <p className="text-[10px] text-slate-500 mt-1">Tipos</p>
+                                                <p className="text-[10px] text-slate-500 dark:text-slate-500 mt-1">Tipos</p>
                                             </div>
+
                                         </div>
 
                                         {/* Acciones */}
-                                        <div className="absolute top-3 right-3 flex gap-2 text-slate-400">
+                                        <div className="absolute top-3 right-3 flex gap-2">
                                             <Edit2
                                                 size={16}
-                                                className="hover:text-primary cursor-pointer"
+                                                className="text-slate-500 hover:text-cyan-500 dark:text-slate-400 dark:hover:text-primary cursor-pointer"
                                                 onClick={(e) => {
                                                     e.stopPropagation();
                                                     navigate(`/patients/${p.id}`);
@@ -412,13 +490,14 @@ export default function PatientList() {
 
                                             <Trash2
                                                 size={16}
-                                                className="hover:text-error cursor-pointer"
+                                                className="text-slate-500 hover:text-red-500 dark:text-slate-400 dark:hover:text-error cursor-pointer"
                                                 onClick={(e) => {
                                                     e.stopPropagation();
                                                     handleDeleteClick(p);
                                                 }}
                                             />
                                         </div>
+
                                     </motion.div>
                                 );
                             })}
@@ -431,7 +510,7 @@ export default function PatientList() {
                         onPageChange={(newPage) => setPage(newPage)}
                     />
 
-                    <p className="text-center text-xs text-slate-500 mt-6">
+                    <p className="text-center text-xs text-slate-500 dark:text-slate-400 mt-6">
                         Usa ↑ ↓ para navegar · Enter para abrir · F12 para nuevo · Supr para eliminar
                     </p>
                 </motion.div>
@@ -453,7 +532,7 @@ export default function PatientList() {
                 confirmVariant="error"
             />
 
-            {/* Modal de tipo de paciente — componente separado */}
+            {/* Modal tipo de paciente */}
             <PatientTypeSelectorModal
                 open={selectTypeOpen}
                 onClose={() => setSelectTypeOpen(false)}

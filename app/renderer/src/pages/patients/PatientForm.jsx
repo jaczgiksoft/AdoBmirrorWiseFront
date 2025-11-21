@@ -418,11 +418,15 @@ export default function PatientForm({ open, onClose, onCreated, patientType }) {
                             key={s.id}
                             onClick={() => setStep(s.id)}
                             className={`
-                    flex items-start gap-3 text-left group transition-all duration-200
-                    ${active ? "text-blue-400" : "text-slate-400 hover:text-slate-200"}
-                `}
+        flex items-start gap-3 text-left group transition-all duration-200
+        ${active
+                                ? "text-primary"
+                                : "text-slate-600 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
+                            }
+    `}
                         >
-                            {/* CONTENEDOR DEL NÚMERO */}
+
+                        {/* CONTENEDOR DEL NÚMERO */}
                             <div className="relative mt-1">
                                 {/* PULSO EXTERNO */}
                                 {active && (
@@ -439,11 +443,12 @@ export default function PatientForm({ open, onClose, onCreated, patientType }) {
                                     className={`
                             relative w-7 h-7 flex items-center justify-center rounded-md text-xs font-semibold
                             transition-all duration-200
-                            ${
+                    ${
                                         active
                                             ? "bg-primary text-white"
-                                            : "bg-slate-700 text-slate-300 group-hover:bg-slate-600"
+                                            : "bg-slate-200 text-slate-700 hover:bg-slate-300 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600"
                                     }
+
                         `}
                                 >
                                     { visibleIndex }
@@ -454,21 +459,26 @@ export default function PatientForm({ open, onClose, onCreated, patientType }) {
                             <div className="flex flex-col">
                     <span
                         className={`
-                            text-sm font-semibold transition-all duration-200
-                            ${active ? "text-primary" : "group-hover:text-slate-200"}
-                        `}
+        text-sm font-semibold transition-all duration-200
+        ${active ? "text-primary" : ""}
+    `}
                     >
-                        {s.title}
-                    </span>
+    {s.title}
+</span>
+
 
                                 <span
                                     className={`
-                            text-xs transition-all duration-200
-                            ${active ? "text-slate-300" : "text-slate-500 group-hover:text-slate-400"}
-                        `}
+        text-xs transition-all duration-200
+        ${active
+                                        ? "text-slate-700 dark:text-slate-300"
+                                        : "text-slate-500 dark:text-slate-500"
+                                    }
+    `}
                                 >
-                        {s.desc}
-                    </span>
+    {s.desc}
+</span>
+
 
                                 {/* Línea inferior */}
                                 {active && (
@@ -500,7 +510,12 @@ export default function PatientForm({ open, onClose, onCreated, patientType }) {
 
                         {/* FOTO */}
                         <div className="flex items-center gap-4">
-                            <label className="w-24 h-24 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center cursor-pointer hover:bg-slate-700 transition overflow-hidden">
+                            <label className="    w-24 h-24 rounded-xl
+    bg-slate-200 dark:bg-slate-800
+    border border-slate-300 dark:border-slate-700
+    flex items-center justify-center cursor-pointer
+    hover:bg-slate-300 dark:hover:bg-slate-700
+    transition overflow-hidden">
                                 {form.photo_preview ? (
                                     <img
                                         src={form.photo_preview}
@@ -876,9 +891,11 @@ export default function PatientForm({ open, onClose, onCreated, patientType }) {
                             <button
                                 onClick={handleAddAlert}
                                 className="
-                        flex items-center gap-2 px-4 py-2
-                        rounded-lg bg-primary text-white border border-primary/20
-                        hover:bg-primary/80 hover:text-white cursor-pointer"
+                            flex items-center gap-2 px-4 py-2
+    rounded-lg bg-cyan-500 text-white
+    hover:bg-cyan-600
+    dark:bg-primary dark:hover:bg-primary/80
+    cursor-pointer"
                             >
                                 <span className="text-base leading-none">+</span>
                                 <span className="text-sm font-medium">Nueva alerta</span>
@@ -888,8 +905,10 @@ export default function PatientForm({ open, onClose, onCreated, patientType }) {
                         {/* PANEL DEL CONTENIDO */}
                         <div
                             className="
-                    rounded-xl border border-slate-700 bg-slate-800/40 p-4
-                    shadow-inner
+                   rounded-xl
+    border border-slate-300 dark:border-slate-700
+    bg-slate-100 dark:bg-slate-800/40
+    p-4 shadow-inner
                 "
                         >
                             {form.alerts.length === 0 ? (
@@ -897,7 +916,7 @@ export default function PatientForm({ open, onClose, onCreated, patientType }) {
                                     <div className="text-4xl mb-2 opacity-70">
                                         <TriangleAlert size={45} className="text-yellow-500" />
                                     </div>
-                                    <p className="text-slate-400 text-sm max-w-[300px]">
+                                    <p className="text-slate-600 dark:text-slate-400 text-sm max-w-[300px]">
                                         Aquí aparecerán las alertas que registres para este paciente.
                                         Puedes agregar alertas clínicas o administrativas.
                                     </p>
@@ -1049,48 +1068,77 @@ export default function PatientForm({ open, onClose, onCreated, patientType }) {
                     animate={{ scale: 1, opacity: 1 }}
                     transition={{ duration: 0.3 }}
                     className="
-        bg-secondary outline-none rounded-2xl shadow-xl border border-slate-700
-        w-[80%] max-w-[1100px]
-        max-h-[90vh]
-        overflow-y-auto
-        p-6
+    bg-white dark:bg-secondary
+    text-slate-800 dark:text-slate-50
+    outline-none rounded-2xl shadow-xl
+    border border-slate-300 dark:border-slate-700
+    w-[80%] max-w-[1100px]
+    max-h-[90vh]
+    flex flex-col overflow-hidden
     "
                 >
+                    {/* HEADER — AHORA ES FIJO */}
+                    <div className="    sticky top-0 z-10
+    bg-white dark:bg-secondary
+    border-b border-slate-300 dark:border-slate-700
+    px-6 py-4">
+                        <div className="flex justify-between items-center">
+                            <h2 className="text-lg font-semibold text-primary flex items-center gap-2">
+                                Registrar nuevo paciente
+                                {patientType && (
+                                    <span className="text-slate-400 text-sm">
+                        — {patientType === "prospecto" ? "Prospecto" : "Consulta única"}
+                    </span>
+                                )}
+                            </h2>
 
-                {/* HEADER */}
-                    <div className="flex justify-between items-center mb-4">
-                        <h2 className="text-lg font-semibold text-primary flex items-center gap-2">
-                            Registrar nuevo paciente
-                            {patientType && (
-                                <span className="text-slate-400 text-sm"> — {patientType === "prospecto" ? "Prospecto" : "Consulta única"}</span>
-                            )}
-                        </h2>
+                            <button
+                                onClick={() =>
+                                    Object.values(form).some((v) => v)
+                                        ? setConfirmCancel(true)
+                                        : handleExit()
+                                }
+                                className="text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
+                            >
+                                <X size={18} />
+                            </button>
+                        </div>
+                    </div>
 
-                        <button
-                            onClick={() =>
-                                Object.values(form).some((v) => v)
-                                    ? setConfirmCancel(true)
-                                    : handleExit()
-                            }
-                            className="text-slate-400 hover:text-white"
-                        >
-                            <X size={18} />
-                        </button>
+                    {/* BODY SCROLLEABLE */}
+                    {/* TABS STICKY */}
+                    <div className="
+    sticky top-[64px] z-10
+    bg-white dark:bg-secondary
+    border-b border-slate-300 dark:border-slate-700
+    px-6 py-3
+">
+                        <StepTabs step={step} setStep={setStep} />
+                    </div>
+
+                    {/* BODY SCROLLEABLE */}
+                    <div className="
+    px-6 py-4 overflow-y-auto flex-1
+    max-h-[calc(90vh-140px)]
+    bg-slate-50 dark:bg-secondary
+    text-slate-800 dark:text-slate-50
+">
+                        {renderStep()}
                     </div>
 
 
-                    {/* TABS */}
-                    <StepTabs step={step} setStep={setStep} />
 
-                    {/* BODY */}
-                    {renderStep()}
-
-                    {/* FOOTER */}
-                    <div className="flex justify-between mt-6">
+                    {/* FOOTER — TAMBIÉN FIJO */}
+                    <div className="    sticky bottom-0 z-10
+    bg-white dark:bg-secondary
+    border-t border-slate-300 dark:border-slate-700
+    px-6 py-4 flex justify-between">
                         {step > 1 ? (
                             <button
                                 onClick={handleBack}
-                                className="px-3 py-2 rounded-lg bg-slate-700 text-slate-200 hover:bg-slate-600"
+                                className="   px-3 py-2 rounded-lg
+    bg-slate-200 text-slate-700 hover:bg-slate-300
+    dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600"
                             >
                                 ← Atrás
                             </button>
@@ -1101,7 +1149,11 @@ export default function PatientForm({ open, onClose, onCreated, patientType }) {
                         <button
                             onClick={handleNextStep}
                             disabled={saving}
-                            className="px-3 py-2 rounded-lg bg-primary text-white disabled:opacity-50"
+                            className="    px-3 py-2 rounded-lg
+    bg-cyan-500 text-white
+    hover:bg-cyan-600
+    dark:bg-primary dark:hover:bg-primary/80
+    disabled:opacity-50"
                         >
                             {step < 5
                                 ? "Siguiente →"
@@ -1111,6 +1163,7 @@ export default function PatientForm({ open, onClose, onCreated, patientType }) {
                         </button>
                     </div>
                 </motion.div>
+
             </div>
 
             {/* MODAL CONFIRMAR SALIR */}

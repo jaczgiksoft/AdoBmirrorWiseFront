@@ -131,7 +131,29 @@ export default function Dashboard() {
 
     return (
         <>
-            <div className="bg-dark flex flex-col items-center pb-8 font-sans text-slate-50">
+            <div className="
+       flex flex-col items-center justify-center font-sans
+    bg-slate-100 dark:bg-dark
+    text-slate-900 dark:text-slate-50
+    h-full
+">
+
+                {/* LOGO DE LA CLÍNICA */}
+                {user?.tenant?.logo_url && (
+                    <img
+                        src={user.tenant.logo_url}
+                        alt="Logo clínica"
+                        className="
+            w-50 h-50 object-contain mb-8
+            rounded-2xl
+            bg-slate-200 dark:bg-slate-800
+            p-2
+            shadow-soft
+        "
+                    />
+                )}
+
+
                 <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
@@ -143,7 +165,18 @@ export default function Dashboard() {
                             key={i}
                             whileHover={{ scale: 1.05 }}
                             whileTap={{ scale: 0.97 }}
-                            className="flex flex-col items-center justify-center bg-secondary rounded-2xl py-4 shadow-soft hover:shadow-hard transition"
+                            className="
+flex flex-col items-center justify-center
+    bg-slate-100 text-slate-800
+    dark:bg-secondary dark:text-slate-50
+    rounded-2xl py-4
+    shadow-soft hover:shadow-hard transition
+border border-transparent
+hover:ring-2 hover:ring-cyan-500 hover:ring-offset-2 hover:ring-offset-slate-100
+dark:hover:ring-offset-dark
+    box-border
+"
+
                             onClick={() => navigate(item.path)}
                         >
                             <div

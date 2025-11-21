@@ -10,6 +10,48 @@ Este proyecto sigue [Semantic Versioning](https://semver.org/lang/es/).
 
 ---
 
+## [0.7.0] - 2025-11-21
+
+### Added
+- Soporte completo para **Light/Dark Mode** en el formulario multipaso (`PatientForm.jsx`):
+    - Fondos, bordes, tipografías y hovers ahora se adaptan correctamente a ambos temas.
+    - Integración en todos los pasos, modales internos y selects.
+    - Ajustes visuales en foto del paciente, secciones y paneles.
+
+- Nuevo comportamiento del modal estilo “Bootstrap”:
+    - **Header fijo (sticky)**.
+    - **Footer fijo (sticky)**.
+    - **Contenido central scrolleable**, evitando que se pierdan los controles al desplazarse.
+    - Corrección de `overflow-hidden` y `overflow-y-auto` para un scroll suave y sin saltos.
+
+- **StepTabs ahora también son sticky**:
+    - Barra de pasos permanece visible bajo el header.
+    - Mejora la navegación en pasos largos (especialmente en el Paso 1).
+
+- Mejoras visuales del indicador activo del paso:
+    - Ajustes al *pulse ring* para que funcione en modo claro y oscuro.
+    - Mejor contraste y visibilidad del número del paso.
+
+### Changed
+- Ajustes de colores en StepTabs para mejor legibilidad en modo claro:
+    - Actualización de hovers de título y descripción.
+    - Reemplazo de colores muy claros que reducían contraste.
+    - Se homogenizó el estado inactivo para ser legible tanto en claro como en oscuro.
+
+- Mejora del hover en títulos y descripciones del StepTab:
+    - Ahora el hover aplica correctamente aunque se pase el cursor por el número o la descripción.
+    - Evita estados poco visibles en tema claro.
+
+- Ajustes generales de espaciados y bordes en el formulario para coherencia visual completa con el nuevo modo dual.
+
+### Fixed
+- *Pulse ring* del paso activo casi imperceptible en modo claro.
+- Hover del título del paso difícil de leer en modo claro.
+- Fondo del área scrolleable que no coincidía con el tema seleccionado.
+- Bordes y sombras inconsistentes entre pasos al alternar entre temas.
+
+---
+
 ## [0.6.2] - 2025-11-21
 
 ### Added
