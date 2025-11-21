@@ -8,6 +8,8 @@ import { useHotkeys } from "@/hooks/useHotkeys";
 import { ConfirmDialog } from "@/components/feedback";
 import PatientAlertModal from "./components/PatientAlertModal";
 import PatientAlertList from "./components/PatientAlertList";
+import PatientRepresentativeModal from "./components/PatientRepresentativeModal";
+import PatientRepresentativeList from "./components/PatientRepresentativeList";
 import { getReferrals } from "@/services/referral.service";
 import Datepicker from "react-tailwindcss-datepicker";
 
@@ -70,6 +72,8 @@ export default function PatientForm({ open, onClose, onCreated, patientType }) {
     const [step, setStep] = useState(1);
     const [alertModalOpen, setAlertModalOpen] = useState(false);
     const [alertEditingIndex, setAlertEditingIndex] = useState(null);
+    const [representativeModalOpen, setRepresentativeModalOpen] = useState(false);
+    const [representativeEditingIndex, setRepresentativeEditingIndex] = useState(null);
     const [referrals, setReferrals] = useState([]);
     const [birthDatePicker, setBirthDatePicker] = useState({
         startDate: null,
@@ -860,15 +864,63 @@ export default function PatientForm({ open, onClose, onCreated, patientType }) {
                 );
 
             // 🔹 Paso 3 — Representantes
+            // 🔹 Paso 3 — Representantes
             case 3:
                 return (
-                    <div>
-                        <h3 className="text-primary font-semibold text-sm mb-2">
-                            👥 PASO 3 — Representantes legales
-                        </h3>
-                        <p className="text-xs text-slate-400">
-                            (Aquí luego conectaremos con tu modelo real)
-                        </p>
+                    <div className="flex flex-col gap-6 pb-4">
+
+                        <div className="flex justify-between items-center">
+                            <div>
+                                <h3 className="text-lg font-semibold text-primary flex items-center gap-2">
+                                    Representantes legales
+                                </h3>
+                                <p className="text-xs text-slate-400 mt-1">
+                                    Agrega los responsables directos del paciente.
+                                </p>
+                            </div>
+
+                            <button
+                                onClick={handleAddRepresentative}
+                                className="
+                        flex items-center gap-2 px-4 py-2
+                        rounded-lg bg-cyan-500 text-white
+                        hover:bg-cyan-600
+                        dark:bg-primary dark:hover:bg-primary/80
+                    "
+                            >
+                                <span className="text-base leading-none">+</span>
+                                <span className="text-sm font-medium">Nuevo representante</span>
+                            </button>
+                        </div>
+
+                        <div className="
+                rounded-xl border border-slate-300 dark:border-slate-700
+                bg-slate-100 dark:bg-slate-800/40 p-4 shadow-inner
+            ">
+                            {form.legal_representatives.length === 0 ? (
+                                <p className="text-sm text-slate-500 dark:text-slate-400 text-center py-6">
+                                    No hay representantes agregados.
+                                </p>
+                            ) : (
+                                <PatientRepresentativeList
+                                    reps={form.legal_representatives}
+                                    onEdit={handleEditRepresentative}
+                                    onDelete={handleDeleteRepresentative}
+                                />
+                            )}
+                        </div>
+
+                        <PatientRepresentativeModal
+                            open={representativeModalOpen}
+                            onClose={() => setRepresentativeModalOpen(false)}
+                            onSave={handleSaveRepresentative}
+                            representative={
+                                representativeEditingIndex !== null
+                                    ? form.legal_representatives[representativeEditingIndex]
+                                    : null
+                            }
+                        />
+
                     </div>
                 );
 
@@ -1053,6 +1105,38 @@ export default function PatientForm({ open, onClose, onCreated, patientType }) {
         prospecto: "Prospecto",
         consulta_unica: "Consulta única",
     }[patientType] || "";
+
+    const handleAddRepresentative = () => {
+        setRepresentativeEditingIndex(null);
+        setRepresentativeModalOpen(true);
+    };
+
+    const handleEditRepresentative = (index) => {
+        setRepresentativeEditingIndex(index);
+        setRepresentativeModalOpen(true);
+    };
+
+    const handleDeleteRepresentative = (index) => {
+        setForm((f) => ({
+            ...f,
+            legal_representatives: f.legal_representatives.filter((_, i) => i !== index),
+        }));
+    };
+
+    const handleSaveRepresentative = (rep) => {
+        setForm((f) => {
+            const updated = [...f.legal_representatives];
+            if (representativeEditingIndex !== null) {
+                updated[representativeEditingIndex] = rep;
+            } else {
+                updated.push(rep);
+            }
+            return { ...f, legal_representatives: updated };
+        });
+
+        setRepresentativeEditingIndex(null);
+        setRepresentativeModalOpen(false);
+    };
 
     // ------------------------------------------------------
     // MODAL FINAL

@@ -10,6 +10,59 @@ Este proyecto sigue [Semantic Versioning](https://semver.org/lang/es/).
 
 ---
 
+## [0.9.0] - 2025-11-21
+
+### Added
+- **Nuevo módulo de Representantes Legales (Paso 3 del `PatientForm.jsx`):**
+    - Integración completa para administrar los responsables directos del paciente:
+        - `PatientRepresentativeModal.jsx` → creación y edición.
+        - `PatientRepresentativeList.jsx` → visualización, edición y eliminación.
+    - Manejo en frontend alineado al modelo real del backend:
+        - `full_name`
+        - `relationship` (select fijo: Padre, Madre, Tutor, Abuelo(a), Hermano(a), Tío(a), Otro)
+        - `phone`, `phone_alt`, `email`
+        - `address`
+        - Acceso al portal (`can_login`, `username`, `password`)
+    - Generación automática de:
+        - **temp_id** único por representante.
+        - **username/password = phone** cuando `can_login = true`.
+    - Modal totalmente integrado con:
+        - Hotkeys (`ESC`, `Enter`).
+        - Autofocus.
+        - Comportamiento consistente con el wizard multipaso.
+        - Limpieza automática del formulario al guardar o crear nuevo representante.
+
+- **Nuevo diseño profesional del modal de representante:**
+    - Soporte completo para **Light/Dark Mode**.
+    - Inputs, select, toggle, acciones y contenedores adaptados a ambos temas.
+    - Toggle para acceso al portal con animación y estilos coherentes.
+    - Despliegue dinámico de credenciales con campos bloqueados pero visibles.
+
+- **Nueva lista visual de representantes (`PatientRepresentativeList.jsx`):**
+    - Tarjetas limpias con:
+        - Nombre completo.
+        - Relación.
+        - Teléfono(s).
+        - Email.
+        - Indicador visual de acceso al portal.
+    - Botones de **Editar** y **Eliminar** con variantes duales (light/dark).
+    - Layout responsivo configurable a 1, 2 o 3 columnas.
+
+### Changed
+- Reemplazo del comportamiento previo del Paso 3 por un sistema completo de gestión:
+    - Ya no es un placeholder; ahora es un módulo real.
+    - Mejor organización del panel con bordes, sombras y fondo adaptado a ambos temas.
+    - Mejor alineación visual con el diseño de los pasos 1, 2, 4 y 5.
+    - Consistencia total con los nuevos estándares UI/UX del formulario multipaso.
+
+### Fixed
+- Se corrigió el problema donde al editar un representante y luego crear uno nuevo, el modal conservaba los datos anteriores.
+    - Ahora el formulario se **reinicia correctamente** después de guardar o al crear un representante nuevo.
+- Eliminación del bug que impedía regenerar un `temp_id` único al iniciar un nuevo registro.
+- Validaciones internas corregidas (correo, teléfono requerido cuando `can_login = true`).
+
+---
+
 ## [0.8.0] - 2025-11-21
 
 ### Added
