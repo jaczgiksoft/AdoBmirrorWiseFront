@@ -112,3 +112,8 @@ export async function getPatientProfile(id) {
         throw err.response?.data || err;
     }
 }
+
+export async function getNextMedicalRecord() {
+    return api.get("/patients/next-medical-record")
+        .then(res => res.data);
+}

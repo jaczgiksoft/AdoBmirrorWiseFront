@@ -3,11 +3,12 @@ import { createPortal } from "react-dom";
 import { motion } from "framer-motion";
 import { X, Upload, TriangleAlert } from "lucide-react";
 import { useToastStore } from "@/store/useToastStore";
-import { createPatient } from "@/services/patient.service";
+import { createPatient, getNextMedicalRecord } from "@/services/patient.service";
 import { useHotkeys } from "@/hooks/useHotkeys";
 import { ConfirmDialog } from "@/components/feedback";
 import PatientAlertModal from "./components/PatientAlertModal";
 import PatientAlertList from "./components/PatientAlertList";
+
 
 export default function PatientForm({ open, onClose, onCreated, patientType }) {
     const { addToast } = useToastStore();
@@ -130,6 +131,38 @@ export default function PatientForm({ open, onClose, onCreated, patientType }) {
 
     }, [open, alertModalOpen, confirmCancel, form, step]);
 
+    function generateFamilyCode(length = 6) {
+        const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+        let code = "";
+        for (let i = 0; i < length; i++) {
+            code += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        return code;
+    }
+    const fetchNextMedicalRecordNumber = async () => {
+        try {
+            const result = await getNextMedicalRecord(); // servicio
+
+            const nextMRN = result.next;
+            const famCode = generateFamilyCode();
+
+            setForm(f => ({
+                ...f,
+                medical_record_number: nextMRN,
+                family_code: famCode,
+            }));
+
+        } catch (err) {
+            console.error("Error obteniendo expediente:", err);
+        }
+    };
+
+    useEffect(() => {
+        if (open) {
+            fetchNextMedicalRecordNumber();
+        }
+    }, [open]);
+
     // 🔧 Manejo de cambios
     const handleChange = (e) => {
         const { name, value, type, checked } = e.target;
@@ -187,14 +220,33 @@ export default function PatientForm({ open, onClose, onCreated, patientType }) {
         return Object.keys(newErrors).length === 0;
     };
 
+    const getAllowedSteps = (patientType) => {
+        return patientType === "consulta_unica" ? [1, 2, 4] : [1, 2, 3, 4, 5];
+    };
+
     const handleNextStep = () => {
+        const allowed = getAllowedSteps(patientType);
+
         if (!validateStep()) return;
-        if (step < 5) return setStep(step + 1);
+
+        const currentIndex = allowed.indexOf(step);
+
+        if (currentIndex < allowed.length - 1) {
+            setStep(allowed[currentIndex + 1]);
+            return;
+        }
+
+        // último → guardar
         handleSubmit();
     };
 
     const handleBack = () => {
-        if (step > 1) setStep(step - 1);
+        const allowed = getAllowedSteps(patientType);
+        const currentIndex = allowed.indexOf(step);
+
+        if (currentIndex > 0) {
+            setStep(allowed[currentIndex - 1]);
+        }
     };
 
     // 💾 Guardar
@@ -246,6 +298,25 @@ export default function PatientForm({ open, onClose, onCreated, patientType }) {
         onClose();
     };
 
+    const calculateAge = (birthDate) => {
+        if (!birthDate) return "";
+
+        const today = new Date();
+        const dob = new Date(birthDate);
+
+        let years = today.getFullYear() - dob.getFullYear();
+        let months = today.getMonth() - dob.getMonth();
+
+        if (months < 0) {
+            years--;
+            months += 12;
+        }
+
+        if (years < 0) return "";
+
+        return `${years} años${months > 0 ? `, ${months} meses` : ""}`;
+    };
+
     if (!open) return null;
 
 /*    useEffect(() => {
@@ -259,38 +330,29 @@ export default function PatientForm({ open, onClose, onCreated, patientType }) {
     // STEPS VISUALES
     // ------------------------------------------------------
     function StepTabs({ step, setStep }) {
-        const steps = [
-            {
-                id: 1,
-                title: "Información general",
-                desc: "Nombre, teléfono, dirección, foto, etc.",
-            },
-            {
-                id: 2,
-                title: "Información fiscal",
-                desc: "RFC, empresa, ocupación",
-            },
-            {
-                id: 3,
-                title: "Representantes",
-                desc: "Responsables legales",
-            },
-            {
-                id: 4,
-                title: "Alertas",
-                desc: "Clínicas y administrativas",
-            },
-            {
-                id: 5,
-                title: "Acceso móvil",
-                desc: "Usuario y contraseña",
-            },
+        const ALL_STEPS = [
+            { id: 1, title: "Información general", desc: "Nombre, teléfono, dirección, foto, etc." },
+            { id: 2, title: "Información fiscal", desc: "RFC, empresa, ocupación" },
+            { id: 3, title: "Representantes", desc: "Responsables legales" },
+            { id: 4, title: "Alertas", desc: "Clínicas y administrativas" },
+            { id: 5, title: "Acceso móvil", desc: "Usuario y contraseña" },
         ];
+
+// 👇 Filtrado dinámico por tipo de paciente
+        const steps = patientType === "consulta_unica"
+            ? ALL_STEPS.filter((s) => [1, 2, 4].includes(s.id))
+            : ALL_STEPS;
+
 
         return (
             <div className="flex gap-10 mb-6">
                 {steps.map((s) => {
                     const active = step === s.id;
+
+                    // Número visible dependiendo del tipo
+                    const visibleIndex = patientType === "consulta_unica"
+                        ? [1, 2, 4].indexOf(s.id) + 1
+                        : s.id;
 
                     return (
                         <button
@@ -325,7 +387,7 @@ export default function PatientForm({ open, onClose, onCreated, patientType }) {
                                     }
                         `}
                                 >
-                                    {s.id}
+                                    { visibleIndex }
                                 </div>
                             </div>
 
@@ -366,11 +428,14 @@ export default function PatientForm({ open, onClose, onCreated, patientType }) {
     // CONTENIDO POR PASO
     // ------------------------------------------------------
     const renderStep = () => {
+        const allowed = getAllowedSteps(patientType);
+        if (!allowed.includes(step)) return null;
         switch (step) {
             case 1:
                 return (
-                    <div className="flex flex-col gap-4">
-                        <h3 className="text-primary font-semibold text-sm mb-2">
+                    <div className="flex flex-col gap-5">
+
+                        <h3 className="text-primary font-semibold text-sm">
                             🧩 PASO 1 — Información general
                         </h3>
 
@@ -405,10 +470,11 @@ export default function PatientForm({ open, onClose, onCreated, patientType }) {
                         {/* Numero expediente + family code */}
                         <div className="grid grid-cols-2 gap-3">
                             <div>
-                                <label className="block text-sm mb-2 label-required">Número de expediente</label>
+                                <label className="block text-sm mb-1 label-required">Número de expediente</label>
                                 <input
                                     ref={firstRef}
                                     name="medical_record_number"
+                                    placeholder="Ej: 000123"
                                     value={form.medical_record_number}
                                     onChange={handleChange}
                                     className={`input ${errors.medical_record_number ? "border-error ring-1 ring-error/50" : ""}`}
@@ -416,9 +482,10 @@ export default function PatientForm({ open, onClose, onCreated, patientType }) {
                             </div>
 
                             <div>
-                                <label className="block text-sm mb-2">Código familiar</label>
+                                <label className="block text-sm mb-1">Código familiar</label>
                                 <input
                                     name="family_code"
+                                    placeholder="Ej: FAM-01"
                                     value={form.family_code}
                                     onChange={handleChange}
                                     className="input"
@@ -429,18 +496,20 @@ export default function PatientForm({ open, onClose, onCreated, patientType }) {
                         {/* nombres */}
                         <div className="grid grid-cols-2 gap-3">
                             <div>
-                                <label className="block text-sm mb-2 label-required">Nombre</label>
+                                <label className="block text-sm mb-1 label-required">Nombre</label>
                                 <input
                                     name="first_name"
+                                    placeholder="Ej: Juan"
                                     value={form.first_name}
                                     onChange={handleChange}
                                     className={`input ${errors.first_name ? "border-error ring-1 ring-error/50" : ""}`}
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm mb-2 label-required">Apellido paterno</label>
+                                <label className="block text-sm mb-1 label-required">Apellido paterno</label>
                                 <input
                                     name="last_name"
+                                    placeholder="Ej: Hernández"
                                     value={form.last_name}
                                     onChange={handleChange}
                                     className={`input ${errors.last_name ? "border-error ring-1 ring-error/50" : ""}`}
@@ -451,18 +520,20 @@ export default function PatientForm({ open, onClose, onCreated, patientType }) {
                         {/* más datos */}
                         <div className="grid grid-cols-2 gap-3">
                             <div>
-                                <label className="block text-sm mb-2">Apellido materno</label>
+                                <label className="block text-sm mb-1">Apellido materno</label>
                                 <input
                                     name="middle_name"
+                                    placeholder="Ej: Gómez"
                                     value={form.middle_name}
                                     onChange={handleChange}
                                     className="input"
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm mb-2">Apodo</label>
+                                <label className="block text-sm mb-1">Apodo</label>
                                 <input
                                     name="nickname"
+                                    placeholder="Ej: Juanito"
                                     value={form.nickname}
                                     onChange={handleChange}
                                     className="input"
@@ -473,14 +544,12 @@ export default function PatientForm({ open, onClose, onCreated, patientType }) {
                         {/* genero + nacimiento */}
                         <div className="grid grid-cols-2 gap-3">
                             <div>
-                                <label className="block text-sm mb-2 label-required">Género</label>
+                                <label className="block text-sm mb-1 label-required">Género</label>
                                 <select
                                     name="genre"
                                     value={form.genre}
                                     onChange={handleChange}
-                                    className={`input ${
-                                        errors.genre ? "border-error" : ""
-                                    }`}
+                                    className={`input ${errors.genre ? "border-error" : ""}`}
                                 >
                                     <option value="">Seleccionar...</option>
                                     <option value="male">Masculino</option>
@@ -490,21 +559,28 @@ export default function PatientForm({ open, onClose, onCreated, patientType }) {
                             </div>
 
                             <div>
-                                <label className="block text-sm mb-2 label-required">Fecha de nacimiento</label>
+                                <div className="flex justify-between items-center mb-1">
+                                    <label className="text-sm label-required">Fecha de nacimiento</label>
+                                    {form.birth_date && (
+                                        <span className="text-xs text-primary font-medium">
+                                {calculateAge(form.birth_date)}
+                            </span>
+                                    )}
+                                </div>
+
                                 <input
                                     type="date"
                                     name="birth_date"
                                     value={form.birth_date}
                                     onChange={handleChange}
-                                    className={`input ${
-                                        errors.birth_date ? "border-error" : ""
-                                    }`}
+                                    className={`input ${errors.birth_date ? "border-error" : ""}`}
                                 />
                             </div>
                         </div>
 
+                        {/* Estado civil */}
                         <div>
-                            <label className="block text-sm mb-2">Estado civil</label>
+                            <label className="block text-sm mb-1">Estado civil</label>
                             <select
                                 name="marital_status"
                                 value={form.marital_status}
@@ -523,32 +599,30 @@ export default function PatientForm({ open, onClose, onCreated, patientType }) {
                         {/* Teléfono y correo */}
                         <div className="grid grid-cols-2 gap-3">
                             <div>
-                                <label className="block text-sm mb-2 label-required">Teléfono</label>
+                                <label className="block text-sm mb-1 label-required">Teléfono</label>
                                 <input
                                     name="phone_number"
+                                    placeholder="Ej: 55-1234-5678"
                                     value={form.phone_number}
                                     onChange={handleChange}
-                                    className={`input ${
-                                        errors.phone_number
-                                            ? "border-error"
-                                            : ""
-                                    }`}
+                                    className={`input ${errors.phone_number ? "border-error" : ""}`}
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm mb-2">Correo</label>
+                                <label className="block text-sm mb-1">Correo</label>
                                 <input
                                     name="email"
+                                    placeholder="correo@ejemplo.com"
                                     value={form.email}
                                     onChange={handleChange}
-                                    className={`input ${
-                                        errors.email ? "border-error" : ""
-                                    }`}
+                                    className={`input ${errors.email ? "border-error" : ""}`}
                                 />
                             </div>
                         </div>
+
                     </div>
                 );
+
 
             // 🔹 Paso 2 – Fiscal
             case 2:
@@ -768,6 +842,10 @@ export default function PatientForm({ open, onClose, onCreated, patientType }) {
         setAlertEditingIndex(null);
     };
 
+    const readableType = {
+        prospecto: "Prospecto",
+        consulta_unica: "Consulta única",
+    }[patientType] || "";
 
     // ------------------------------------------------------
     // MODAL FINAL
@@ -793,9 +871,13 @@ export default function PatientForm({ open, onClose, onCreated, patientType }) {
 
                 {/* HEADER */}
                     <div className="flex justify-between items-center mb-4">
-                        <h2 className="text-lg font-semibold text-primary">
+                        <h2 className="text-lg font-semibold text-primary flex items-center gap-2">
                             Registrar nuevo paciente
+                            {patientType && (
+                                <span className="text-slate-400 text-sm"> — {patientType === "prospecto" ? "Prospecto" : "Consulta única"}</span>
+                            )}
                         </h2>
+
                         <button
                             onClick={() =>
                                 Object.values(form).some((v) => v)
@@ -807,6 +889,7 @@ export default function PatientForm({ open, onClose, onCreated, patientType }) {
                             <X size={18} />
                         </button>
                     </div>
+
 
                     {/* TABS */}
                     <StepTabs step={step} setStep={setStep} />

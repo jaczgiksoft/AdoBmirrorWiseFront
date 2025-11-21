@@ -101,6 +101,45 @@ Este proyecto sigue [Semantic Versioning](https://semver.org/lang/es/).
 
 ---
 
+## [0.3.2] - 2025-11-20
+
+### Added
+- **Autogeneración del número de expediente (PatientForm.jsx):**
+    - Integración con el endpoint `GET /patients/next-medical-record`.
+    - Carga automática del expediente al abrir el formulario.
+    - Bloqueo del campo para evitar edición manual.
+    - Preparado para futura adaptación según formato oficial del doctor.
+
+- **Autogeneración de código familiar:**
+    - Nuevo generador aleatorio alfanumérico de 6 caracteres.
+    - Código amigable, no secuencial y no deducible.
+    - Se asigna automáticamente al abrir el wizard.
+    - Mantiene independencia del número de expediente y del tenant.
+
+- **Tipo de paciente visible en el encabezado del formulario:**
+    - El formulario ahora muestra:  
+      `Registrar nuevo paciente — Prospecto`  
+      `Registrar nuevo paciente — Consulta única`.
+
+### Changed
+- **Wizard dinámico según tipo de paciente (PatientForm.jsx):**
+    - Prospecto conserva los 5 pasos tradicionales.
+    - Consulta única ahora muestra solo los pasos: **1, 2 y 4**.
+    - Navegación entre pasos ajustada para respetar únicamente los pasos permitidos.
+    - Reenumeración visual correcta en los tabs (1–3) para Consulta Única.
+
+- **Mejoras UX en la etapa de Información General (Paso 1):**
+    - Labels mejorados con placeholders en campos clave.
+    - Preparación del diseño para cálculo de edad dinámico junto a “Fecha de nacimiento”.
+
+### Fixed
+- Corrección del orden de rutas en `patient.routes.js` para evitar que  
+  `/patients/:id` capture la ruta `/patients/next-medical-record`.
+    - El endpoint ahora funciona sin colisiones con el validador de ID.
+
+
+---
+
 ## [0.3.2] - 2025-11-18
 
 ### Added
