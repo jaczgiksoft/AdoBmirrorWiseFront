@@ -10,6 +10,43 @@ Este proyecto sigue [Semantic Versioning](https://semver.org/lang/es/).
 
 ---
 
+## [3.3.0] - 2025-11-20
+
+### Added
+- **Sistema completo de Alertas del Paciente (Paso 4 del formulario):**
+    - Nuevo componente `PatientAlertModal.jsx`:
+        - Modal moderno para **crear y editar alertas** con:
+            - Título
+            - Descripción
+            - Indicador administrativo (`is_admin_alert`)
+        - **Limpieza automática** del formulario al guardar o crear nueva alerta.
+        - Autofocus y comportamiento consistente con el wizard multipaso.
+    - Nuevo componente `PatientAlertList.jsx`:
+        - Tarjetas limpias y profesionales para mostrar las alertas registradas.
+        - **Layout responsivo** en 3 o 4 columnas según resolución.
+        - Acciones (editar / eliminar) alineadas en esquina superior derecha.
+        - Indicador visual para alertas administrativas con tooltip “Administrativa”.
+    - Integración en `PatientForm.jsx`:
+        - Gestión completa del estado local `alerts` (agregar, editar, eliminar).
+        - Modal reutilizable para creación y edición.
+        - Persistencia de alertas dentro del payload final de creación del paciente.
+
+- **Nuevo diseño del Paso 4 — Alertas del paciente:**
+    - Sección reconstruida como un **módulo interno** dentro del wizard:
+        - Encabezado grande con icono ⚠️ y descripción contextual.
+        - Botón “Nueva alerta” con estilo ghost/primario, coherente con la UI.
+        - Estado vacío elegante con ícono grande, texto guía y CTA.
+    - Panel dedicado:
+        - Fondo translúcido (`bg-slate-800/40`), bordes y sombra interna.
+        - Organización clara del contenido y mayor jerarquía visual.
+
+### Changed
+- Reemplazo completo del diseño previo del Paso 4 por una versión **mucho más refinada, moderna y estructurada**.
+- Mejor alineación visual entre tabs del wizard y paneles internos.
+- Consistencia reforzada en tipografías, espaciados, botones y sombras en el módulo de alertas.
+
+---
+
 ## [0.3.2] - 2025-11-18
 
 ### Added

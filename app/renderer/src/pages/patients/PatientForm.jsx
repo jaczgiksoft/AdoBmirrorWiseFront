@@ -6,6 +6,8 @@ import { useToastStore } from "@/store/useToastStore";
 import { createPatient } from "@/services/patient.service";
 import { useHotkeys } from "@/hooks/useHotkeys";
 import { ConfirmDialog } from "@/components/feedback";
+import PatientAlertModal from "./components/PatientAlertModal";
+import PatientAlertList from "./components/PatientAlertList";
 
 export default function PatientForm({ open, onClose, onCreated, patientType }) {
     const { addToast } = useToastStore();
@@ -55,6 +57,8 @@ export default function PatientForm({ open, onClose, onCreated, patientType }) {
     const [confirmCancel, setConfirmCancel] = useState(false);
     const [errors, setErrors] = useState({});
     const [step, setStep] = useState(1);
+    const [alertModalOpen, setAlertModalOpen] = useState(false);
+    const [alertEditingIndex, setAlertEditingIndex] = useState(null);
 
     const firstRef = useRef(null);
 
@@ -317,7 +321,6 @@ export default function PatientForm({ open, onClose, onCreated, patientType }) {
         );
     }
 
-
     // ------------------------------------------------------
     // CONTENIDO POR PASO
     // ------------------------------------------------------
@@ -554,15 +557,77 @@ export default function PatientForm({ open, onClose, onCreated, patientType }) {
             // 🔹 Paso 4 — Alertas
             case 4:
                 return (
-                    <div>
-                        <h3 className="text-primary font-semibold text-sm mb-2">
-                            ⚠️ PASO 4 — Alertas del paciente
-                        </h3>
-                        <p className="text-xs text-slate-400">
-                            (Más adelante se integrará con alertas reales)
-                        </p>
+                    <div className="flex flex-col gap-6 pb-4">
+
+                        {/* HEADER / TITLE */}
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <h3 className="text-lg font-semibold text-primary flex items-center gap-2">
+                                    ⚠️ Alertas del paciente
+                                </h3>
+                                <p className="text-xs text-slate-400 mt-1">
+                                    Registra advertencias importantes para su atención clínica o administrativa.
+                                </p>
+                            </div>
+
+                            <button
+                                onClick={handleAddAlert}
+                                className="
+                        flex items-center gap-2 px-4 py-2
+                        rounded-lg bg-primary/10 text-primary border border-primary/20
+                        hover:bg-primary hover:text-white hover:border-primary/40
+                        transition-all
+                    "
+                            >
+                                <span className="text-base leading-none">+</span>
+                                <span className="text-sm font-medium">Nueva alerta</span>
+                            </button>
+                        </div>
+
+                        {/* PANEL DEL CONTENIDO */}
+                        <div
+                            className="
+                    rounded-xl border border-slate-700 bg-slate-800/40 p-4
+                    shadow-inner
+                "
+                        >
+                            {form.alerts.length === 0 ? (
+                                <div className="flex flex-col items-center justify-center py-10 text-center">
+                                    <div className="text-4xl mb-2 opacity-70">⚠️</div>
+                                    <p className="text-slate-400 text-sm max-w-[300px]">
+                                        Aquí aparecerán las alertas que registres para este paciente.
+                                        Puedes agregar alertas clínicas o administrativas.
+                                    </p>
+
+                                    <button
+                                        onClick={handleAddAlert}
+                                        className="
+                                mt-4 px-4 py-2 rounded-lg bg-primary text-white
+                                hover:bg-primary/90 transition
+                            "
+                                    >
+                                        Crear mi primera alerta
+                                    </button>
+                                </div>
+                            ) : (
+                                <PatientAlertList
+                                    alerts={form.alerts}
+                                    onEdit={handleEditAlert}
+                                    onDelete={handleDeleteAlert}
+                                />
+                            )}
+                        </div>
+
+                        {/* MODAL */}
+                        <PatientAlertModal
+                            open={alertModalOpen}
+                            onClose={() => setAlertModalOpen(false)}
+                            onSave={handleSaveAlert}
+                            alert={alertEditingIndex !== null ? form.alerts[alertEditingIndex] : null}
+                        />
                     </div>
                 );
+
 
             // 🔹 Paso 5 — Acceso móvil
             case 5:
@@ -626,6 +691,42 @@ export default function PatientForm({ open, onClose, onCreated, patientType }) {
                 return null;
         }
     };
+
+    // ------------------------------------------------------
+    // CONTENIDO DE ALERTAS
+    // ------------------------------------------------------
+    const handleAddAlert = () => {
+        setAlertEditingIndex(null);
+        setAlertModalOpen(true);
+    };
+
+    const handleEditAlert = (index) => {
+        setAlertEditingIndex(index);
+        setAlertModalOpen(true);
+    };
+
+    const handleDeleteAlert = (index) => {
+        setForm((f) => ({
+            ...f,
+            alerts: f.alerts.filter((_, i) => i !== index),
+        }));
+    };
+
+    const handleSaveAlert = (alertData) => {
+        setForm((f) => {
+            const updated = [...f.alerts];
+            if (alertEditingIndex !== null) {
+                updated[alertEditingIndex] = alertData;
+            } else {
+                updated.push(alertData);
+            }
+            return { ...f, alerts: updated };
+        });
+
+        setAlertModalOpen(false);
+        setAlertEditingIndex(null);
+    };
+
 
     // ------------------------------------------------------
     // MODAL FINAL
