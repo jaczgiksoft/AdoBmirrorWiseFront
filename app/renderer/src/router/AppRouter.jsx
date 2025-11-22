@@ -19,6 +19,7 @@ import CashRegisterList from "@/pages/cashRegisters/CashRegisterList";
 import CashRegisterDetail from "@/pages/cashRegisters/CashRegisterDetail";
 
 import PatientList from "@/pages/patients/PatientList";
+import PatientDetail from "@/pages/patients/PatientDetail";
 
 import ToastContainer from "@/components/ui/ToastContainer";
 import { Header, QuickAccessBar } from "@/components/layout";
@@ -175,7 +176,16 @@ export default function AppRouter() {
                         </PrivateRoute>
                     }
                 />
-
+                <Route
+                    path="/patients/:id"
+                    element={
+                        <PrivateRoute>
+                            <PrivateLayout>
+                                <PatientDetail />
+                            </PrivateLayout>
+                        </PrivateRoute>
+                    }
+                />
                 {/* 🏬 Tiendas */}
                 <Route
                     path="/stores"

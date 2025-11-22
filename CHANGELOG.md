@@ -9,6 +9,36 @@ Este proyecto sigue [Semantic Versioning](https://semver.org/lang/es/).
 ## [Unreleased]
 
 ---
+## [0.10.0] - 2025-11-21
+
+### Added
+- **Tooltip moderno en los tipos de paciente (PatientList.jsx):**
+    - Cada cuadrito de tipo ahora muestra un tooltip elegante con el nombre completo del tipo.
+    - Compatible con temas Light/Dark.
+    - Tooltip responsivo, con sombras suaves y colores clínicos.
+
+- **Indicador visual de “NUEVO” en la tarjeta del paciente (PatientList.jsx):**
+    - Se agregó una insignia verde “NUEVO” en la esquina superior izquierda.
+    - Solo aparece en pacientes creados hoy (`createdAt`).
+    - Totalmente compatible con Light/Dark Mode.
+
+### Changed
+- **Actualización del render de fotos del paciente:**
+    - Ahora las fotos se cargan correctamente usando `API_BASE` + `photo_url`.
+    - Se asegura compatibilidad con rutas relativas del backend (`uploads/...`).
+    - Mejora de fallback al ícono de usuario cuando no existe foto.
+
+- **Orden por defecto del listado de pacientes:**
+    - El backend ahora retorna los pacientes en orden descendente (`createdAt DESC`)
+      cuando el frontend no envía columnas de ordenamiento.
+    - Mantiene compatibilidad con ordenamiento personalizado enviado desde el front.
+
+### Fixed
+- Se corrigió un detalle donde `photo_url` guardaba rutas absolutas en Windows.
+    - Ahora solo se almacena una ruta relativa (`uploads/...`), compatible con API_BASE.
+- Se corrigió el cálculo de `isToday()` en PatientList y validación del flag de nuevos pacientes.
+
+---
 
 ## [0.9.0] - 2025-11-21
 

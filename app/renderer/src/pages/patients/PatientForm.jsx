@@ -10,6 +10,8 @@ import PatientAlertModal from "./components/PatientAlertModal";
 import PatientAlertList from "./components/PatientAlertList";
 import PatientRepresentativeModal from "./components/PatientRepresentativeModal";
 import PatientRepresentativeList from "./components/PatientRepresentativeList";
+import PatientBillingDataModal from "./components/PatientBillingDataModal";
+import PatientBillingDataList from "./components/PatientBillingDataList";
 import { getReferrals } from "@/services/referral.service";
 import Datepicker from "react-tailwindcss-datepicker";
 
@@ -40,18 +42,11 @@ export default function PatientForm({ open, onClose, onCreated, patientType }) {
         photo_preview: null,
         photo_url: "",
         // Paso 2 (fiscal)
-        rfc: "",
-        company: "",
-        company_address: "",
+        billing_data: [],
         // Paso 3
         legal_representatives: [],
         // Paso 4
         alerts: [],
-        // Paso 5
-        username: "",
-        password: "",
-        confirm_password: "",
-        can_login: false,
         // Tipo (N:M)
         patient_type_ids: [],
         address_street_name: "",
@@ -74,6 +69,8 @@ export default function PatientForm({ open, onClose, onCreated, patientType }) {
     const [alertEditingIndex, setAlertEditingIndex] = useState(null);
     const [representativeModalOpen, setRepresentativeModalOpen] = useState(false);
     const [representativeEditingIndex, setRepresentativeEditingIndex] = useState(null);
+    const [billingModalOpen, setBillingModalOpen] = useState(false);
+    const [billingEditingIndex, setBillingEditingIndex] = useState(null);
     const [referrals, setReferrals] = useState([]);
     const [birthDatePicker, setBirthDatePicker] = useState({
         startDate: null,
@@ -198,7 +195,6 @@ export default function PatientForm({ open, onClose, onCreated, patientType }) {
         }
     }, [open]);
 
-
     useEffect(() => {
         if (!open) return;
 
@@ -265,18 +261,20 @@ export default function PatientForm({ open, onClose, onCreated, patientType }) {
             ];
 
             required.forEach((f) => {
-                if (!form[f]?.trim()) newErrors[f] = "Campo obligatorio";
+                const value = form[f];
+
+                if (
+                    value === null ||
+                    value === undefined ||
+                    (typeof value === "string" && value.trim() === "") ||
+                    value === ""
+                ) {
+                    newErrors[f] = "Campo obligatorio";
+                }
             });
 
             if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email))
                 newErrors.email = "Correo inválido";
-        }
-
-        if (step === 5 && form.can_login) {
-            if (!form.username) newErrors.username = "Usuario obligatorio";
-            if (!form.password) newErrors.password = "Contraseña obligatoria";
-            if (form.password !== form.confirm_password)
-                newErrors.confirm_password = "Las contraseñas no coinciden";
         }
 
         setErrors(newErrors);
@@ -284,7 +282,7 @@ export default function PatientForm({ open, onClose, onCreated, patientType }) {
     };
 
     const getAllowedSteps = (patientType) => {
-        return patientType === "consulta_unica" ? [1, 2, 4] : [1, 2, 3, 4, 5];
+        return patientType === "consulta_unica" ? [1, 2, 4, 5] : [1, 2, 3, 4, 5];
     };
 
     const handleNextStep = () => {
@@ -321,17 +319,13 @@ export default function PatientForm({ open, onClose, onCreated, patientType }) {
             let payload = { ...form };
             delete payload.confirm_password;
 
-            // 🔹 SI SUBES LA FOTO AL SERVIDOR
             if (form.photo_file) {
-                // 🔥 TODO: REEMPLAZAR POR TU SERVICIO REAL DE UPLOAD
-                const fakeURL = URL.createObjectURL(form.photo_file);
-                payload.photo_url = fakeURL;
+                payload.photo_file = form.photo_file; // archivo real para FormData
             }
 
-            // No enviar preview ni file
-            delete payload.photo_file;
             delete payload.photo_preview;
 
+            console.log("📨 Datos enviados a la API:", payload);
             await createPatient(payload);
 
             addToast({
@@ -382,12 +376,6 @@ export default function PatientForm({ open, onClose, onCreated, patientType }) {
 
     if (!open) return null;
 
-/*    useEffect(() => {
-        if (open) {
-            const modal = document.querySelector("#patientFormModal");
-            modal?.focus();
-        }
-    }, [open]);*/
 
     // ------------------------------------------------------
     // STEPS VISUALES
@@ -398,12 +386,12 @@ export default function PatientForm({ open, onClose, onCreated, patientType }) {
             { id: 2, title: "Información fiscal", desc: "RFC, empresa, ocupación" },
             { id: 3, title: "Representantes", desc: "Responsables legales" },
             { id: 4, title: "Alertas", desc: "Clínicas y administrativas" },
-            { id: 5, title: "Acceso móvil", desc: "Usuario y contraseña" },
+            { id: 5, title: "Confirmación", desc: "Revisión final de datos" },
         ];
 
-// 👇 Filtrado dinámico por tipo de paciente
+        // 👇 Filtrado dinámico por tipo de paciente
         const steps = patientType === "consulta_unica"
-            ? ALL_STEPS.filter((s) => [1, 2, 4].includes(s.id))
+            ? ALL_STEPS.filter((s) => [1, 2, 4, 5].includes(s.id))
             : ALL_STEPS;
 
 
@@ -414,7 +402,7 @@ export default function PatientForm({ open, onClose, onCreated, patientType }) {
 
                     // Número visible dependiendo del tipo
                     const visibleIndex = patientType === "consulta_unica"
-                        ? [1, 2, 4].indexOf(s.id) + 1
+                        ? [1, 2, 4, 5].indexOf(s.id) + 1
                         : s.id;
 
                     return (
@@ -493,7 +481,6 @@ export default function PatientForm({ open, onClose, onCreated, patientType }) {
                     );
                 })}
             </div>
-
         );
     }
 
@@ -700,7 +687,6 @@ export default function PatientForm({ open, onClose, onCreated, patientType }) {
                             </div>
                         </div>
 
-
                         {/* Teléfono y correo */}
                         <div className="grid grid-cols-2 gap-3">
                             <div>
@@ -830,35 +816,63 @@ export default function PatientForm({ open, onClose, onCreated, patientType }) {
                     </div>
                 );
 
-
             // 🔹 Paso 2 – Fiscal
+            // 🔹 Paso 2 — Datos de facturación
             case 2:
                 return (
-                    <div className="flex flex-col gap-3">
-                        <h3 className="text-primary font-semibold text-sm mb-2">
-                            🧾 PASO 2 — Información fiscal
-                        </h3>
+                    <div className="flex flex-col gap-6 pb-4">
 
-                        <input
-                            name="rfc"
-                            placeholder="RFC"
-                            value={form.rfc}
-                            onChange={handleChange}
-                            className="input"
-                        />
-                        <input
-                            name="company"
-                            placeholder="Empresa"
-                            value={form.company}
-                            onChange={handleChange}
-                            className="input"
-                        />
-                        <input
-                            name="company_address"
-                            placeholder="Dirección fiscal"
-                            value={form.company_address}
-                            onChange={handleChange}
-                            className="input"
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <h3 className="text-lg font-semibold text-primary">
+                                    Datos de facturación
+                                </h3>
+                                <p className="text-xs text-slate-400 mt-1">
+                                    Registra uno o varios datos fiscales para este paciente.
+                                </p>
+                            </div>
+
+                            <button
+                                onClick={handleAddBilling}
+                                className="
+                        flex items-center gap-2 px-4 py-2
+                        rounded-lg bg-cyan-500 text-white
+                        hover:bg-cyan-600
+                        dark:bg-primary dark:hover:bg-primary/80
+                    "
+                            >
+                                <span className="text-base leading-none">+</span>
+                                <span className="text-sm font-medium">Nuevo dato fiscal</span>
+                            </button>
+                        </div>
+
+                        <div className="
+                rounded-xl border border-slate-300 dark:border-slate-700
+                bg-slate-100 dark:bg-slate-800/40 p-4 shadow-inner
+            ">
+                            {form.billing_data?.length === 0 ? (
+                                <p className="text-sm text-slate-500 dark:text-slate-400 text-center py-6">
+                                    No hay datos fiscales registrados.
+                                </p>
+                            ) : (
+                                <PatientBillingDataList
+                                    list={form.billing_data}
+                                    onEdit={handleEditBilling}
+                                    onDelete={handleDeleteBilling}
+                                />
+                            )}
+                        </div>
+
+                        {/* MODAL */}
+                        <PatientBillingDataModal
+                            open={billingModalOpen}
+                            onClose={() => setBillingModalOpen(false)}
+                            onSave={handleSaveBilling}
+                            billingData={
+                                billingEditingIndex !== null
+                                    ? form.billing_data[billingEditingIndex]
+                                    : null
+                            }
                         />
                     </div>
                 );
@@ -1002,62 +1016,109 @@ export default function PatientForm({ open, onClose, onCreated, patientType }) {
                     </div>
                 );
 
-
-            // 🔹 Paso 5 — Acceso móvil
+            // 🔹 Paso 5 — Confirmación final
             case 5:
                 return (
-                    <div className="flex flex-col gap-3">
-                        <h3 className="text-primary font-semibold text-sm mb-2">
-                            📱 PASO 5 — Acceso móvil
+                    <div className="flex flex-col gap-5">
+
+                        <h3 className="text-primary font-semibold text-sm">
+                            📱 PASO 5 — Confirmación final
                         </h3>
 
-                        <div className="flex gap-2 items-center">
-                            <input
-                                type="checkbox"
-                                name="can_login"
-                                checked={form.can_login}
-                                onChange={handleChange}
-                            />
-                            <label>Activar acceso al portal</label>
+                        <p className="text-sm text-slate-600 dark:text-slate-300">
+                            Antes de guardar, revisa que la información del paciente esté correcta.
+                            El acceso al portal se activará automáticamente utilizando su número telefónico.
+                        </p>
+
+                        {/* Resumen simple */}
+                        <div className="
+                p-4 rounded-xl border border-slate-300 dark:border-slate-700
+                bg-slate-100 dark:bg-slate-800/40 shadow-inner
+            ">
+                            <h4 className="font-semibold text-sm text-primary mb-2">Resumen del paciente</h4>
+
+                            <ul className="text-xs text-slate-600 dark:text-slate-400 space-y-1">
+                                <li><strong>Nombre:</strong> {form.first_name} {form.last_name}</li>
+                                <li><strong>Teléfono:</strong> {form.phone_number}</li>
+                                <li><strong>Correo:</strong> {form.email || "—"}</li>
+                            </ul>
+                            <div className="flex flex-col gap-4 mt-3">
+
+                                {/* REPRESENTANTES */}
+                                <div>
+                                    <h5 className="text-xs font-semibold text-primary mb-1">Representantes</h5>
+                                    {form.legal_representatives.length === 0 ? (
+                                        <p className="text-xs text-slate-500">— Ninguno —</p>
+                                    ) : (
+                                        <div className="flex flex-wrap gap-2">
+                                            {form.legal_representatives.map((rep, idx) => (
+                                                <span
+                                                    key={idx}
+                                                    className="px-2 py-1 text-xs rounded-full bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 flex items-center gap-1"
+                                                >
+                        <span>👤</span> {rep.full_name}
+                    </span>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* ALERTAS */}
+                                <div>
+                                    <h5 className="text-xs font-semibold text-primary mb-1">Alertas</h5>
+                                    {form.alerts.length === 0 ? (
+                                        <p className="text-xs text-slate-500">— Ninguna —</p>
+                                    ) : (
+                                        <div className="flex flex-wrap gap-2">
+                                            {form.alerts.map((a, idx) => (
+                                                <span
+                                                    key={idx}
+                                                    className={`px-2 py-1 text-xs rounded-full flex items-center gap-1 ${
+                                                        a.is_admin_alert
+                                                            ? "bg-yellow-200 text-yellow-800"
+                                                            : "bg-red-200 text-red-800"
+                                                    }`}
+                                                >
+                        {a.is_admin_alert ? "⚠️" : "🩺"} {a.title}
+                    </span>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* DATOS FISCALES */}
+                                <div>
+                                    <h5 className="text-xs font-semibold text-primary mb-1">Datos fiscales</h5>
+                                    {form.billing_data.length === 0 ? (
+                                        <p className="text-xs text-slate-500">— Ninguno —</p>
+                                    ) : (
+                                        <div className="flex flex-wrap gap-2">
+                                            {form.billing_data.map((b, idx) => (
+                                                <span
+                                                    key={idx}
+                                                    className={`px-2 py-1 text-xs rounded-full bg-cyan-200 text-cyan-800 flex items-center gap-1`}
+                                                >
+                        🧾 {b.business_name}
+                                                    {b.is_primary && (
+                                                        <span className="text-[10px] bg-primary text-white px-1 rounded">
+                                Principal
+                            </span>
+                                                    )}
+                    </span>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+
+                            </div>
+
                         </div>
 
-                        {form.can_login && (
-                            <>
-                                <input
-                                    name="username"
-                                    placeholder="Usuario"
-                                    value={form.username}
-                                    onChange={handleChange}
-                                    className={`input ${
-                                        errors.username ? "border-error" : ""
-                                    }`}
-                                />
 
-                                <input
-                                    type="password"
-                                    name="password"
-                                    placeholder="Contraseña"
-                                    value={form.password}
-                                    onChange={handleChange}
-                                    className={`input ${
-                                        errors.password ? "border-error" : ""
-                                    }`}
-                                />
+                        <p className="text-xs text-slate-500 dark:text-slate-500">
+                            Si necesitas corregir algo, navega entre los pasos con los botones “Atrás” o los tabs superiores.
+                        </p>
 
-                                <input
-                                    type="password"
-                                    name="confirm_password"
-                                    placeholder="Confirmar contraseña"
-                                    value={form.confirm_password}
-                                    onChange={handleChange}
-                                    className={`input ${
-                                        errors.confirm_password
-                                            ? "border-error"
-                                            : ""
-                                    }`}
-                                />
-                            </>
-                        )}
                     </div>
                 );
 
@@ -1137,6 +1198,46 @@ export default function PatientForm({ open, onClose, onCreated, patientType }) {
         setRepresentativeEditingIndex(null);
         setRepresentativeModalOpen(false);
     };
+
+    const handleAddBilling = () => {
+        setBillingEditingIndex(null);
+        setBillingModalOpen(true);
+    };
+
+    const handleEditBilling = (index) => {
+        setBillingEditingIndex(index);
+        setBillingModalOpen(true);
+    };
+
+    const handleDeleteBilling = (index) => {
+        setForm((f) => ({
+            ...f,
+            billing_data: f.billing_data.filter((_, i) => i !== index),
+        }));
+    };
+
+    const handleSaveBilling = (billing) => {
+        setForm((f) => {
+            let updated = [...f.billing_data];
+
+            // si marca principal, desmarcar todos los demás
+            if (billing.is_primary) {
+                updated = updated.map((b) => ({ ...b, is_primary: false }));
+            }
+
+            if (billingEditingIndex !== null) {
+                updated[billingEditingIndex] = billing;
+            } else {
+                updated.push(billing);
+            }
+
+            return { ...f, billing_data: updated };
+        });
+
+        setBillingEditingIndex(null);
+        setBillingModalOpen(false);
+    };
+
 
     // ------------------------------------------------------
     // MODAL FINAL

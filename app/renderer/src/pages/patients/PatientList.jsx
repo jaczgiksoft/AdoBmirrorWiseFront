@@ -23,6 +23,7 @@ import {
 
 import { Pagination } from "@/components/ui";
 import { getContrastColor } from "@/utils/helpers";
+import { API_BASE } from "@/utils/apiBase";
 
 export default function PatientList() {
     const navigate = useNavigate();
@@ -212,6 +213,17 @@ export default function PatientList() {
         );
     }
 
+    function isToday(dateString) {
+        const today = new Date();
+        const date = new Date(dateString);
+console.log("date", dateString)
+        return (
+            date.getFullYear() === today.getFullYear() &&
+            date.getMonth() === today.getMonth() &&
+            date.getDate() === today.getDate()
+        );
+    }
+
     return (
         <div className="bg-slate-100 dark:bg-dark flex flex-col font-sans text-slate-900 dark:text-slate-50">
 
@@ -354,19 +366,33 @@ export default function PatientList() {
                                         }
                                         `}
                                     >
+
+                                        {/* 🔰 NUEVO HOY */}
+                                        {isToday(p.createdAt) && (
+                                            <div className="
+                                                    absolute top-3 left-3
+                                                    bg-green-500 text-white
+                                                    text-[10px] font-bold
+                                                    px-2 py-1 rounded-md shadow-md
+                                                ">
+                                                NUEVO
+                                            </div>
+                                        )}
+
                                         {/* Imagen */}
                                         <div className="flex flex-col items-center mb-3">
                                             {p.photo_url ? (
                                                 <img
-                                                    src={p.photo_url}
+                                                    src={`${API_BASE}/${p.photo_url}`}
                                                     alt={p.first_name}
                                                     className="
-                                                        w-20 h-20 rounded-xl object-cover
-                                                        border border-slate-300 dark:border-slate-700
-                                                        bg-slate-100 dark:bg-slate-800
-                                                    "
+            w-20 h-20 rounded-xl object-cover
+            border border-slate-300 dark:border-slate-700
+            bg-slate-100 dark:bg-slate-800
+        "
                                                 />
                                             ) : (
+
                                                 <div className="
                                                     w-20 h-20 rounded-xl border
                                                     border-slate-300 dark:border-slate-700
@@ -456,16 +482,35 @@ export default function PatientList() {
                                                             const textColor = getContrastColor(t.color);
 
                                                             return (
-                                                                <span
-                                                                    key={t.id}
-                                                                    className="w-5 h-5 rounded-md text-[10px] font-bold flex items-center justify-center shadow-sm"
-                                                                    style={{
-                                                                        backgroundColor: t.color,
-                                                                        color: textColor,
-                                                                    }}
-                                                                >
-                                                                    {initials}
-                                                                </span>
+                                                                <div key={t.id} className="relative group flex">
+    <span
+        className="w-5 h-5 rounded-md text-[10px] font-bold flex items-center justify-center shadow-sm cursor-default"
+        style={{
+            backgroundColor: t.color,
+            color: textColor,
+        }}
+    >
+        {initials}
+    </span>
+
+                                                                    {/* Tooltip */}
+                                                                    <div
+                                                                        className="
+            absolute bottom-full left-1/2 -translate-x-1/2 mb-1
+            whitespace-nowrap
+            px-2 py-1
+            text-[10px] font-medium
+            bg-black text-white
+            rounded-md shadow-lg
+            opacity-0 group-hover:opacity-100
+            pointer-events-none
+            transition-opacity duration-300
+        "
+                                                                    >
+                                                                        {t.name}
+                                                                    </div>
+                                                                </div>
+
                                                             );
                                                         })}
                                                     </div>
