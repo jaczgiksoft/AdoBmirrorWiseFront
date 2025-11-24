@@ -7,9 +7,9 @@ import { ConfirmDialog } from "@/components/feedback";
 import { getPatientsPaginated, deletePatient } from "@/services/patient.service";
 import PatientForm from "./PatientForm";
 import FilterDropdown from "./PatientFilterDropdown";
-import PatientDashboard from "./components/PatientDashboard";
-import PatientAgeChart from "./components/PatientAgeChart";
-import PatientTypeSelectorModal from "./components/PatientTypeSelectorModal";
+import PatientDashboard from "./shared/PatientDashboard";
+import PatientAgeChart from "./shared/PatientAgeChart";
+import PatientTypeSelectorModal from "./shared/PatientTypeSelectorModal";
 
 import {
     PlusCircle,
@@ -216,7 +216,7 @@ export default function PatientList() {
     function isToday(dateString) {
         const today = new Date();
         const date = new Date(dateString);
-console.log("date", dateString)
+
         return (
             date.getFullYear() === today.getFullYear() &&
             date.getMonth() === today.getMonth() &&
@@ -225,7 +225,7 @@ console.log("date", dateString)
     }
 
     return (
-        <div className="bg-slate-100 dark:bg-dark flex flex-col font-sans text-slate-900 dark:text-slate-50">
+        <div className="bg-slate-100 dark:bg-dark flex flex-col font-sans text-slate-900 dark:text-slate-50 h-full">
 
             {/* ---------- HEADER ---------- */}
             <div className="w-full max-w-[110rem] mx-auto px-10 mt-6 flex items-center gap-4 flex-wrap">

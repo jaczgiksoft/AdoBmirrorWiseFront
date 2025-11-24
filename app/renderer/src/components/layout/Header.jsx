@@ -88,9 +88,16 @@ export default function Header() {
     };
 
     return (
-        <div className="w-full flex flex-col border-b border-slate-300 dark:border-slate-700 shadow-sm z-20">
+        <div className="
+    w-full flex flex-col
+    border-b border-slate-300 dark:border-slate-700
+    shadow-sm z-50
+    sticky top-0
+    bg-white dark:bg-secondary
+">
 
-            {/* 🔹 HEADER PRINCIPAL */}
+
+        {/* 🔹 HEADER PRINCIPAL */}
             <header className="
                 backdrop-blur-md
                 bg-white/70 text-slate-800

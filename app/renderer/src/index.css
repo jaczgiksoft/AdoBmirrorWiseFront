@@ -161,3 +161,51 @@ body {
 html, body {
     overflow-x: hidden;
 }
+
+/* ====================================================
+   SCROLLBAR GLOBAL — Chrome, Edge, Safari
+==================================================== */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: rgba(100, 116, 139, 0.4); /* slate-500/40 */
+    border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(100, 116, 139, 0.6);
+}
+
+/* ====================================================
+   SCROLLBAR — Firefox
+==================================================== */
+* {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(100,116,139,0.4) transparent;
+}
+
+/* LIGHT MODE */
+::-webkit-scrollbar-thumb {
+    background: rgba(100, 116, 139, 0.4);
+}
+
+.dark ::-webkit-scrollbar-thumb {
+    background: rgba(148, 163, 184, 0.4); /* slate-300/40 */
+}
+
+/* FIREFOX */
+* {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(100,116,139,0.4) transparent;
+}
+
+.dark * {
+    scrollbar-color: rgba(148,163,184,0.4) transparent;
+}

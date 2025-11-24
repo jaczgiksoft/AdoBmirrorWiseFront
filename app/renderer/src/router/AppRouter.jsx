@@ -21,8 +21,28 @@ import CashRegisterDetail from "@/pages/cashRegisters/CashRegisterDetail";
 import PatientList from "@/pages/patients/PatientList";
 import PatientDetail from "@/pages/patients/PatientDetail";
 
+// Paciente (secciones internas)
+import SummarySection from "@/pages/patients/PatientDetail/sections/SummarySection";
+import GeneralSection from "@/pages/patients/PatientDetail/sections/GeneralSection";
+import ClinicalSection from "@/pages/patients/PatientDetail/sections/ClinicalSection";
+import FamilySection from "@/pages/patients/PatientDetail/sections/FamilySection";
+import AlertsSection from "@/pages/patients/PatientDetail/sections/AlertsSection";
+import AppointmentsSection from "@/pages/patients/PatientDetail/sections/AppointmentsSection";
+import PrescriptionsSection from "@/pages/patients/PatientDetail/sections/PrescriptionsSection";
+import ContractsSection from "@/pages/patients/PatientDetail/sections/ContractsSection";
+import TreatmentPlanSection from "@/pages/patients/PatientDetail/sections/TreatmentPlanSection";
+import BudgetsSection from "@/pages/patients/PatientDetail/sections/BudgetsSection";
+import HobbiesSection from "@/pages/patients/PatientDetail/sections/HobbiesSection";
+import ConversationsSection from "@/pages/patients/PatientDetail/sections/ConversationsSection";
+import NotesSection from "@/pages/patients/PatientDetail/sections/NotesSection";
+import OdontogramSection from "@/pages/patients/PatientDetail/sections/OdontogramSection";
+import ElasticsSection from "@/pages/patients/PatientDetail/sections/ElasticsSection";
+import AccountSection from "@/pages/patients/PatientDetail/sections/AccountSection";
+
 import ToastContainer from "@/components/ui/ToastContainer";
 import { Header, QuickAccessBar } from "@/components/layout";
+import RepresentativesSection from "@/pages/patients/PatientDetail/sections/RepresentativesSection";
+import BillingSection from "@/pages/patients/PatientDetail/sections/BillingSection";
 
 /* ──────────────────────────────────────────────
  🔒 RUTA PRIVADA
@@ -185,7 +205,32 @@ export default function AppRouter() {
                             </PrivateLayout>
                         </PrivateRoute>
                     }
-                />
+                >
+                    {/* REDIRECCIÓN DEFAULT A "Resumen" */}
+                    <Route index element={<Navigate to="summary" replace />} />
+
+                    <Route path="summary" element={<SummarySection />} />
+                    <Route path="general" element={<GeneralSection />} />
+                    <Route path="clinical" element={<ClinicalSection />} />
+                    <Route path="family" element={<FamilySection />} />
+                    <Route path="representative" element={<RepresentativesSection />} />
+                    <Route path="alerts" element={<AlertsSection />} />
+
+                    {/* Secciones extra */}
+                    <Route path="billing" element={<BillingSection />} />
+                    <Route path="appointments" element={<AppointmentsSection />} />
+                    <Route path="prescriptions" element={<PrescriptionsSection />} />
+                    <Route path="contracts" element={<ContractsSection />} />
+                    <Route path="treatment-plan" element={<TreatmentPlanSection />} />
+                    <Route path="budgets" element={<BudgetsSection />} />
+                    <Route path="hobbies" element={<HobbiesSection />} />
+                    <Route path="conversations" element={<ConversationsSection />} />
+                    <Route path="notes" element={<NotesSection />} />
+                    <Route path="odontogram" element={<OdontogramSection />} />
+                    <Route path="elastics" element={<ElasticsSection />} />
+                    <Route path="account" element={<AccountSection />} />
+                </Route>
+
                 {/* 🏬 Tiendas */}
                 <Route
                     path="/stores"
@@ -257,18 +302,16 @@ function PrivateLayout({ children }) {
     ];
 
     return (
-        <div className="
-    min-h-screen flex
-    bg-slate-100 text-slate-900
-    dark:bg-dark dark:text-slate-50
-        ">
+        <div className="min-h-screen flex bg-slate-100 text-slate-900 dark:bg-dark dark:text-slate-50">
             <QuickAccessBar
                 items={shortcuts}
                 onAdd={() => console.log("➕ Nuevo acceso directo")}
             />
-            <div className="flex-1 flex flex-col ml-[60px]">
+            <div className="flex-1 flex flex-col ml-[60px] h-screen overflow-hidden">
                 <Header />
-                <main className="flex-1">{children}</main>
+                <main className="flex-1 overflow-y-auto">
+                    {children}
+                </main>
             </div>
         </div>
     );

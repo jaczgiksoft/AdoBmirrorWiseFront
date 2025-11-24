@@ -6,12 +6,12 @@ import { useToastStore } from "@/store/useToastStore";
 import { createPatient, getNextMedicalRecord } from "@/services/patient.service";
 import { useHotkeys } from "@/hooks/useHotkeys";
 import { ConfirmDialog } from "@/components/feedback";
-import PatientAlertModal from "./components/PatientAlertModal";
-import PatientAlertList from "./components/PatientAlertList";
-import PatientRepresentativeModal from "./components/PatientRepresentativeModal";
-import PatientRepresentativeList from "./components/PatientRepresentativeList";
-import PatientBillingDataModal from "./components/PatientBillingDataModal";
-import PatientBillingDataList from "./components/PatientBillingDataList";
+import PatientAlertModal from "./shared/PatientAlertModal";
+import PatientAlertList from "./shared/PatientAlertList";
+import PatientRepresentativeModal from "./shared/PatientRepresentativeModal";
+import PatientRepresentativeList from "./shared/PatientRepresentativeList";
+import PatientBillingDataModal from "./shared/PatientBillingDataModal";
+import PatientBillingDataList from "./shared/PatientBillingDataList";
 import { getReferrals } from "@/services/referral.service";
 import Datepicker from "react-tailwindcss-datepicker";
 

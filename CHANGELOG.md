@@ -9,6 +9,63 @@ Este proyecto sigue [Semantic Versioning](https://semver.org/lang/es/).
 ## [Unreleased]
 
 ---
+
+## [0.11.0] - 2025-11-24
+
+### Added
+- **Nuevo módulo de Detalles del Paciente totalmente reorganizado:**
+    - Separación completa del archivo `PatientDetail.jsx` en una arquitectura modular:
+        - `PatientDetailLayout.jsx`
+        - `PatientSidebar.jsx`
+        - `index.jsx` como entrypoint limpio
+        - Carpeta `/sections` con secciones independientes:
+            - Summary, General, BillingData, Representatives, ClinicalHistory, Appointments, Notes, Contracts, Hobbies, Family, Prescriptions, Odontogram, TreatmentPlan, Elastics.
+        - Carpeta `/components` con piezas reutilizables (HeaderInfo, AlertCard, ClinicalMiniDashboard, RepresentativeCard).
+    - Primera versión de una **estructura escalable tipo “EHR premium”** para futuras expansiones.
+
+- **Nueva pantalla Splash de espera:**
+    - Imagen agregada: `splash-waiting.png`.
+    - Se muestra mientras carga el perfil del paciente.
+    - Adaptada a modo claro/oscuro.
+
+- **Nuevas secciones funcionales iniciales:**
+    - **SummarySection** con KPIs y mini-dashboard.
+    - **GeneralSection** con datos personales, edad (años + meses) y estado civil.
+    - **BillingSection** con tarjetas fiscales y tooltip para correos extensos.
+    - **RepresentativesSection** integrada con el módulo de reps del formulario.
+    - **ClinicalSection** con minidashboard clínico.
+    - Estados vacíos estandarizados entre secciones.
+
+### Changed
+- **Refactor general del módulo de Pacientes:**
+    - Archivos reubicados en estructura más lógica:
+        - Componentes compartidos movidos a `/shared`.
+        - Componentes dedicados movidos a `/PatientDetail`.
+    - PatientAgeChart, PatientDashboard, modales y listas migrados a `/shared` para uso en futuras vistas.
+
+- **Mejoras generales de UI/UX del Patient Detail:**
+    - Layout tipo “Panel izquierdo + cuerpo derecho”.
+    - Navegación suave con `useOutletContext`.
+    - Fondo, sombras, espaciados y jerarquía visual modernizados.
+    - Interfaz más coherente con diseño clínico premium.
+
+- **Tooltip elegante para emails largos en BillingSection:**
+    - Truncado automático del correo.
+    - Tooltip moderno compatible con Light/Dark.
+
+- **Ajustes menores visuales y de navegación:**
+    - Header corregido.
+    - Ajustes de CSS global (`index.css`) para espaciados, tipografía y colores.
+    - Sidebar refinado para alineación con el layout de detalles.
+
+### Fixed
+- Correcciones en pasos del PatientDetail que no refrescaban la selección activa.
+- Problemas de render entre sidebar y sección activa.
+- Imagen `splash-waiting.png` que no coincidía con la versión final (archivo actualizado).
+- Inconsistencias visuales entre secciones (bordes, paddings y sombras).
+
+---
+
 ## [0.10.0] - 2025-11-21
 
 ### Added
