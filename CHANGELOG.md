@@ -10,6 +10,37 @@ Este proyecto sigue [Semantic Versioning](https://semver.org/lang/es/).
 
 ---
 
+## [0.12.0] - 2025-12-04
+
+### Added
+- Implemented **HobbiesSection** with full real API CRUD integration.
+- Implemented **PrescriptionsSection** with full real API CRUD integration.
+- Added keyboard shortcut support across sections:
+  - **F1** → Focus filter input  
+  - **F2** → Create new item  
+  - **Enter / F5** → Save modal  
+  - **ESC** → Close with ConfirmDialog when dirty  
+
+### Updated
+- Enhanced **AlertsSection**, which continues to use **real API data**, maintaining consistency in UI and behavior.
+- Improved **ContractsSection** and **AppointmentsSection** (citas) UI to match other sections.
+- Added filtering input to **Contracts** and **Prescriptions**, aligned with PatientList behavior.
+- Standardized modal validation (required fields, red indicators, toast messages) across all sections.
+
+### Current Data Sources
+- **Alerts** → Real API  
+- **Hobbies** → Real API  
+- **Prescriptions** → Real API  
+- **Contracts** → Mock (planned API integration later)  
+- **Appointments (Citas)** → Mock (awaiting backend module)
+
+### Fixed
+- Corrected shortcut behavior so F5 only triggers saves in the relevant open modal.
+- Fixed ESC logic in modals so ConfirmDialog appears consistently when fields are dirty.
+- Eliminated cross-module shortcut event leaks between hobbies and prescriptions.
+
+---
+
 ## [0.11.0] - 2025-11-24
 
 ### Added

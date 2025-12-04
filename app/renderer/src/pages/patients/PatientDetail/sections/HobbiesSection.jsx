@@ -1,8 +1,615 @@
-export default function HobbiesSection() {
+import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
+import { useOutletContext } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+    Smile,
+    Plus,
+    Trash2,
+    Edit2,
+    Search,
+    X,
+    Save,
+    AlertCircle,
+    Calendar
+} from 'lucide-react';
+import { useHotkeys } from '@/hooks/useHotkeys';
+import { ConfirmDialog } from '@/components/feedback';
+import { useToastStore } from '@/store/useToastStore';
+import * as hobbiesService from '@/services/hobbies.service';
+
+/* ==============================================================================================
+   MAIN SECTION COMPONENT
+   ============================================================================================== */
+export default function HobbiesSection({ patientId }) {
+    const { profile } = useOutletContext();
+    const activeId = patientId || profile?.id;
+    const { addToast } = useToastStore();
+
+    // ---------------------------------------------------------
+    // STATE
+    // ---------------------------------------------------------
+    const [hobbies, setHobbies] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    // Modal State
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [modalMode, setModalMode] = useState('create'); // 'create' | 'edit'
+    const [selectedHobby, setSelectedHobby] = useState(null);
+
+    // Delete Confirmation State
+    const [deleteId, setDeleteId] = useState(null);
+
+    // Filter State
+    const [filterText, setFilterText] = useState('');
+    const inputRef = useRef(null);
+
+    // F1 Shortcut - Focus Filter
+    useHotkeys(
+        {
+            f1: (e) => {
+                e.preventDefault();
+                inputRef.current?.focus();
+            }
+        },
+        [],
+        true
+    );
+
+    const filteredHobbies = hobbies.filter(hobby =>
+        hobby.name.toLowerCase().includes(filterText.toLowerCase())
+    );
+
+    // ---------------------------------------------------------
+    // DATA LOADING
+    // ---------------------------------------------------------
+    const loadHobbies = async () => {
+        if (!activeId) return;
+
+        setLoading(true);
+        try {
+            const data = await hobbiesService.getHobbiesByPatient(activeId);
+            console.log("data", data);
+            setHobbies(data);
+        } catch (error) {
+            console.error("Error loading hobbies:", error);
+            addToast({
+                type: 'error',
+                title: 'Error',
+                message: 'No se pudieron cargar los pasatiempos.'
+            });
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        loadHobbies();
+    }, [activeId]);
+
+    // ---------------------------------------------------------
+    // KEYBOARD SHORTCUTS (GLOBAL SECTION)
+    // ---------------------------------------------------------
+    // F2 -> Open Create Modal
+    useHotkeys(
+        {
+            f2: (e) => {
+                e.preventDefault();
+                openCreateModal();
+            }
+        },
+        [isModalOpen], // Dependencies
+        !isModalOpen   // Enabled only when modal is NOT open
+    );
+
+    // ---------------------------------------------------------
+    // ACTIONS
+    // ---------------------------------------------------------
+    const openCreateModal = () => {
+        setModalMode('create');
+        setSelectedHobby(null);
+        setIsModalOpen(true);
+    };
+
+    const openEditModal = (item) => {
+        setModalMode('edit');
+        setSelectedHobby(item);
+        setIsModalOpen(true);
+    };
+
+    const closeModal = () => {
+        setIsModalOpen(false);
+        setSelectedHobby(null);
+    };
+
+    const handleSave = async (formData) => {
+        try {
+            if (modalMode === 'edit' && selectedHobby) {
+                // Update existing
+                await hobbiesService.updateHobby(selectedHobby.id, formData);
+                addToast({
+                    type: 'success',
+                    title: 'Pasatiempo actualizado',
+                    message: 'El pasatiempo se actualizó correctamente.'
+                });
+            } else {
+                // Create new
+                await hobbiesService.createHobby(activeId, formData);
+                addToast({
+                    type: 'success',
+                    title: 'Pasatiempo creado',
+                    message: 'El pasatiempo se agregó correctamente.'
+                });
+            }
+            // Reload list
+            await loadHobbies();
+            closeModal();
+        } catch (error) {
+            console.error("Error saving hobby:", error);
+            addToast({
+                type: 'error',
+                title: 'Error',
+                message: error.message || 'Ocurrió un error al guardar el pasatiempo.'
+            });
+        }
+    };
+
+    const handleDeleteClick = (id) => {
+        setDeleteId(id);
+    };
+
+    const confirmDelete = async () => {
+        if (!deleteId) return;
+
+        try {
+            await hobbiesService.deleteHobby(deleteId);
+            addToast({
+                type: 'success',
+                title: 'Pasatiempo eliminado',
+                message: 'El pasatiempo ha sido eliminado.'
+            });
+            await loadHobbies();
+        } catch (error) {
+            console.error("Error deleting hobby:", error);
+            addToast({
+                type: 'error',
+                title: 'Error',
+                message: error.message || 'No se pudo eliminar el pasatiempo.'
+            });
+        } finally {
+            setDeleteId(null);
+        }
+    };
+
+    // ---------------------------------------------------------
+    // RENDER
+    // ---------------------------------------------------------
     return (
-        <div className="text-slate-600 dark:text-slate-300">
-            <h1 className="text-xl font-bold mb-4">Pasatiempos del paciente</h1>
-            <p>Sección en construcción...</p>
+        <div className="space-y-6 text-slate-800 dark:text-slate-100">
+            <Section
+                title="Pasatiempos"
+                icon={Smile}
+                subtitle="Intereses y actividades recreativas del paciente."
+                onAdd={openCreateModal}
+            >
+                {/* Filter Input */}
+                <div className="relative flex items-center bg-white border border-slate-300 dark:bg-secondary dark:border-slate-700 rounded-lg w-full max-w-sm mb-4">
+                    <Search size={16} className="absolute left-2 text-slate-500 dark:text-slate-400" />
+                    <input
+                        ref={inputRef}
+                        type="text"
+                        placeholder="Filtrar por título..."
+                        value={filterText}
+                        onChange={(e) => setFilterText(e.target.value)}
+                        className="
+                            pl-7 pr-4 py-1.5 bg-transparent
+                            text-slate-700 dark:text-slate-200
+                            text-sm outline-none
+                            placeholder:text-slate-500 dark:placeholder:text-slate-500
+                            w-full
+                        "
+                    />
+                </div>
+
+                {loading ? (
+                    <div className="py-8 text-center text-slate-400 text-sm animate-pulse">
+                        Cargando pasatiempos...
+                    </div>
+                ) : filteredHobbies.length === 0 ? (
+                    <EmptyState text={filterText ? "No se encontraron pasatiempos." : "No hay pasatiempos registrados. Presiona F2 para agregar uno."} />
+                ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {filteredHobbies.map(hobby => (
+                            <HobbyCard
+                                key={hobby.id}
+                                hobby={hobby}
+                                onEdit={openEditModal}
+                                onDelete={handleDeleteClick}
+                            />
+                        ))}
+                    </div>
+                )}
+            </Section>
+
+            {/* MODAL */}
+            <HobbyModal
+                open={isModalOpen}
+                mode={modalMode}
+                initialData={selectedHobby}
+                onSave={handleSave}
+                onClose={closeModal}
+                section="hobbies"
+            />
+
+            {/* DELETE CONFIRMATION */}
+            <ConfirmDialog
+                open={!!deleteId}
+                title="Eliminar Pasatiempo"
+                message="¿Estás seguro de que deseas eliminar este pasatiempo? Esta acción no se puede deshacer."
+                confirmLabel="Sí, eliminar"
+                cancelLabel="Cancelar"
+                confirmVariant="error"
+                onConfirm={confirmDelete}
+                onCancel={() => setDeleteId(null)}
+            />
+        </div>
+    );
+}
+
+/* ==============================================================================================
+   MODAL COMPONENT
+   ============================================================================================== */
+function HobbyModal({
+    open,
+    mode = 'create',
+    initialData = null,
+    onSave,
+    onClose,
+    section = 'hobbies'
+}) {
+    const { addToast } = useToastStore();
+    const titleInputRef = useRef(null);
+
+    // State
+    const initialForm = { name: '' };
+    const [form, setForm] = useState(initialForm);
+    const [errors, setErrors] = useState({});
+    const [showConfirmDiscard, setShowConfirmDiscard] = useState(false);
+
+    // ---------------------------------------------------------
+    // LIFECYCLE & EFFECTS
+    // ---------------------------------------------------------
+    useEffect(() => {
+        if (open) {
+            if (mode === 'edit' && initialData) {
+                setForm({
+                    name: initialData.name || ''
+                });
+            } else {
+                setForm(initialForm);
+            }
+            setErrors({});
+            setShowConfirmDiscard(false);
+
+            // Focus title
+            setTimeout(() => {
+                titleInputRef.current?.focus();
+            }, 100);
+        }
+    }, [open, mode, initialData]);
+
+    // ---------------------------------------------------------
+    // HELPERS
+    // ---------------------------------------------------------
+    const hasChanges = () => {
+        if (mode === 'create') {
+            return form.name.trim() !== '';
+        }
+        if (mode === 'edit' && initialData) {
+            return form.name !== initialData.name;
+        }
+        return false;
+    };
+
+    const validate = () => {
+        const newErrors = {};
+        if (!form.name.trim()) newErrors.name = 'Campo obligatorio';
+
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
+    };
+
+    // ---------------------------------------------------------
+    // HANDLERS
+    // ---------------------------------------------------------
+    const handleChange = (e) => {
+        const { name, value } = e.target;
+        setForm(prev => ({ ...prev, [name]: value }));
+        if (errors[name]) {
+            setErrors(prev => ({ ...prev, [name]: null }));
+        }
+    };
+
+    const handleSubmit = () => {
+        if (!validate()) {
+            addToast({
+                type: 'error',
+                title: 'Campos requeridos',
+                message: 'Por favor completa todos los campos obligatorios.'
+            });
+            return;
+        }
+        onSave(form);
+    };
+
+    const handleCloseRequest = () => {
+        if (hasChanges()) {
+            setShowConfirmDiscard(true);
+        } else {
+            onClose();
+        }
+    };
+
+    // ---------------------------------------------------------
+    // KEYBOARD SHORTCUTS
+    // ---------------------------------------------------------
+
+    // ⚡ F5 from Electron — saves the form just like pressing Enter
+    useEffect(() => {
+        if (!open) return;
+
+        const unsubscribe = window.electronAPI?.onSaveShortcut(() => {
+            if (!open) return;
+            // Check if we are in the correct section
+            if (section && section !== 'hobbies') return;
+
+            if (showConfirmDiscard) return;
+            handleSubmit();
+        });
+
+        return () => unsubscribe?.();
+    }, [open, showConfirmDiscard, form, section]);
+
+    // ⚡ ESC Key - Explicit handling to ensure ConfirmDialog works
+    useEffect(() => {
+        if (!open) return;
+
+        const handleKeyDown = (e) => {
+            if (e.key === 'Escape') {
+                if (showConfirmDiscard) return;
+                e.preventDefault();
+                e.stopPropagation();
+                handleCloseRequest();
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [open, showConfirmDiscard, form]);
+
+    useHotkeys(
+        {
+            enter: () => {
+                if (!open || showConfirmDiscard) return;
+                handleSubmit();
+            }
+        },
+        [open, showConfirmDiscard, form],
+        open
+    );
+
+    // ---------------------------------------------------------
+    // RENDER
+    // ---------------------------------------------------------
+    if (!open) return null;
+
+    return createPortal(
+        <>
+            <AnimatePresence>
+                {open && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+                        {/* BACKDROP CLICK HANDLER */}
+                        <div className="absolute inset-0" onClick={handleCloseRequest} />
+
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.95 }}
+                            className="relative bg-white dark:bg-secondary rounded-2xl shadow-xl w-full max-w-md overflow-hidden flex flex-col"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            {/* HEADER */}
+                            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800">
+                                <h3 className="font-bold text-lg text-slate-800 dark:text-slate-100">
+                                    {mode === 'create' ? 'Nuevo Pasatiempo' : 'Editar Pasatiempo'}
+                                </h3>
+                                <button
+                                    onClick={handleCloseRequest}
+                                    className="p-1 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 transition-colors"
+                                >
+                                    <X size={20} />
+                                </button>
+                            </div>
+
+                            {/* BODY */}
+                            <div className="p-6 space-y-5">
+                                {/* Name Field */}
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5 label-required">
+                                        Nombre del Pasatiempo
+                                    </label>
+                                    <input
+                                        ref={titleInputRef}
+                                        name="name"
+                                        value={form.name}
+                                        onChange={handleChange}
+                                        placeholder="Ej. Pintura, Natación..."
+                                        className={`
+                                            w-full px-3 py-2 rounded-lg border 
+                                            bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-100
+                                            focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary
+                                            transition-all
+                                            ${errors.name
+                                                ? 'border-error ring-1 ring-error/50'
+                                                : 'border-slate-200 dark:border-slate-700'}
+                                        `}
+                                    />
+                                    {errors.name && (
+                                        <p className="text-xs text-error mt-1 flex items-center gap-1">
+                                            <AlertCircle size={12} />
+                                            {errors.name}
+                                        </p>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* FOOTER */}
+                            <div className="flex items-center justify-end gap-3 px-6 py-4 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-800">
+                                <button
+                                    onClick={handleCloseRequest}
+                                    className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 transition-colors"
+                                >
+                                    Cancelar
+                                </button>
+                                <button
+                                    onClick={handleSubmit}
+                                    className="
+                                        flex items-center gap-2 px-4 py-2 rounded-lg
+                                        bg-primary text-white font-medium text-sm
+                                        hover:bg-primary-dark shadow-sm hover:shadow
+                                        transition-all
+                                    "
+                                >
+                                    <Save size={16} />
+                                    Guardar
+                                </button>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+
+            {/* DISCARD CHANGES CONFIRMATION */}
+            <ConfirmDialog
+                open={showConfirmDiscard}
+                title="¿Descartar cambios?"
+                message="Tienes cambios sin guardar. ¿Estás seguro de que deseas cerrar y perder los cambios?"
+                confirmLabel="Sí, descartar"
+                cancelLabel="Continuar editando"
+                confirmVariant="error"
+                onConfirm={() => {
+                    setShowConfirmDiscard(false);
+                    onClose();
+                }}
+                onCancel={() => setShowConfirmDiscard(false)}
+            />
+        </>,
+        document.body
+    );
+}
+
+/* ==============================================================================================
+   HELPER COMPONENTS
+   ============================================================================================== */
+
+function Section({ title, icon: Icon, subtitle, children, onAdd }) {
+    return (
+        <div className="
+            bg-white dark:bg-secondary
+            border border-slate-200 dark:border-slate-700
+            rounded-2xl p-5 shadow-sm
+            space-y-4
+        ">
+            <div className="flex items-start justify-between">
+                <div>
+                    <h2 className="text-lg font-bold flex items-center gap-2 text-primary">
+                        <Icon size={20} className="opacity-80" />
+                        {title}
+                    </h2>
+                    {subtitle && (
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+                            {subtitle}
+                        </p>
+                    )}
+                </div>
+                <button
+                    onClick={onAdd}
+                    className="
+                        flex items-center gap-1.5 px-3 py-1.5
+                        bg-primary/10 text-primary hover:bg-primary hover:text-white
+                        rounded-lg text-xs font-semibold transition-all
+                    "
+                >
+                    <Plus size={14} />
+                    Agregar
+                </button>
+            </div>
+            <div className="mt-2">
+                {children}
+            </div>
+        </div>
+    );
+}
+
+function HobbyCard({ hobby, onEdit, onDelete }) {
+    return (
+        <div className="
+            group relative flex items-center gap-3
+            bg-white dark:bg-secondary
+            border border-slate-200 dark:border-slate-700
+            rounded-xl p-4 shadow-sm
+            hover:shadow-md hover:border-primary/30 transition-all duration-200
+        ">
+            {/* Icon */}
+            <div className="p-2 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400">
+                <Smile size={20} />
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 min-w-0">
+                <h3 className="font-semibold text-sm text-slate-800 dark:text-slate-100 leading-tight truncate">
+                    {hobby.name}
+                </h3>
+                <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 mt-1">
+                    <Calendar size={12} />
+                    <span>
+                        {new Date(hobby.createdAt).toLocaleDateString('es-MX', {
+                            year: 'numeric', month: 'short', day: 'numeric'
+                        })}
+                    </span>
+                </div>
+            </div>
+
+            {/* Actions Overlay (Visible on Hover) */}
+            <div className="absolute top-1/2 -translate-y-1/2 right-3 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-white/90 dark:bg-slate-800/90 rounded-lg p-1 shadow-sm">
+                <button
+                    onClick={() => onEdit(hobby)}
+                    className="p-1.5 text-slate-400 hover:text-blue-500 transition-colors"
+                    title="Editar"
+                >
+                    <Edit2 size={14} />
+                </button>
+                <button
+                    onClick={() => onDelete(hobby.id)}
+                    className="p-1.5 text-slate-400 hover:text-red-500 transition-colors"
+                    title="Eliminar"
+                >
+                    <Trash2 size={14} />
+                </button>
+            </div>
+        </div>
+    );
+}
+
+function EmptyState({ text }) {
+    return (
+        <div className="text-center py-8 border border-dashed border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50/50 dark:bg-slate-800/30">
+            <div className="flex justify-center mb-2">
+                <Smile size={32} className="text-slate-300 dark:text-slate-600" />
+            </div>
+            <p className="text-sm text-slate-400 dark:text-slate-500 italic">
+                {text}
+            </p>
         </div>
     );
 }

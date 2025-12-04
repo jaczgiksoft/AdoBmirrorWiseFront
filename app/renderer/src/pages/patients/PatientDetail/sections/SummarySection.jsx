@@ -90,8 +90,8 @@ export default function SummarySection() {
                                         className="px-3 py-1 rounded-full text-xs text-white font-medium shadow"
                                         style={{ background: t.color }}
                                     >
-                            {t.name}
-                        </span>
+                                        {t.name}
+                                    </span>
                                 ))}
                             </div>
                         )}
@@ -173,9 +173,9 @@ export default function SummarySection() {
                         rounded-xl border shadow-sm p-3
                         flex flex-col gap-1
                         ${a.is_admin_alert
-                                        ? "bg-yellow-50 dark:bg-yellow-900/20 border-yellow-300"
-                                        : "bg-red-50 dark:bg-red-900/20 border-red-300"
-                                    }
+                                            ? "bg-yellow-50 dark:bg-yellow-900/20 border-yellow-300"
+                                            : "bg-red-50 dark:bg-red-900/20 border-red-300"
+                                        }
                     `}
                                 >
                                     {/* Título + Badge */}
@@ -194,13 +194,13 @@ export default function SummarySection() {
                                             className={`
                                 text-[9px] px-1.5 py-[1px] rounded-full font-medium
                                 ${a.is_admin_alert
-                                                ? "bg-yellow-200/70 text-yellow-800"
-                                                : "bg-red-200/70 text-red-800"
-                                            }
+                                                    ? "bg-yellow-200/70 text-yellow-800"
+                                                    : "bg-red-200/70 text-red-800"
+                                                }
                             `}
                                         >
-                            {a.is_admin_alert ? "Admin" : "Clínica"}
-                        </span>
+                                            {a.is_admin_alert ? "Admin" : "Clínica"}
+                                        </span>
                                     </div>
 
                                     {/* Descripción */}

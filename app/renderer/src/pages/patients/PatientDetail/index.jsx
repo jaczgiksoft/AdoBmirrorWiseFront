@@ -26,7 +26,7 @@ export default function PatientDetail() {
 
             const data = await getPatientProfile(id);
             setProfile(data);
-            console.log(data);
+            console.log("Información del paciente:", data);
 
             const clinical = data.alerts?.filter(a => !a.is_admin_alert) || [];
             const admin = data.alerts?.filter(a => a.is_admin_alert) || [];
