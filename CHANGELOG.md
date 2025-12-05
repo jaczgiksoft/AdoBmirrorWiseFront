@@ -10,6 +10,52 @@ Este proyecto sigue [Semantic Versioning](https://semver.org/lang/es/).
 
 ---
 
+## [0.16.0] - 2025-12-05
+
+### Added
+- Implemented **advanced patient gallery system**, including:
+  - Full image filtering (Facial, Oclusal, Intraoral, Radiographs, individual views).
+  - Fullscreen **Comparison Viewer** supporting 1–3 images with:
+    - Independent zoom & pan using react-zoom-pan-pinch
+    - Keyboard navigation
+    - Smooth modal transitions
+  - Automatic **Cropper Modal** on image upload:
+    - Zoom, rotate, crop, reset
+    - Saves cropped output as Blob for API usage
+
+- Added complete **New Gallery Creation Flow**:
+  - Stepper workflow: Nombre → Fotos Clínicas → Radiografías
+  - Drag-and-drop image upload per required slot
+  - Optional X-ray upload system
+  - Counters, validation, dynamic previews
+  - Integrated cropper before saving images
+
+### Improved
+- Updated Gallery UI to use project primary theme color (`--color-primary: #00b8db`):
+  - Buttons, selectors, pills, chips, highlights
+  - Dark/light mode consistency
+  - Cleaner spacing and typography alignment
+
+- Enhanced **GalleryViewer**:
+  - New sidebar with search + active collection highlight
+  - Smooth transition between collections and images
+  - Correct z-index handling to overlay global layout
+  - Better fullscreen layout handling
+
+- Improved **PatientDetail Splash Screen**:
+  - Premium clinical gradient background
+  - Central pulse loader with glow effects
+  - Decorative top glow blending
+  - **Dual synchronized ripple layers** on card border
+  - Ripple animation synced with central pulse for medical-grade feel
+
+### Fixed
+- QuickAccessBar appearing above fullscreen viewer (z-index corrected).
+- Layout overflow issues in fullscreen gallery comparison mode.
+- Scroll and spacing inconsistencies when switching between collections.
+
+---
+
 ## [0.15.0] - 2025-12-05
 
 ### Added

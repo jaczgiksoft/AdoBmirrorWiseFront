@@ -8,9 +8,12 @@ import {
     ArrowLeft,
     Image as ImageIcon,
     CheckCircle2,
-    Search
+    Search,
+    SquareSplitHorizontal
 } from 'lucide-react';
 import ImageLightbox from './ImageLightbox';
+import AdvancedImageViewer from './AdvancedImageViewer';
+
 
 const MANDATORY_KEYS = [
     { key: 'facial_front', label: 'Facial Front' },
@@ -33,6 +36,34 @@ export default function GalleryViewer({ collections, initialCollectionId, onClos
     const [lightboxIndex, setLightboxIndex] = useState(null);
     const [sidebarSearch, setSidebarSearch] = useState('');
     const sidebarRef = useRef(null);
+
+    // --- COMPARISON STATE ---
+    const [isComparisonMode, setIsComparisonMode] = useState(false);
+    const [selectedImages, setSelectedImages] = useState([]);
+    const [showAdvancedViewer, setShowAdvancedViewer] = useState(false);
+
+    // Toggle logic for comparison
+    const toggleComparisonMode = () => {
+        setIsComparisonMode(prev => !prev);
+        setSelectedImages([]); // Reset selection when toggling
+    };
+
+    const handleImageToggle = (url) => {
+        setSelectedImages(prev => {
+            if (prev.includes(url)) {
+                return prev.filter(i => i !== url);
+            }
+            if (prev.length >= 3) return prev; // Limit to 3
+            return [...prev, url];
+        });
+    };
+
+    const handleOpenComparison = () => {
+        if (selectedImages.length > 0) {
+            setShowAdvancedViewer(true);
+        }
+    };
+
 
     const currentCollection = collections[currentIndex];
 
@@ -197,14 +228,59 @@ export default function GalleryViewer({ collections, initialCollectionId, onClos
                     </h2>
                 </div>
 
-                {/* Right: Close */}
-                <button
-                    onClick={onClose}
-                    className="p-2 hover:bg-red-50 hover:text-red-500 rounded-full transition-colors text-slate-400"
-                    title="Cerrar visor"
-                >
-                    <X size={24} />
-                </button>
+                {/* Right: Actions */}
+                <div className="flex items-center gap-3">
+                    {/* Comparison Controls */}
+                    <div className="flex items-center gap-2 mr-4 pl-4 border-l border-slate-200 dark:border-slate-700">
+                        {isComparisonMode ? (
+                            <>
+                                <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                                    {selectedImages.length} / 3
+                                </span>
+                                <button
+                                    onClick={handleOpenComparison}
+                                    disabled={selectedImages.length === 0}
+                                    className="
+                                        px-3 py-1.5 bg-primary hover:bg-primary-hover text-white text-xs font-bold rounded-lg
+                                        disabled:opacity-50 disabled:cursor-not-allowed transition-all
+                                        shadow-sm shadow-primary/20
+                                    "
+                                >
+                                    Ver Comparación
+                                </button>
+                                <button
+                                    onClick={toggleComparisonMode}
+                                    className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                                    title="Salir de comparación"
+                                >
+                                    <X size={18} />
+                                </button>
+                            </>
+                        ) : (
+                            <button
+                                onClick={toggleComparisonMode}
+                                className="
+                                    flex items-center gap-2 px-3 py-1.5 
+                                    text-xs font-medium text-slate-600 dark:text-slate-300
+                                    hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors
+                                "
+                                title="Activar modo comparación"
+                            >
+                                <SquareSplitHorizontal size={16} />
+                                Comparar
+                            </button>
+                        )}
+                    </div>
+
+                    {/* Close */}
+                    <button
+                        onClick={onClose}
+                        className="p-2 hover:bg-red-50 hover:text-red-500 rounded-full transition-colors text-slate-400"
+                        title="Cerrar visor"
+                    >
+                        <X size={24} />
+                    </button>
+                </div>
             </div>
 
             {/* --- MAIN LAYOUT (2 COLUMNS) --- */}
@@ -377,8 +453,17 @@ export default function GalleryViewer({ collections, initialCollectionId, onClos
                                                 key={key}
                                                 label={label}
                                                 src={currentCollection.photos[key]}
-                                                onPreview={() => openLightbox(currentCollection.photos[key])}
+                                                onPreview={() => {
+                                                    if (isComparisonMode) {
+                                                        handleImageToggle(currentCollection.photos[key]);
+                                                    } else {
+                                                        openLightbox(currentCollection.photos[key]);
+                                                    }
+                                                }}
+                                                isSelectable={isComparisonMode}
+                                                isSelected={selectedImages.includes(currentCollection.photos[key])}
                                             />
+
                                         );
                                     })}
                                 </div>
@@ -405,8 +490,17 @@ export default function GalleryViewer({ collections, initialCollectionId, onClos
                                                     key={idx}
                                                     label={`Radiografía ${idx + 1}`}
                                                     src={url}
-                                                    onPreview={() => openLightbox(url)}
+                                                    onPreview={() => {
+                                                        if (isComparisonMode) {
+                                                            handleImageToggle(url);
+                                                        } else {
+                                                            openLightbox(url);
+                                                        }
+                                                    }}
+                                                    isSelectable={isComparisonMode}
+                                                    isSelected={selectedImages.includes(url)}
                                                 />
+
                                             );
                                         })}
                                     </div>
@@ -433,11 +527,22 @@ export default function GalleryViewer({ collections, initialCollectionId, onClos
                     onPrev={() => setLightboxIndex(prev => (prev - 1 + lightboxImages.length) % lightboxImages.length)}
                 />
             )}
+
+            {/* --- ADVANCED VIEWER --- */}
+            {showAdvancedViewer && (
+                <AdvancedImageViewer
+                    images={selectedImages}
+                    onClose={() => setShowAdvancedViewer(false)}
+                    onRemoveImage={(url) => handleImageToggle(url)}
+                />
+            )}
+
         </div>
     );
 }
 
-function ImageCard({ label, src, onPreview }) {
+function ImageCard({ label, src, onPreview, isSelectable, isSelected }) {
+
     return (
         <div
             className="
@@ -446,9 +551,11 @@ function ImageCard({ label, src, onPreview }) {
                 overflow-hidden shadow-sm hover:shadow-md transition-all
             "
         >
-            <div className="aspect-[4/3] bg-slate-100 dark:bg-slate-900 relative overflow-hidden">
+
+            <div className={`aspect-[4/3] bg-slate-100 dark:bg-slate-900 relative overflow-hidden ${isSelected ? 'ring-4 ring-primary ring-inset' : ''}`}>
                 {src ? (
                     <>
+
                         <img
                             src={src}
                             alt={label}
@@ -462,11 +569,21 @@ function ImageCard({ label, src, onPreview }) {
                             "
                             onClick={onPreview}
                         >
-                            <Maximize2 className="text-white drop-shadow-md" size={24} />
+                            {isSelectable ? (
+                                <div className={`
+                                    w-8 h-8 rounded-full flex items-center justify-center transition-all
+                                    ${isSelected ? 'bg-primary text-white scale-110' : 'bg-white/20 hover:bg-white/40 border-2 border-white'}
+                                `}>
+                                    {isSelected ? <CheckCircle2 size={18} /> : null}
+                                </div>
+                            ) : (
+                                <Maximize2 className="text-white drop-shadow-md" size={24} />
+                            )}
                         </div>
                     </>
                 ) : (
                     <div className="w-full h-full flex items-center justify-center text-slate-300 dark:text-slate-600">
+
                         <ImageIcon size={32} />
                     </div>
                 )}

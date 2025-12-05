@@ -60,7 +60,7 @@ export default function QuickAccessBar({ onAdd }) {
         <div
             className="
     fixed left-0 top-0 h-full w-[60px]
-    flex flex-col items-center py-4 gap-3 z-[60]
+    flex flex-col items-center py-4 gap-3 z-50
     border-r
     bg-slate-200 border-slate-300
     dark:bg-slate-900 dark:border-slate-800
