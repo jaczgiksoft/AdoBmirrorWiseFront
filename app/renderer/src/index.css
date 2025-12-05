@@ -12,7 +12,7 @@
 
     /* 🌟 Sombras personalizadas */
     --shadow-soft: 0 2px 8px rgba(0, 0, 0, 0.15);
-    --shadow-hard: 0 4px 16px rgba(0,  0, 0, 0.25);
+    --shadow-hard: 0 4px 16px rgba(0, 0, 0, 0.25);
 }
 
 /* ──────────────────────────────── */
@@ -28,18 +28,7 @@ body {
 
 /* Inputs — Light Mode */
 .input {
-    @apply
-    w-full
-    px-3 py-2
-    rounded-lg
-    border
-    border-slate-300
-    bg-white
-    text-slate-800
-    placeholder-slate-400
-    outline-none
-    focus:ring-2 focus:ring-primary
-    transition;
+    @apply w-full px-3 py-2 rounded-lg border border-slate-300 bg-white text-slate-800 placeholder-slate-400 outline-none focus:ring-2 focus:ring-primary transition;
 }
 
 /* Botones */
@@ -64,11 +53,7 @@ body {
 
 /* Inputs — Dark Mode */
 .dark .input {
-    @apply
-    bg-slate-900
-    border-slate-700
-    text-slate-200
-    placeholder-slate-500;
+    @apply bg-slate-900 border-slate-700 text-slate-200 placeholder-slate-500;
 }
 
 /* Disabled / ReadOnly */
@@ -129,8 +114,15 @@ body {
 /* ✨ ANIMACIONES                   */
 /* ──────────────────────────────── */
 @keyframes pulseRing {
-    0%, 100% { box-shadow: 0 0 0 0 rgba(0, 191, 255, 0.4); }
-    50% { box-shadow: 0 0 10px 2px rgba(0, 191, 255, 0.5); }
+
+    0%,
+    100% {
+        box-shadow: 0 0 0 0 rgba(0, 191, 255, 0.4);
+    }
+
+    50% {
+        box-shadow: 0 0 10px 2px rgba(0, 191, 255, 0.5);
+    }
 }
 
 .btn-selected {
@@ -139,9 +131,20 @@ body {
 
 /* Tooltip ring animation */
 @keyframes pulse-ring {
-    0% { transform: scale(1); opacity: 0.35; }
-    70% { transform: scale(1.8); opacity: 0; }
-    100% { transform: scale(1.8); opacity: 0; }
+    0% {
+        transform: scale(1);
+        opacity: 0.35;
+    }
+
+    70% {
+        transform: scale(1.8);
+        opacity: 0;
+    }
+
+    100% {
+        transform: scale(1.8);
+        opacity: 0;
+    }
 }
 
 .animate-pulse-ring {
@@ -158,7 +161,8 @@ body {
 }
 
 /* Evita scroll horizontal */
-html, body {
+html,
+body {
     overflow-x: hidden;
 }
 
@@ -175,7 +179,8 @@ html, body {
 }
 
 ::-webkit-scrollbar-thumb {
-    background: rgba(100, 116, 139, 0.4); /* slate-500/40 */
+    background: rgba(100, 116, 139, 0.4);
+    /* slate-500/40 */
     border-radius: 9999px;
 }
 
@@ -188,7 +193,7 @@ html, body {
 ==================================================== */
 * {
     scrollbar-width: thin;
-    scrollbar-color: rgba(100,116,139,0.4) transparent;
+    scrollbar-color: rgba(100, 116, 139, 0.4) transparent;
 }
 
 /* LIGHT MODE */
@@ -197,15 +202,36 @@ html, body {
 }
 
 .dark ::-webkit-scrollbar-thumb {
-    background: rgba(148, 163, 184, 0.4); /* slate-300/40 */
+    background: rgba(148, 163, 184, 0.4);
+    /* slate-300/40 */
 }
 
 /* FIREFOX */
 * {
     scrollbar-width: thin;
-    scrollbar-color: rgba(100,116,139,0.4) transparent;
+    scrollbar-color: rgba(100, 116, 139, 0.4) transparent;
 }
 
 .dark * {
-    scrollbar-color: rgba(148,163,184,0.4) transparent;
+    scrollbar-color: rgba(148, 163, 184, 0.4) transparent;
+}
+
+/* ====================================================
+   SELECT OPTION STYLING
+==================================================== */
+select option {
+    background-color: #0f172a;
+    /* dark slate */
+    color: white;
+}
+
+select option:hover {
+    background-color: #1e293b;
+    /* lighter slate */
+}
+
+select option:checked {
+    background-color: var(--color-primary) !important;
+    /* #00b8db */
+    color: white;
 }

@@ -10,6 +10,60 @@ Este proyecto sigue [Semantic Versioning](https://semver.org/lang/es/).
 
 ---
 
+## [0.14.0] - 2025-12-05
+
+### Added
+- Implemented full **Gallery module** inside Patient Detail, including:
+  - Gallery listing with folder-style cards
+  - Search by name and sort by creation/modification date
+  - Visual completeness indicator for required clinical photos
+  - Mock dataset for initial UI/UX validation
+
+- Added **Gallery Viewer** with:
+  - Two-column layout (sidebar + content viewer)
+  - Sidebar search, active collection highlighting, and quick collection switching
+  - Keyboard navigation (← → to change collection, ESC to exit)
+  - Full image lightbox with zoom and keyboard navigation
+  - Support for both clinical photos and optional X-rays
+
+- Added **Gallery Creator (Collection Wizard)**:
+  - Multi-step creation flow (Name → Clinical Photos → X-Rays)
+  - Modern dropzone-based uploader for all 8 required clinical photos
+  - Optional X-ray uploader with add/remove/replace support
+  - New compact and theme-aware Select component for collection naming
+  - Integrated “New Gallery” action button in GallerySection
+
+### Changed
+- Gallery Viewer is now rendered at the **PatientDetailLayout** level to correctly cover:
+  - Patient sidebar
+  - Patient detail header
+  - Patient section content  
+  while preserving visibility of global header and quick-access bar.
+- Updated the design of:
+  - “New Gallery” button to match NotesSection styling
+  - Save button (“Guardar Colección”) with project primary color (`#00b8db`)
+  - Wizard stepper to a modern progress-rail design with animated states
+- Improved spacing, dark-mode contrasts, and typography across creator and viewer screens.
+
+### Fixed
+- Resolved **React Hooks order error** caused by conditional viewer rendering inside sections.
+- Fixed layout bleed where global header overlapped the viewer when using `fixed` overlays.
+- Corrected select dropdown styling in dark mode to avoid default grey browser menu.
+- Eliminated misalignment issues in the wizard header caused by oversized components.
+
+### Improved
+- Enhanced UX flow for creating a gallery:
+  - Name can be selected at any point in the wizard
+  - Immediate visual feedback when required photos are uploaded
+  - Cleaner hierarchy and spacing in header and content areas
+- Standardized component design across:
+  - GallerySection
+  - GalleryViewer
+  - GalleryCreator
+- Unified usage of `--color-primary (#00b8db)` for focus states, accents, and progress markers.
+
+---
+
 ## [0.13.0] - 2025-12-04
 
 ### Added

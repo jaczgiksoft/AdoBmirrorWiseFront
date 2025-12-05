@@ -35,6 +35,7 @@ import BudgetsSection from "@/pages/patients/PatientDetail/sections/BudgetsSecti
 import HobbiesSection from "@/pages/patients/PatientDetail/sections/HobbiesSection";
 import ConversationsSection from "@/pages/patients/PatientDetail/sections/ConversationsSection";
 import NotesSection from "@/pages/patients/PatientDetail/sections/NotesSection";
+import GallerySection from "@/pages/patients/PatientDetail/sections/GallerySection";
 import OdontogramSection from "@/pages/patients/PatientDetail/sections/OdontogramSection";
 import ElasticsSection from "@/pages/patients/PatientDetail/sections/ElasticsSection";
 import AccountSection from "@/pages/patients/PatientDetail/sections/AccountSection";
@@ -226,6 +227,7 @@ export default function AppRouter() {
                     <Route path="hobbies" element={<HobbiesSection />} />
                     <Route path="conversations" element={<ConversationsSection />} />
                     <Route path="notes" element={<NotesSection />} />
+                    <Route path="gallery" element={<GallerySection />} />
                     <Route path="odontogram" element={<OdontogramSection />} />
                     <Route path="elastics" element={<ElasticsSection />} />
                     <Route path="account" element={<AccountSection />} />

@@ -40,6 +40,7 @@ const links = [
     { id: "hobbies", label: "Pasatiempos", icon: Sparkles },
     { id: "conversations", label: "Conversaciones", icon: MessageSquare },
     { id: "notes", label: "Notas", icon: StickyNote },
+    { id: "gallery", label: "Galería", icon: StickyNote },
     { id: "odontogram", label: "Odontograma", icon: Scan },
     { id: "elastics", label: "Elásticos", icon: Orbit },
     { id: "account", label: "Cuenta", icon: ShieldUser },
@@ -47,7 +48,7 @@ const links = [
 
 export default function PatientSidebar({ id, profile }) {
     return (
-        <aside className="w-64 p-4 border-r border-slate-200 dark:border-slate-700 bg-white dark:bg-secondary h-full">
+        <aside className="w-64 p-4 border-r border-slate-200 dark:border-slate-700 bg-white dark:bg-secondary h-full flex flex-col">
             <div className="flex flex-col items-center mb-6">
                 {profile.photo_url ? (
                     <img
@@ -76,17 +77,16 @@ export default function PatientSidebar({ id, profile }) {
                     {profile.first_name} {profile.last_name}
                 </h2>
             </div>
-
-            <nav className="flex flex-col gap-1">
+            {/* NAV SCROLLEABLE */}
+            <nav className="flex flex-col gap-1 overflow-y-auto pr-1" style={{ maxHeight: "calc(100vh - 200px)" }}>
                 {links.map(({ id: section, label, icon: Icon }) => (
                     <NavLink
                         key={section}
                         to={`/patients/${id}/${section}`}
                         className={({ isActive }) =>
-                            `flex items-center gap-3 px-3 py-2 rounded-lg transition-all ${
-                                isActive
-                                    ? "bg-primary text-white"
-                                    : "text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-dark/40"
+                            `flex items-center gap-3 px-3 py-2 rounded-lg transition-all ${isActive
+                                ? "bg-primary text-white"
+                                : "text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-dark/40"
                             }`
                         }
                     >
