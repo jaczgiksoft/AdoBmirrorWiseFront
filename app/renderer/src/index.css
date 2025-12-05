@@ -15,6 +15,68 @@
     --shadow-hard: 0 4px 16px rgba(0, 0, 0, 0.25);
 }
 
+/* 🎨 Custom Primary Utilities */
+.text-primary {
+    color: var(--color-primary);
+}
+
+.hover\:text-primary:hover {
+    color: var(--color-primary);
+}
+
+.bg-primary {
+    background-color: var(--color-primary);
+}
+
+.hover\:bg-primary:hover {
+    background-color: var(--color-primary);
+}
+
+.bg-primary\/5 {
+    background-color: color-mix(in srgb, var(--color-primary) 5%, transparent);
+}
+
+.bg-primary\/10 {
+    background-color: color-mix(in srgb, var(--color-primary) 10%, transparent);
+}
+
+.bg-primary\/20 {
+    background-color: color-mix(in srgb, var(--color-primary) 20%, transparent);
+}
+
+.hover\:bg-primary\/10:hover {
+    background-color: color-mix(in srgb, var(--color-primary) 10%, transparent);
+}
+
+.border-primary {
+    border-color: var(--color-primary);
+}
+
+.border-primary\/20 {
+    border-color: color-mix(in srgb, var(--color-primary) 20%, transparent);
+}
+
+.border-primary\/50 {
+    border-color: color-mix(in srgb, var(--color-primary) 50%, transparent);
+}
+
+.ring-primary {
+    --tw-ring-color: var(--color-primary);
+}
+
+.focus\:ring-primary:focus {
+    --tw-ring-color: var(--color-primary);
+}
+
+.focus\:ring-primary\/50:focus {
+    --tw-ring-color: color-mix(in srgb, var(--color-primary) 50%, transparent);
+}
+
+.shadow-primary\/20 {
+    --tw-shadow-color: color-mix(in srgb, var(--color-primary) 20%, transparent);
+}
+
+
 /* ──────────────────────────────── */
 /* 🌞 LIGHT MODE (DEFAULT)          */
 /* ──────────────────────────────── */

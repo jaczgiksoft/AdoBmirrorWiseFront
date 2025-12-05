@@ -190,7 +190,7 @@ export default function GallerySection() {
 
                                     <Folder
                                         size={48}
-                                        className="text-blue-400 group-hover:text-blue-500 transition-colors mb-3"
+                                        className="text-primary group-hover:text-primary/80 transition-colors mb-3"
                                         strokeWidth={1.5}
                                     />
 

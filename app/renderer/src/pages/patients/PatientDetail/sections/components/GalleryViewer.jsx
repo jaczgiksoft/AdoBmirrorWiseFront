@@ -69,16 +69,81 @@ export default function GalleryViewer({ collections, initialCollectionId, onClos
         }
     }, [currentIndex]);
 
+    // --- FILTER CONFIG & STATE ---
+    const FILTER_CATEGORIES = {
+        ALL: { label: 'Todos', keys: [] },
+        FACIAL: { label: 'Facial', keys: ['facial_front', 'facial_smiling', 'facial_profile'] },
+        OCCLUSAL: { label: 'Oclusal', keys: ['occlusal_upper', 'occlusal_lower'] },
+        INTRAORAL: { label: 'Intraoral', keys: ['intraoral_left', 'intraoral_center', 'intraoral_right'] },
+        XRAY: { label: 'Radiografías', keys: [], type: 'xray' }
+    };
+
+    const [activeCategory, setActiveCategory] = useState('ALL');
+    const [activeSpecific, setActiveSpecific] = useState(null); // specific key or index
+
+    // Reset specific filter when category changes
+    const handleCategoryChange = (cat) => {
+        setActiveCategory(cat);
+        setActiveSpecific(null);
+    };
+
+    // --- VISIBILITY LOGIC ---
+    const visibleKeys = useMemo(() => {
+        if (activeCategory === 'ALL') return MANDATORY_KEYS.map(k => k.key);
+        if (FILTER_CATEGORIES[activeCategory].type === 'xray') return [];
+        return FILTER_CATEGORIES[activeCategory].keys;
+    }, [activeCategory]);
+
+    const showClinical = activeCategory !== 'XRAY';
+    const showXrays = activeCategory === 'ALL' || activeCategory === 'XRAY';
+
+    // Helper to check if a specific image is visible
+    const isPhotoVisible = (key) => {
+        // If specific filter is active, only show that one
+        if (activeSpecific && activeSpecific !== key) return false;
+        // Otherwise check category visibility
+        return visibleKeys.includes(key);
+    };
+
+    const isXrayVisible = (idx) => {
+        const xrayKey = `xray_${idx}`;
+        if (activeSpecific && activeSpecific !== xrayKey) return false;
+        return true;
+    };
+
+    // --- SUB-FILTERS (Specific Chips) ---
+    const subFilters = useMemo(() => {
+        if (activeCategory === 'ALL') return [];
+
+        if (activeCategory === 'XRAY') {
+            // Generate chips for existing X-rays
+            return (currentCollection?.photos?.x_rays || []).map((_, idx) => ({
+                key: `xray_${idx}`,
+                label: `Radiografía ${idx + 1}`
+            }));
+        }
+
+        // For clinical categories
+        return MANDATORY_KEYS
+            .filter(k => FILTER_CATEGORIES[activeCategory].keys.includes(k.key))
+            .map(k => ({ key: k.key, label: k.label }));
+    }, [activeCategory, currentCollection]);
+
+
     // --- ACTIONS ---
     const handleNext = () => {
         if (currentIndex < collections.length - 1) {
             setCurrentIndex(prev => prev + 1);
+            setActiveCategory('ALL'); // Reset filter on change? Or keep it? Keeping logic simple for now.
+            setActiveSpecific(null);
         }
     };
 
     const handlePrev = () => {
         if (currentIndex > 0) {
             setCurrentIndex(prev => prev - 1);
+            setActiveCategory('ALL');
+            setActiveSpecific(null);
         }
     };
 
@@ -122,11 +187,11 @@ export default function GalleryViewer({ collections, initialCollectionId, onClos
     return (
         <div className="absolute inset-0 z-50 bg-white dark:bg-slate-900 flex flex-col animate-in fade-in duration-200">
             {/* --- HEADER --- */}
-            <div className="flex items-center justify-between px-6 py-3 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm z-10">
+            <div className="flex items-center justify-between px-6 py-3 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm z-10 transition-colors">
 
                 {/* Left: Empty or Title (Back button moved to sidebar) */}
                 <div className="flex items-center gap-2 text-slate-800 dark:text-slate-100">
-                    <Folder size={20} className="text-blue-500" />
+                    <Folder size={20} className="text-primary" />
                     <h2 className="text-lg font-bold">
                         {currentCollection.name}
                     </h2>
@@ -147,7 +212,7 @@ export default function GalleryViewer({ collections, initialCollectionId, onClos
 
                 {/* --- SIDEBAR (LEFT) --- */}
                 <div
-                    className="w-64 border-r border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 flex flex-col"
+                    className="w-64 border-r border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 flex flex-col transition-colors"
                 >
                     {/* Sidebar Header: Back Button + Search */}
                     <div className="p-4 border-b border-slate-200 dark:border-slate-700 space-y-3 bg-white/50 dark:bg-slate-800/50">
@@ -176,7 +241,7 @@ export default function GalleryViewer({ collections, initialCollectionId, onClos
                                     w-full pl-9 pr-3 py-2 
                                     bg-white dark:bg-slate-800 
                                     border border-slate-200 dark:border-slate-700 
-                                    rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/50
+                                    rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50
                                     text-xs
                                 "
                             />
@@ -212,7 +277,7 @@ export default function GalleryViewer({ collections, initialCollectionId, onClos
                                     >
                                         <Folder
                                             size={18}
-                                            className={`mt-0.5 ${isActive ? 'text-blue-500' : 'text-slate-400'}`}
+                                            className={`mt-0.5 ${isActive ? 'text-primary' : 'text-slate-400'}`}
                                         />
                                         <div className="flex-1 min-w-0">
                                             <p className={`text-sm font-medium truncate ${isActive ? 'text-slate-800 dark:text-slate-100' : ''}`}>
@@ -223,7 +288,7 @@ export default function GalleryViewer({ collections, initialCollectionId, onClos
                                             </p>
                                         </div>
                                         {isActive && (
-                                            <div className="w-1.5 h-1.5 rounded-full bg-blue-500 mt-2" />
+                                            <div className="w-1.5 h-1.5 rounded-full bg-primary mt-2" />
                                         )}
                                     </button>
                                 );
@@ -233,60 +298,129 @@ export default function GalleryViewer({ collections, initialCollectionId, onClos
                 </div>
 
                 {/* --- CONTENT (RIGHT) --- */}
-                <div className="flex-1 overflow-y-auto bg-slate-50/50 dark:bg-slate-950 p-6 md:p-8">
-                    <div className="max-w-6xl mx-auto space-y-8 pt-6">
+                <div className="flex-1 overflow-y-auto bg-slate-50/50 dark:bg-slate-950 p-6 md:p-8 flex flex-col">
+
+                    {/* --- FILTER TOOLBAR --- */}
+                    <div className="max-w-6xl mx-auto w-full mb-8 space-y-3">
+                        {/* Category Pills */}
+                        <div className="flex flex-wrap items-center gap-2">
+                            {Object.entries(FILTER_CATEGORIES).map(([key, config]) => {
+                                const isActive = activeCategory === key;
+                                return (
+                                    <button
+                                        key={key}
+                                        onClick={() => handleCategoryChange(key)}
+                                        className={`
+                                            px-4 py-1.5 rounded-full text-sm font-medium transition-all
+                                            ${isActive
+                                                ? 'bg-primary text-white shadow-md shadow-primary/20'
+                                                : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700'
+                                            }
+                                        `}
+                                    >
+                                        {config.label}
+                                    </button>
+                                );
+                            })}
+                        </div>
+
+                        {/* Specific Sub-filters (Chips) */}
+                        {subFilters.length > 0 && (
+                            <div className="flex flex-wrap items-center gap-2 animate-in fade-in slide-in-from-top-1 duration-200">
+                                {subFilters.map((sub) => {
+                                    const isSelected = activeSpecific === sub.key;
+                                    return (
+                                        <button
+                                            key={sub.key}
+                                            onClick={() => setActiveSpecific(isSelected ? null : sub.key)}
+                                            className={`
+                                                px-3 py-1 rounded-lg text-xs font-medium border transition-colors
+                                                ${isSelected
+                                                    ? 'bg-primary/5 dark:bg-primary/20 border-primary/20 dark:border-primary/50 text-primary dark:text-primary'
+                                                    : 'bg-transparent border-transparent text-slate-500 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-800'
+                                                }
+                                            `}
+                                        >
+                                            {sub.label}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
+
+
+                    <div className="max-w-6xl mx-auto w-full space-y-8">
 
                         {/* Mandatory Photos */}
-                        <div>
-                            <div className="flex items-center justify-between mb-4">
-                                <h3 className="text-lg font-bold flex items-center gap-2 text-slate-700 dark:text-slate-300">
-                                    <Camera size={20} />
-                                    Fotografías Clínicas
-                                </h3>
-                                <span className="text-xs font-medium px-2 py-1 bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 rounded-full flex items-center gap-1">
-                                    <CheckCircle2 size={12} />
-                                    Obligatorias
-                                </span>
-                            </div>
+                        {showClinical && (
+                            <div className="animate-in fade-in duration-300">
+                                <div className="flex items-center justify-between mb-4">
+                                    <h3 className="text-lg font-bold flex items-center gap-2 text-slate-700 dark:text-slate-300">
+                                        <Camera size={20} />
+                                        Fotografías Clínicas
+                                    </h3>
+                                    {!activeSpecific && activeCategory === 'ALL' && (
+                                        <span className="text-xs font-medium px-2 py-1 bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 rounded-full flex items-center gap-1">
+                                            <CheckCircle2 size={12} />
+                                            Obligatorias
+                                        </span>
+                                    )}
+                                </div>
 
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                {MANDATORY_KEYS.map(({ key, label }) => (
-                                    <ImageCard
-                                        key={key}
-                                        label={label}
-                                        src={currentCollection.photos[key]}
-                                        onPreview={() => openLightbox(currentCollection.photos[key])}
-                                    />
-                                ))}
+                                {/* Filtered Grid */}
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                    {MANDATORY_KEYS.map(({ key, label }) => {
+                                        if (!isPhotoVisible(key)) return null;
+                                        return (
+                                            <ImageCard
+                                                key={key}
+                                                label={label}
+                                                src={currentCollection.photos[key]}
+                                                onPreview={() => openLightbox(currentCollection.photos[key])}
+                                            />
+                                        );
+                                    })}
+                                </div>
+                                {/* Empty State if filtered out all */}
+                                {MANDATORY_KEYS.every(({ key }) => !isPhotoVisible(key)) && (
+                                    <p className="text-sm text-slate-400 italic">No hay fotos en esta categoría.</p>
+                                )}
                             </div>
-                        </div>
+                        )}
 
                         {/* X-Rays */}
-                        <div>
-                            <h3 className="text-lg font-bold flex items-center gap-2 mb-4 text-slate-700 dark:text-slate-300">
-                                <FileImage size={20} />
-                                Radiografías
-                            </h3>
-                            {currentCollection.photos.x_rays?.length > 0 ? (
-                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                    {currentCollection.photos.x_rays.map((url, idx) => (
-                                        <ImageCard
-                                            key={idx}
-                                            label={`Radiografía ${idx + 1}`}
-                                            src={url}
-                                            onPreview={() => openLightbox(url)}
-                                        />
-                                    ))}
-                                </div>
-                            ) : (
-                                <div className="p-8 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-xl text-center">
-                                    <p className="text-slate-400">No hay radiografías en esta colección.</p>
-                                </div>
-                            )}
-                        </div>
+                        {showXrays && (
+                            <div className="animate-in fade-in duration-300">
+                                <h3 className="text-lg font-bold flex items-center gap-2 mb-4 text-slate-700 dark:text-slate-300">
+                                    <FileImage size={20} />
+                                    Radiografías
+                                </h3>
+                                {currentCollection.photos.x_rays?.length > 0 ? (
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                        {currentCollection.photos.x_rays.map((url, idx) => {
+                                            if (!isXrayVisible(idx)) return null;
+                                            return (
+                                                <ImageCard
+                                                    key={idx}
+                                                    label={`Radiografía ${idx + 1}`}
+                                                    src={url}
+                                                    onPreview={() => openLightbox(url)}
+                                                />
+                                            );
+                                        })}
+                                    </div>
+                                ) : (
+                                    <div className="p-8 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-xl text-center">
+                                        <p className="text-slate-400">No hay radiografías en esta colección.</p>
+                                    </div>
+                                )}
+                            </div>
+                        )}
 
                     </div>
                 </div>
+
             </div>
 
             {/* --- LIGHTBOX --- */}

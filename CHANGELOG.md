@@ -10,6 +10,51 @@ Este proyecto sigue [Semantic Versioning](https://semver.org/lang/es/).
 
 ---
 
+## [0.15.0] - 2025-12-05
+
+### Added
+- Implemented **image filtering system** inside the Gallery Viewer, allowing doctors to:
+  - Filter by category: Facial, Oclusal, Intraoral, Radiografías
+  - Filter by specific photo position (e.g., Facial Front, Intraoral Center)
+  - Reset to full gallery view  
+  The grid now dynamically reflows based on the visible images without breaking layout.
+
+- Added **Cropper Modal integration** to the gallery creation workflow:
+  - When dragging or selecting an image, a full editing popup opens automatically.
+  - Supports zoom, pan, rotate, flip, and constrained aspect ratio.
+  - Saves the cropped image as a Blob for later upload.
+  - Ensures consistent UI with PatientDetail dark/light themes.
+
+### Changed
+- Updated Gallery Viewer’s color system to use the project’s custom theme:
+  - Replaced all Tailwind blue color utilities with `--color-primary: #00b8db`
+  - Added new global utility classes in `index.css`:
+    - `.text-primary`, `.bg-primary`, `.border-primary`, `.ring-primary`
+    - Hover and opacity variants  
+  The viewer now fully matches the clinic’s brand palette.
+
+- Improved Cropper Modal UI:
+  - Added `max-h-[90vh]` and internal scrolling to prevent overflow with tall images.
+  - Footer now remains permanently visible regardless of image size.
+  - Better spacing, alignment, and dark-mode contrast.
+
+### Fixed
+- Fixed layout overflow in the cropper when using tall/vertical images.
+- Corrected inconsistent color usage in filters, buttons, and active states inside the Gallery Viewer.
+- Ensured filter UI reflows gracefully on smaller screens or narrow widths.
+
+### Improved
+- Enhanced user experience inside Gallery Viewer:
+  - Cleaner category segmentation
+  - Faster perception of active filters
+  - More intuitive grouping of photos
+- Strengthened consistency across the Gallery module by applying:
+  - Unified spacing scale
+  - Theme-based color accents
+  - Standardized interaction patterns
+
+---
+
 ## [0.14.0] - 2025-12-05
 
 ### Added

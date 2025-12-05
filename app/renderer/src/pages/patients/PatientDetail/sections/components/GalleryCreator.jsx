@@ -11,6 +11,7 @@ import {
     ChevronDown,
     Save
 } from 'lucide-react';
+import CropperModal from './CropperModal';
 
 const MANDATORY_KEYS = [
     { key: 'facial_front', label: 'Facial Front' },
@@ -26,8 +27,13 @@ const MANDATORY_KEYS = [
 export default function GalleryCreator({ onClose, onSave }) {
     // --- STATE ---
     const [name, setName] = useState('');
-    const [photos, setPhotos] = useState({}); // { key: File | string }
-    const [xrays, setXrays] = useState([]); // Array of { id, file: File | string }
+    const [photos, setPhotos] = useState({}); // { key: string (url) }
+    const [xrays, setXrays] = useState([]); // Array of { id, file: string (url) }
+
+    // --- CROPPER STATE ---
+    const [cropperOpen, setCropperOpen] = useState(false);
+    const [pendingImage, setPendingImage] = useState(null);
+    const [activeSlot, setActiveSlot] = useState(null); // { type: 'photo' | 'xray', key?: string, cxId?: number }
 
     // --- COMPUTED ---
     const filledCount = MANDATORY_KEYS.reduce((acc, { key }) => acc + (photos[key] ? 1 : 0), 0);
@@ -41,11 +47,45 @@ export default function GalleryCreator({ onClose, onSave }) {
     }, [name, isComplete]);
 
     // --- HANDLERS ---
-    const handlePhotoUpload = (key, file) => {
+
+    // 1. Intercept Upload -> Open Cropper
+    const initiateUpload = (file, slotType, slotKey = null, xrayId = null) => {
         if (!file) return;
-        // Create object URL for preview
-        const previewUrl = URL.createObjectURL(file);
-        setPhotos(prev => ({ ...prev, [key]: previewUrl }));
+        const objectUrl = URL.createObjectURL(file);
+        setPendingImage(objectUrl);
+        setActiveSlot({ type: slotType, key: slotKey, id: xrayId });
+        setCropperOpen(true);
+    };
+
+    const handlePhotoUpload = (key, file) => {
+        initiateUpload(file, 'photo', key);
+    };
+
+    const handleAddXray = (file) => {
+        // Generate ID ahead of time for the new item
+        const newId = Date.now();
+        initiateUpload(file, 'xray', null, newId);
+    };
+
+    // 2. Cropper Save -> Update State
+    const handleCropperSave = (blob) => {
+        if (!activeSlot || !blob) return;
+
+        const croppedUrl = URL.createObjectURL(blob);
+
+        if (activeSlot.type === 'photo') {
+            setPhotos(prev => ({ ...prev, [activeSlot.key]: croppedUrl }));
+        } else if (activeSlot.type === 'xray') {
+            setXrays(prev => [...prev, { id: activeSlot.id, file: croppedUrl }]);
+        }
+
+        closeCropper();
+    };
+
+    const closeCropper = () => {
+        setCropperOpen(false);
+        setPendingImage(null);
+        setActiveSlot(null);
     };
 
     const handleRemovePhoto = (key) => {
@@ -54,12 +94,6 @@ export default function GalleryCreator({ onClose, onSave }) {
             delete next[key];
             return next;
         });
-    };
-
-    const handleAddXray = (file) => {
-        if (!file) return;
-        const previewUrl = URL.createObjectURL(file);
-        setXrays(prev => [...prev, { id: Date.now(), file: previewUrl }]);
     };
 
     const handleRemoveXray = (id) => {
@@ -80,6 +114,15 @@ export default function GalleryCreator({ onClose, onSave }) {
 
     return (
         <div className="absolute inset-0 z-50 bg-slate-50 dark:bg-slate-900 flex flex-col animate-in slide-in-from-bottom-4 duration-300">
+
+            {/* --- CROPPER MODAL --- */}
+            {cropperOpen && pendingImage && (
+                <CropperModal
+                    image={pendingImage}
+                    onSave={handleCropperSave}
+                    onCancel={closeCropper}
+                />
+            )}
 
             {/* --- STICKY HEADER --- */}
             <div className="flex items-center justify-between px-6 py-4 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 shadow-sm z-10 sticky top-0">
@@ -333,8 +376,8 @@ function DropzoneCard({ label, image, onUpload, onRemove, required }) {
                 ${image
                     ? 'border-transparent shadow-sm'
                     : isDragging
-                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 border-dashed'
-                        : 'border-slate-200 dark:border-slate-700 border-dashed bg-white dark:bg-slate-800 hover:border-blue-400'
+                        ? 'border-cyan-500 bg-cyan-50 dark:bg-cyan-900/20 border-dashed'
+                        : 'border-slate-200 dark:border-slate-700 border-dashed bg-white dark:bg-slate-800 hover:border-cyan-400'
                 }
             `}
             onDragOver={handleDragOver}
@@ -383,7 +426,7 @@ function DropzoneCard({ label, image, onUpload, onRemove, required }) {
                 <div className="w-full h-full flex flex-col items-center justify-center text-slate-400 p-4 text-center cursor-pointer">
                     <div className={`
                         w-10 h-10 rounded-full flex items-center justify-center mb-3 transition-colors
-                        ${isDragging ? 'bg-blue-100 text-blue-500' : 'bg-slate-100 dark:bg-slate-700'}
+                        ${isDragging ? 'bg-cyan-100 text-cyan-500' : 'bg-slate-100 dark:bg-slate-700'}
                     `}>
                         {isDragging ? <Upload size={20} /> : <ImageIcon size={20} />}
                     </div>
@@ -417,8 +460,8 @@ function AddXrayCard({ onUpload }) {
             className="
                 aspect-[4/3] rounded-xl border-2 border-dashed border-slate-200 dark:border-slate-700
                 bg-slate-50 dark:bg-slate-800/50 hover:bg-white dark:hover:bg-slate-800
-                hover:border-blue-400 transition-all cursor-pointer
-                flex flex-col items-center justify-center text-slate-400 hover:text-blue-500
+                hover:border-cyan-400 transition-all cursor-pointer
+                flex flex-col items-center justify-center text-slate-400 hover:text-cyan-500
             "
         >
             <input
