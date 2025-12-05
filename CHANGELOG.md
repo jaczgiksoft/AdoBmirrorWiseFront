@@ -10,6 +10,44 @@ Este proyecto sigue [Semantic Versioning](https://semver.org/lang/es/).
 
 ---
 
+## [0.13.0] - 2025-12-04
+
+### Added
+- Implemented full **Conversations module**, including:
+  - CRUD operations with API integration
+  - Modal for creating and editing conversations
+  - Unified search + filter popover UI
+  - Hotkeys (F1 focus search, F2 create, F5 save, ESC close)
+  - Conversation cards with author, date, and actions
+
+- Implemented **employee-based author display** for:
+  - Notes
+  - Conversations  
+  Both modules now show the employee's full name and avatar instead of the username.
+
+### Changed
+- Updated Notes and Conversations card footers to display:
+  - `employee.first_name + employee.last_name`
+  - Employee profile image (fallback to icon)
+- Updated filter components to match the unified design used in PatientList.
+- Updated services (`patientNotes.service.js`, `patientConversations.service.js`) to return raw API arrays instead of accessing `response.data.data`.
+
+### Fixed
+- Resolved issues where:
+  - Empty lists caused `.filter` errors due to undefined state.
+  - Popover filters were visually detached from the search bar.
+  - Incorrect includes caused missing employee data in card footers.
+  - Conversations were not rendering due to incorrect service response handling.
+
+### Improved
+- Standardized UI components across:
+  - NotesSection
+  - ConversationsSection
+  - FilterPopover  
+- Enhanced initial loading state and safe fallback rendering to avoid UI crashes.
+
+---
+
 ## [0.12.0] - 2025-12-04
 
 ### Added
