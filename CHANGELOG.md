@@ -10,6 +10,45 @@ Este proyecto sigue [Semantic Versioning](https://semver.org/lang/es/).
 
 ---
 
+## [0.17.0] - 2025-12-05
+
+### Added
+- Implemented full **Patient Budget Management** module (mock version for demo), including:
+  - New **Budgets** section under Patient Detail, matching existing UI/UX patterns and keyboard shortcuts.
+  - Modern, premium-style budget list with:
+    - Status badges (Pending / Approved / Rejected)
+    - Primary-accented totals and clean financial layout
+    - Full light/dark theme support using project color variables from `index.css`
+  - Complete **Budget Creation Flow**:
+    - Modal with a refined “workspace” design
+    - Editable list of budget items (description, qty, price)
+    - Automatic subtotal, discount, total, and summary calculations
+    - Status selector with themed badges
+    - Support for adding/removing items dynamically
+  - Keyboard shortcuts integrated across the module:
+    - **N** → New Budget  
+    - **ESC** → Close active modal  
+    - **F5** → Refresh mock list  
+  - Smooth animations via Framer Motion for:
+    - Budget cards (fade-in, hover elevation)
+    - Modal transitions (scale + opacity)
+    - Optional micro-animations on status badges
+
+### Improved
+- Unified color usage across the Budgets module:
+  - All colors migrated to project variables (`--color-primary`, `--color-bg`, `--color-text`, etc.)
+  - Perfect alignment with existing clinical sections in both light and dark themes.
+- Enhanced mock architecture for budgets:
+  - Budget + BudgetDetail structure aligned with future API model (parent + child records)
+  - Cleaner state management and item recalculation logic.
+
+### Fixed
+- Corrected inconsistencies in spacing, borders, and shadows during early prototype:
+  - Cards and modals now follow the same elevation and radius standards as other modules.
+- Resolved issues with keyboard shortcuts firing while modals were open.
+
+---
+
 ## [0.17.0] - 2025-12-06
 
 ### Added
