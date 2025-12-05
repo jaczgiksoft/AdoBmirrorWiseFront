@@ -10,6 +10,40 @@ Este proyecto sigue [Semantic Versioning](https://semver.org/lang/es/).
 
 ---
 
+## [0.17.0] - 2025-12-06
+
+### Added
+- Implemented full **Treatment Plan Management** module (mock version for demo):
+  - New section under Patient Detail matching existing layout, logic, and keyboard shortcuts.
+  - Modal for creating treatment plans with:
+    - Title, start date, duration (months)
+    - Main-plan toggle using shadcn `Switch`
+    - Dynamic list of included treatments
+  - Integrated **Treatment Catalog Select** using shadcn Select:
+    - Automatically assigns predefined color + default description
+    - Clean dropdown UI with color indicators
+  - Added **drag-and-drop ordering** for treatments using `@dnd-kit`:
+    - Sortable list with vertical drag handle
+    - Smooth animations and stable behavior inside modal
+    - Order persists in component state
+
+### Improved
+- Updated New Plan button styling:
+  - Added hover color inversion (`bg-primary` + `text-white`) for proper contrast.
+- Removed unnecessary **color input** in treatment items:
+  - Color now comes exclusively from catalog metadata.
+- Updated treatment item card layout:
+  - Cleaner spacing
+  - Consistent alignment with other clinical modules
+  - Icon improvements for delete and expand controls
+
+### Fixed
+- Corrected issues with Select inside Treatment Plan modal:
+  - Dropdown content clipping inside scroll container is now flagged as a required fix (still pending).
+  - Updated modal structure to prepare for complete overflow handling in next release.
+
+---
+
 ## [0.16.0] - 2025-12-05
 
 ### Added
