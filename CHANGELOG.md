@@ -8,6 +8,20 @@ Este proyecto sigue [Semantic Versioning](https://semver.org/lang/es/).
 
 ## [Unreleased]
 
+## [0.18.0] - 2025-12-14
+
+---
+
+### Changed
+- Updated branding to use a static BWISE logo across the application.
+- Splash Screen now always displays the local BWISE main logo instead of tenant or placeholder logos.
+- Login screen logo replaced with the local BWISE main logo for consistent branding.
+
+### Fixed
+- Corrected issues with Select inside Treatment Plan modal:
+  - Dropdown content clipping inside scroll container is now flagged as a required fix (still pending).
+  - Updated modal structure to prepare for complete overflow handling in next release.
+
 ---
 
 ## [0.17.0] - 2025-12-05

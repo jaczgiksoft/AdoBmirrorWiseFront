@@ -7,6 +7,7 @@ import { useAuthStore } from "@/store/useAuthStore";
 import { Loader2, LogIn, Eye, EyeOff } from "lucide-react";
 import { useHotkeys } from "@/hooks/useHotkeys";
 import { ConfirmDialog } from "@/components/feedback";
+import mainLogo from "@/assets/images/logo/BWISE-logo.png";
 
 export default function LoginPage() {
     const [tenant, setTenant] = useState("");
@@ -102,7 +103,7 @@ export default function LoginPage() {
                 >
                     <div className="flex flex-col items-center mb-6">
                         <motion.img
-                            src="https://placehold.co/120x120/00BFFF/FFFFFF?text=BWISE+Dental"
+                            src={mainLogo}
                             alt="Logo"
                             className="w-24 h-24 rounded-xl shadow-soft mb-4 object-cover"
                             initial={{ scale: 0.9, opacity: 0 }}

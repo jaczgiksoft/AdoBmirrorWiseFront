@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuthStore } from "@/store/useAuthStore";
+import mainLogo from "@/assets/images/logo/BWISE-logo.png";
 
 export default function SplashScreen() {
     const navigate = useNavigate();
@@ -38,9 +39,7 @@ export default function SplashScreen() {
         init();
     }, [navigate, isAuthenticated, initSession, statusMessage]);
 
-    const tenantLogo =
-        user?.tenant?.logo_url ||
-        "https://placehold.co/200x200/00BFFF/FFFFFF?text=MIRAI+POS";
+    const tenantLogo = mainLogo;
     const tenantName = user?.tenant?.name || "Mirai POS";
 
     return (

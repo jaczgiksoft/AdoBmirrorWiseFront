@@ -138,20 +138,7 @@ export default function Dashboard() {
     h-full
 ">
 
-                {/* LOGO DE LA CLÍNICA */}
-                {user?.tenant?.logo_url && (
-                    <img
-                        src={user.tenant.logo_url}
-                        alt="Logo clínica"
-                        className="
-            w-50 h-50 object-contain mb-8
-            rounded-2xl
-            bg-slate-200 dark:bg-slate-800
-            p-2
-            shadow-soft
-        "
-                    />
-                )}
+
 
 
                 <motion.div
@@ -187,8 +174,8 @@ dark:hover:ring-offset-dark
                             </div>
                             <span className="text-base font-semibold">{item.label}</span>
                             <span className="text-[12px] text-slate-400 mt-1">
-                {item.key}
-              </span>
+                                {item.key}
+                            </span>
                         </motion.button>
                     ))}
                 </motion.div>
