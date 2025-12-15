@@ -278,22 +278,39 @@ body {
     scrollbar-color: rgba(148, 163, 184, 0.4) transparent;
 }
 
-/* ====================================================
-   SELECT OPTION STYLING
-==================================================== */
+/* ================================
+   SELECT OPTION — LIGHT MODE
+================================ */
 select option {
+    background-color: white;
+    color: #0f172a;
+    /* slate-900 */
+}
+
+select option:hover {
+    background-color: #e2e8f0;
+    /* slate-200 */
+}
+
+select option:checked {
+    background-color: var(--color-primary);
+    color: white;
+}
+
+/* ================================
+   SELECT OPTION — DARK MODE
+================================ */
+.dark select option {
     background-color: #0f172a;
     /* dark slate */
     color: white;
 }
 
-select option:hover {
+.dark select option:hover {
     background-color: #1e293b;
-    /* lighter slate */
 }
 
-select option:checked {
-    background-color: var(--color-primary) !important;
-    /* #00b8db */
+.dark select option:checked {
+    background-color: var(--color-primary);
     color: white;
 }

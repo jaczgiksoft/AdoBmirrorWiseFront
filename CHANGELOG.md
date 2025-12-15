@@ -8,6 +8,20 @@ Este proyecto sigue [Semantic Versioning](https://semver.org/lang/es/).
 
 ## [Unreleased]
 
+## [0.19.0] - 2025-12-14
+
+### Added
+- Introduced new layout header components:
+  - **PageHeader**: standardized header for main application pages.
+  - **DetailHeader**: lightweight header for secondary and detail-level pages.
+
+### Changed
+- Patient filter dropdown updated to fully support **dark and light themes**, including:
+  - Container, inputs, labels, and action buttons.
+  - Consistent visual behavior across both themes.
+
+---
+
 ## [0.18.0] - 2025-12-14
 
 ---

@@ -10,7 +10,9 @@ export default function PatientFilterDropdown({ filters, onApply }) {
     // Cerrar al hacer clic fuera
     useEffect(() => {
         const handleClickOutside = (e) => {
-            if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+            if (ref.current && !ref.current.contains(e.target)) {
+                setOpen(false);
+            }
         };
         document.addEventListener("mousedown", handleClickOutside);
         return () => document.removeEventListener("mousedown", handleClickOutside);
@@ -40,16 +42,20 @@ export default function PatientFilterDropdown({ filters, onApply }) {
 
     return (
         <div className="relative" ref={ref}>
-            {/* Botón principal */}
+            {/* 🔘 Botón principal */}
             <button
                 onClick={() => setOpen((o) => !o)}
-                className="filter-toggle-btn flex items-center gap-1 px-2 text-slate-400 hover:text-primary transition text-sm cursor-pointer"
+                className="
+                    filter-toggle-btn flex items-center gap-1 px-2 text-sm cursor-pointer transition
+                    text-slate-500 dark:text-slate-400
+                    hover:text-primary
+                "
             >
                 Filtros
                 {open ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
             </button>
 
-            {/* Dropdown */}
+            {/* 📦 Dropdown */}
             <AnimatePresence>
                 {open && (
                     <motion.div
@@ -57,17 +63,32 @@ export default function PatientFilterDropdown({ filters, onApply }) {
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -5 }}
                         transition={{ duration: 0.15 }}
-                        className="absolute top-full right-[-7px] mt-2 w-72 bg-secondary border border-slate-700 rounded-xl shadow-xl z-50 p-4 flex flex-col gap-3 text-sm text-slate-200"
                         style={{ transformOrigin: "top right" }}
+                        className="
+                            absolute top-full right-[-5px] mt-3 w-63 z-50
+                            rounded-xl p-4 flex flex-col gap-3 text-sm shadow-xl
+
+                            bg-white dark:bg-secondary
+                            border border-slate-200 dark:border-slate-700
+                            text-slate-700 dark:text-slate-200
+                        "
                     >
                         {/* 👤 Género */}
                         <div>
-                            <label className="block text-xs mb-1 text-slate-400">Género</label>
+                            <label className="block text-xs mb-1 text-slate-500 dark:text-slate-400">
+                                Género
+                            </label>
                             <select
                                 name="genre"
                                 value={local.genre}
                                 onChange={handleChange}
-                                className="w-full bg-dark border border-slate-700 rounded-md px-2 py-1 text-xs text-slate-200 focus:border-primary outline-none"
+                                className="
+                                    w-full rounded-md px-2 py-1 text-xs outline-none transition
+                                    bg-white dark:bg-dark
+                                    border border-slate-300 dark:border-slate-700
+                                    text-slate-700 dark:text-slate-200
+                                    focus:border-primary
+                                "
                             >
                                 <option value="">Todos</option>
                                 <option value="male">Masculino</option>
@@ -78,36 +99,62 @@ export default function PatientFilterDropdown({ filters, onApply }) {
 
                         {/* 🏙️ Ciudad */}
                         <div>
-                            <label className="block text-xs mb-1 text-slate-400">Ciudad</label>
+                            <label className="block text-xs mb-1 text-slate-500 dark:text-slate-400">
+                                Ciudad
+                            </label>
                             <input
                                 name="address_city"
                                 value={local.address_city}
                                 onChange={handleChange}
                                 placeholder="Ej. Hermosillo"
-                                className="w-full bg-dark border border-slate-700 rounded-md px-2 py-1 text-xs text-slate-200 focus:border-primary outline-none"
+                                className="
+                                    w-full rounded-md px-2 py-1 text-xs outline-none transition
+                                    bg-white dark:bg-dark
+                                    border border-slate-300 dark:border-slate-700
+                                    text-slate-700 dark:text-slate-200
+                                    placeholder:text-slate-400
+                                    focus:border-primary
+                                "
                             />
                         </div>
 
                         {/* 🗺️ Estado */}
                         <div>
-                            <label className="block text-xs mb-1 text-slate-400">Estado</label>
+                            <label className="block text-xs mb-1 text-slate-500 dark:text-slate-400">
+                                Estado
+                            </label>
                             <input
                                 name="address_state"
                                 value={local.address_state}
                                 onChange={handleChange}
                                 placeholder="Ej. Sonora"
-                                className="w-full bg-dark border border-slate-700 rounded-md px-2 py-1 text-xs text-slate-200 focus:border-primary outline-none"
+                                className="
+                                    w-full rounded-md px-2 py-1 text-xs outline-none transition
+                                    bg-white dark:bg-dark
+                                    border border-slate-300 dark:border-slate-700
+                                    text-slate-700 dark:text-slate-200
+                                    placeholder:text-slate-400
+                                    focus:border-primary
+                                "
                             />
                         </div>
 
                         {/* 💍 Estado civil */}
                         <div>
-                            <label className="block text-xs mb-1 text-slate-400">Estado civil</label>
+                            <label className="block text-xs mb-1 text-slate-500 dark:text-slate-400">
+                                Estado civil
+                            </label>
                             <select
                                 name="marital_status"
                                 value={local.marital_status}
                                 onChange={handleChange}
-                                className="w-full bg-dark border border-slate-700 rounded-md px-2 py-1 text-xs text-slate-200 focus:border-primary outline-none"
+                                className="
+                                    w-full rounded-md px-2 py-1 text-xs outline-none transition
+                                    bg-white dark:bg-dark
+                                    border border-slate-300 dark:border-slate-700
+                                    text-slate-700 dark:text-slate-200
+                                    focus:border-primary
+                                "
                             >
                                 <option value="">Todos</option>
                                 <option value="soltero">Soltero/a</option>
@@ -118,14 +165,22 @@ export default function PatientFilterDropdown({ filters, onApply }) {
                             </select>
                         </div>
 
-                        {/* 🔘 Estatus (activo/inactivo) */}
+                        {/* 🔘 Estatus */}
                         <div>
-                            <label className="block text-xs mb-1 text-slate-400">Estatus</label>
+                            <label className="block text-xs mb-1 text-slate-500 dark:text-slate-400">
+                                Estatus
+                            </label>
                             <select
                                 name="statusFilter"
                                 value={local.statusFilter}
                                 onChange={handleChange}
-                                className="w-full bg-dark border border-slate-700 rounded-md px-2 py-1 text-xs text-slate-200 focus:border-primary outline-none"
+                                className="
+                                    w-full rounded-md px-2 py-1 text-xs outline-none transition
+                                    bg-white dark:bg-dark
+                                    border border-slate-300 dark:border-slate-700
+                                    text-slate-700 dark:text-slate-200
+                                    focus:border-primary
+                                "
                             >
                                 <option value="">Todos</option>
                                 <option value="active">Activo</option>
@@ -133,17 +188,27 @@ export default function PatientFilterDropdown({ filters, onApply }) {
                             </select>
                         </div>
 
-                        {/* Botones */}
-                        <div className="flex justify-end gap-2 pt-2 border-t border-slate-700 mt-2">
+                        {/* 🔘 Botones */}
+                        <div className="flex justify-end gap-2 pt-2 mt-2 border-t border-slate-200 dark:border-slate-700">
                             <button
                                 onClick={handleClear}
-                                className="px-2 py-1 rounded-md bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs"
+                                className="
+                                    px-2 py-1 rounded-md text-xs transition
+                                    bg-slate-100 dark:bg-slate-700
+                                    text-slate-600 dark:text-slate-200
+                                    hover:bg-slate-200 dark:hover:bg-slate-600
+                                "
                             >
                                 Limpiar
                             </button>
+
                             <button
                                 onClick={handleApply}
-                                className="px-2 py-1 rounded-md bg-primary hover:bg-sky-500 text-white text-xs font-medium"
+                                className="
+                                    px-2 py-1 rounded-md text-xs font-medium transition
+                                    bg-primary text-white
+                                    hover:bg-sky-500
+                                "
                             >
                                 Aplicar
                             </button>

@@ -10,9 +10,10 @@ import FilterDropdown from "./PatientFilterDropdown";
 import PatientDashboard from "./shared/PatientDashboard";
 import PatientAgeChart from "./shared/PatientAgeChart";
 import PatientTypeSelectorModal from "./shared/PatientTypeSelectorModal";
+import { PageHeader } from "@/components/layout";
 
 import {
-    PlusCircle,
+    Plus,
     ChevronLeft,
     User as UserIcon,
     Edit2,
@@ -228,75 +229,71 @@ export default function PatientList() {
         <div className="bg-slate-100 dark:bg-dark flex flex-col font-sans text-slate-900 dark:text-slate-50 h-full">
 
             {/* ---------- HEADER ---------- */}
-            <div className="w-full max-w-[110rem] mx-auto px-10 mt-6 flex items-center gap-4 flex-wrap">
+            <div className="w-full max-w-[110rem] mx-auto px-10 flex items-center justify-between mt-6 mb-1 gap-4 flex-wrap">
 
-                <button
-                    onClick={() => navigate("/dashboard")}
-                    className="relative group flex items-center gap-1
-                        text-slate-600 hover:text-slate-900
-                        dark:text-slate-400 dark:hover:text-white
-                        transition cursor-pointer"
-                >
-                    <Home size={18} />
-                    <ChevronLeft size={16} />
-                    <span className="absolute left-full ml-3 whitespace-nowrap px-3 py-1.5 text-xs
-                        bg-white text-slate-700 dark:bg-black/85 dark:text-white
-                        rounded-lg shadow-lg opacity-0 group-hover:opacity-100
-                        transition-all duration-200">
-                        Ir al panel principal
-                    </span>
-                </button>
+                {/* ⬅️ Header izquierdo */}
+                <PageHeader
+                    title="Gestión de pacientes"
+                    subtitle="Gestione pacientes"
+                    onBack={() => navigate("/dashboard")}
+                />
 
-                <h1 className="text-2xl font-semibold text-cyan-600 dark:text-primary leading-none flex-1">
-                    Gestión de pacientes
-                </h1>
+                {/* ➡️ Acciones derecha */}
+                <div className="flex items-center gap-3 flex-wrap">
 
-                {/* Search */}
-                <div className="relative flex items-center
-                    bg-white border border-slate-300
-                    dark:bg-secondary dark:border-slate-700
-                    rounded-lg">
-
-                    <Search size={16} className="absolute left-2 text-slate-500 dark:text-slate-400" />
-
-                    <input
-                        ref={searchRef}
-                        type="text"
-                        placeholder="Buscar paciente..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
+                    {/* 🔍 Buscar + Filtros */}
+                    <div
                         className="
-                            pl-7 pr-16 py-1 bg-transparent
-                            text-slate-700 dark:text-slate-200
-                            text-sm outline-none
-                            placeholder:text-slate-500 dark:placeholder:text-slate-500
-                        "
-                    />
+        relative flex items-center rounded-lg border transition
 
-                    <div className="absolute right-1">
-                        <FilterDropdown
-                            filters={filters}
-                            onApply={(selected) => {
-                                setFilters(selected);
-                                setPage(1);
-                            }}
+        bg-white dark:bg-secondary
+        border-slate-200 dark:border-slate-700
+    "
+                    >
+                        <Search
+                            size={16}
+                            className="absolute left-2 text-slate-400 dark:text-slate-400"
                         />
-                    </div>
-                </div>
 
-                {/* Add new */}
-                <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.97 }}
-                    onClick={() => setSelectTypeOpen(true)}
-                    className="flex items-center gap-2
-                        bg-cyan-600 hover:bg-cyan-700 text-white
-                        px-3 py-2 rounded-lg text-sm font-medium transition"
-                >
-                    <PlusCircle size={18} />
-                    <span className="font-semibold">F12</span>
-                    <span>Agregar paciente</span>
-                </motion.button>
+                        <input
+                            ref={searchRef}
+                            type="text"
+                            placeholder="Buscar paciente..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="
+            pl-7 pr-16 py-2 bg-transparent text-sm outline-none
+
+            text-slate-700 dark:text-slate-200
+            placeholder:text-slate-400 dark:placeholder:text-slate-500
+        "
+                        />
+
+                        <div className="absolute right-1">
+                            <FilterDropdown
+                                filters={filters}
+                                onApply={(selected) => {
+                                    setFilters(selected);
+                                    setPage(1);
+                                }}
+                            />
+                        </div>
+                    </div>
+
+
+                    {/* ➕ Nuevo usuario */}
+                    <motion.button
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.97 }}
+                        onClick={() => setSelectTypeOpen(true)}
+                        className="flex items-center gap-2 bg-primary text-white
+                       px-3 py-2 rounded-lg text-sm font-medium
+                       hover:bg-sky-500 transition"
+                    >
+                        <Plus size={18} />
+                        <span>Agregar paciente</span>
+                    </motion.button>
+                </div>
             </div>
 
             {/* ---------- BODY (dashboard + list) ---------- */}
@@ -359,11 +356,10 @@ export default function PatientList() {
                                             bg-white border-slate-300 text-slate-800 shadow-sm
                                             dark:bg-secondary dark:border-slate-700 dark:text-slate-50
                                             
-                                            ${
-                                            isSelected
+                                            ${isSelected
                                                 ? "ring-2 ring-cyan-500 ring-offset-4 ring-offset-slate-100 dark:ring-offset-dark"
                                                 : "hover:border-cyan-500"
-                                        }
+                                            }
                                         `}
                                     >
 
@@ -436,13 +432,12 @@ export default function PatientList() {
                                                 <p
                                                     className={`
                                                         text-xs font-semibold
-                                                        ${
-                                                        p.genre === "female"
+                                                        ${p.genre === "female"
                                                             ? "text-pink-500"
                                                             : p.genre === "male"
                                                                 ? "text-sky-500"
                                                                 : "text-slate-500"
-                                                    }
+                                                        }
                                                     `}
                                                 >
                                                     {p.genre === "female"
@@ -483,15 +478,15 @@ export default function PatientList() {
 
                                                             return (
                                                                 <div key={t.id} className="relative group flex">
-    <span
-        className="w-5 h-5 rounded-md text-[10px] font-bold flex items-center justify-center shadow-sm cursor-default"
-        style={{
-            backgroundColor: t.color,
-            color: textColor,
-        }}
-    >
-        {initials}
-    </span>
+                                                                    <span
+                                                                        className="w-5 h-5 rounded-md text-[10px] font-bold flex items-center justify-center shadow-sm cursor-default"
+                                                                        style={{
+                                                                            backgroundColor: t.color,
+                                                                            color: textColor,
+                                                                        }}
+                                                                    >
+                                                                        {initials}
+                                                                    </span>
 
                                                                     {/* Tooltip */}
                                                                     <div
