@@ -20,9 +20,6 @@ export default function PatientDetail() {
 
     const loadProfile = async () => {
         try {
-            // 👇 Espera forzada (solo para pruebas)
-            await new Promise(resolve => setTimeout(resolve, 5000));
-
             const data = await getPatientProfile(id);
             setProfile(data);
             console.log("Información del paciente:", data);
@@ -42,7 +39,6 @@ export default function PatientDetail() {
             setLoading(false);
         }
     };
-
 
     useEffect(() => {
         loadProfile();

@@ -301,8 +301,8 @@ function Section({ title, icon: Icon, subtitle, children, onAdd }) {
                     onClick={onAdd}
                     className="
                         flex items-center gap-1.5 px-3 py-1.5
-                        bg-primary/10 text-primary hover:bg-primary hover:text-white
-                        rounded-lg text-xs font-semibold transition-all
+                        btn-primary-soft
+                        rounded-lg text-xs font-semibold transition-all cursor-pointer
                     "
                 >
                     <Plus size={14} />
@@ -326,47 +326,78 @@ function NoteCard({ note, onEdit, onDelete }) {
     const employeeImage = employee?.profile_image;
 
     return (
-        <div className="
-            group relative flex flex-col gap-3
-            bg-white dark:bg-secondary
-            border border-slate-200 dark:border-slate-700
-            rounded-xl p-4 shadow-sm
-            hover:shadow-md hover:border-primary/30 transition-all duration-200
-        ">
+        <div
+            className="
+                group relative flex flex-col gap-3
+                rounded-xl p-4 transition-all duration-200
+
+                bg-white dark:bg-slate-800
+                border border-slate-200 dark:border-slate-700
+                shadow-sm hover:shadow-md
+                hover:-translate-y-0.5
+
+                /* 📄 Fondo tipo hoja rayada */
+                bg-[linear-gradient(to_bottom,transparent_23px,rgba(148,163,184,0.25)_24px)]
+                dark:bg-[linear-gradient(to_bottom,transparent_23px,rgba(148,163,184,0.12)_24px)]
+                bg-[length:100%_24px]
+            "
+        >
             {/* Header */}
             <div className="flex items-start gap-3">
-                <div className={`p-2 rounded-lg ${note.is_private ? 'bg-amber-100 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400' : 'bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400'}`}>
-                    {note.is_private ? <Lock size={20} /> : <FileText size={20} />}
+                <div
+                    className={`p-2 rounded-lg ${note.is_private
+                            ? "bg-amber-100 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400"
+                            : "bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400"
+                        }`}
+                >
+                    {note.is_private ? <Lock size={18} /> : <FileText size={18} />}
                 </div>
+
                 <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                        <h3 className="font-semibold text-sm text-slate-800 dark:text-slate-100 leading-tight line-clamp-1">
+                        <h3 className="font-semibold text-sm text-slate-800 dark:text-slate-100 line-clamp-1">
                             {note.title}
                         </h3>
+
                         {note.is_private && (
-                            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 border border-amber-200 dark:border-amber-800/30">
+                            <span className="
+                                px-1.5 py-0.5 rounded text-[10px] font-bold
+                                bg-amber-100 text-amber-700
+                                dark:bg-amber-900/30 dark:text-amber-400
+                                border border-amber-200 dark:border-amber-800/30
+                            ">
                                 PRIVADO
                             </span>
                         )}
                     </div>
+
                     <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 mt-1">
                         <Calendar size={12} />
                         <span>
-                            {new Date(note.createdAt || new Date()).toLocaleDateString('es-MX', {
-                                year: 'numeric', month: 'short', day: 'numeric'
+                            {new Date(note.createdAt || new Date()).toLocaleDateString("es-MX", {
+                                year: "numeric",
+                                month: "short",
+                                day: "numeric",
                             })}
                         </span>
                     </div>
                 </div>
             </div>
 
-            {/* Content Preview */}
-            <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-3 text-xs text-slate-600 dark:text-slate-300 leading-relaxed min-h-[60px] line-clamp-3">
+            {/* ✍️ Contenido alineado a renglones */}
+            <div
+                className="
+                    text-xs leading-[24px]
+                    text-slate-700 dark:text-slate-200
+                    min-h-[72px]
+                    line-clamp-3
+                "
+            >
                 {note.content}
             </div>
 
-            {/* Author Footer */}
-            <div className="flex items-center gap-2 pt-2 border-t border-slate-100 dark:border-slate-700/50 mt-1">
+            {/* Autor */}
+            <div className="flex items-center gap-2 pt-2 mt-1 border-t border-slate-100 dark:border-slate-700/50">
                 {employeeImage ? (
                     <img
                         src={employeeImage}
@@ -383,8 +414,13 @@ function NoteCard({ note, onEdit, onDelete }) {
                 </span>
             </div>
 
-            {/* Actions Overlay (Visible on Hover) */}
-            <div className="absolute top-3 right-3 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-white/90 dark:bg-slate-800/90 rounded-lg p-1 shadow-sm">
+            {/* Acciones */}
+            <div className="
+                absolute top-3 right-3 flex items-center gap-1
+                opacity-0 group-hover:opacity-100 transition-opacity
+                bg-white/90 dark:bg-slate-800/90
+                rounded-lg p-1 shadow-sm
+            ">
                 <button
                     onClick={() => onEdit(note)}
                     className="p-1.5 text-slate-400 hover:text-blue-500 transition-colors"

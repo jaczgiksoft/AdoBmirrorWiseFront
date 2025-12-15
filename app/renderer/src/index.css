@@ -24,6 +24,16 @@
     color: var(--color-primary);
 }
 
+.btn-primary-soft {
+    color: var(--color-primary);
+    background-color: color-mix(in srgb, var(--color-primary) 10%, transparent);
+}
+
+.btn-primary-soft:hover {
+    background-color: var(--color-primary);
+    color: white;
+}
+
 .bg-primary {
     background-color: var(--color-primary);
 }

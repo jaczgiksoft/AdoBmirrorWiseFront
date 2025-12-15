@@ -8,6 +8,19 @@ Este proyecto sigue [Semantic Versioning](https://semver.org/lang/es/).
 
 ## [Unreleased]
 
+## [0.20.0] - 2025-12-14
+
+### Added
+- New **ConversationTimeline** component to render a unified patient conversation history.
+- New **ConversationEntry** component to display individual conversation records within the timeline.
+
+### Changed
+- Refactored patient conversations section to use a **consolidated timeline view** instead of individual cards.
+- Conversations are now displayed as a continuous **clinical log**, ordered by most recent entry first.
+- Improved readability and context retention for doctors by presenting conversations as a single historical record.
+
+---
+
 ## [0.19.0] - 2025-12-14
 
 ### Added

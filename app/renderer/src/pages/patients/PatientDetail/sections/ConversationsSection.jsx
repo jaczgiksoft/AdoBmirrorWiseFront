@@ -15,6 +15,7 @@ import { useToastStore } from '@/store/useToastStore';
 import * as conversationsService from '@/services/patientConversations.service';
 import ConversationsModal from './components/ConversationsModal';
 import ConversationsFilterPopover from './components/ConversationsFilterPopover';
+import ConversationTimeline from './components/ConversationTimeline';
 
 
 /* ==============================================================================================
@@ -195,7 +196,7 @@ export default function ConversationsSection({ patientId }) {
             <Section
                 title="Conversaciones"
                 icon={MessageSquare}
-                subtitle="Registro de interacciones y conversaciones con el paciente."
+                subtitle="Registro clínico continuo y seguimiento del paciente."
                 onAdd={openCreateModal}
             >
                 {/* Filter Input & Popover */}
@@ -204,7 +205,7 @@ export default function ConversationsSection({ patientId }) {
                     <input
                         ref={inputRef}
                         type="text"
-                        placeholder="Filtrar por título..."
+                        placeholder="Buscar en historial..."
                         value={filterText}
                         onChange={(e) => setFilterText(e.target.value)}
                         className="
@@ -225,22 +226,17 @@ export default function ConversationsSection({ patientId }) {
                 </div>
 
                 {loading ? (
-                    <div className="py-8 text-center text-slate-400 text-sm animate-pulse">
-                        Cargando conversaciones...
+                    <div className="py-12 border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-secondary animate-pulse flex flex-col items-center justify-center space-y-3">
+                        <div className="h-10 w-10 bg-slate-200 dark:bg-slate-700 rounded-full"></div>
+                        <div className="h-4 w-48 bg-slate-200 dark:bg-slate-700 rounded"></div>
+                        <div className="h-3 w-32 bg-slate-200 dark:bg-slate-700 rounded"></div>
                     </div>
-                ) : filteredConversations.length === 0 ? (
-                    <EmptyState text={filterText ? "No se encontraron conversaciones coincidentes." : "No hay conversaciones registradas. Presiona F2 para agregar una."} />
                 ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {filteredConversations.map(conv => (
-                            <ConversationCard
-                                key={conv.id}
-                                conversation={conv}
-                                onEdit={openEditModal}
-                                onDelete={handleDeleteClick}
-                            />
-                        ))}
-                    </div>
+                    <ConversationTimeline
+                        conversations={filteredConversations}
+                        onEdit={openEditModal}
+                        onDelete={handleDeleteClick}
+                    />
                 )}
             </Section>
 
@@ -257,8 +253,8 @@ export default function ConversationsSection({ patientId }) {
             {/* DELETE CONFIRMATION */}
             <ConfirmDialog
                 open={!!deleteId}
-                title="Eliminar Conversación"
-                message="¿Estás seguro de que deseas eliminar esta conversación? Esta acción no se puede deshacer."
+                title="Eliminar registro"
+                message="¿Estás seguro de que deseas eliminar este registro del historial? Esta acción no se puede deshacer."
                 confirmLabel="Sí, eliminar"
                 cancelLabel="Cancelar"
                 confirmVariant="error"
@@ -276,9 +272,7 @@ export default function ConversationsSection({ patientId }) {
 function Section({ title, icon: Icon, subtitle, children, onAdd }) {
     return (
         <div className="
-            bg-white dark:bg-secondary
-            border border-slate-200 dark:border-slate-700
-            rounded-2xl p-5 shadow-sm
+            bg-transparent
             space-y-4
         ">
             <div className="flex items-start justify-between">
@@ -297,113 +291,17 @@ function Section({ title, icon: Icon, subtitle, children, onAdd }) {
                     onClick={onAdd}
                     className="
                         flex items-center gap-1.5 px-3 py-1.5
-                        bg-primary/10 text-primary hover:bg-primary hover:text-white
+                        btn-primary-soft
                         rounded-lg text-xs font-semibold transition-all
                     "
                 >
                     <Plus size={14} />
-                    Agregar
+                    Agregar registro
                 </button>
             </div>
             <div className="mt-2">
                 {children}
             </div>
-        </div>
-    );
-}
-
-function ConversationCard({ conversation, onEdit, onDelete }) {
-    const employee = conversation.user?.employee;
-
-    const employeeName = employee
-        ? `${employee.first_name} ${employee.last_name}`
-        : conversation.user?.username || "Desconocido";
-
-    const employeeImage = employee?.profile_image;
-
-    return (
-        <div className="
-            group relative flex flex-col gap-3
-            bg-white dark:bg-secondary
-            border border-slate-200 dark:border-slate-700
-            rounded-xl p-4 shadow-sm
-            hover:shadow-md hover:border-primary/30 transition-all duration-200
-        ">
-            {/* Header */}
-            <div className="flex items-start gap-3">
-                <div className="p-2 rounded-lg bg-indigo-50 text-indigo-600 dark:bg-indigo-900/20 dark:text-indigo-400">
-                    <MessageSquare size={20} />
-                </div>
-                <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                        <h3 className="font-semibold text-sm text-slate-800 dark:text-slate-100 leading-tight line-clamp-1">
-                            {conversation.title}
-                        </h3>
-                    </div>
-                    <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 mt-1">
-                        <Calendar size={12} />
-                        <span>
-                            {new Date(conversation.createdAt || new Date()).toLocaleDateString('es-MX', {
-                                year: 'numeric', month: 'short', day: 'numeric'
-                            })}
-                        </span>
-                    </div>
-                </div>
-            </div>
-
-            {/* Content Preview */}
-            <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-3 text-xs text-slate-600 dark:text-slate-300 leading-relaxed min-h-[60px] line-clamp-3">
-                {conversation.content}
-            </div>
-
-            {/* Author Footer */}
-            <div className="flex items-center gap-2 pt-2 border-t border-slate-100 dark:border-slate-700/50 mt-1">
-                {employeeImage ? (
-                    <img
-                        src={employeeImage}
-                        alt={employeeName}
-                        className="w-5 h-5 rounded-full object-cover"
-                    />
-                ) : (
-                    <div className="w-5 h-5 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center">
-                        <User size={12} className="text-slate-500 dark:text-slate-400" />
-                    </div>
-                )}
-                <span className="text-xs font-medium text-slate-600 dark:text-slate-400 truncate">
-                    {employeeName}
-                </span>
-            </div>
-
-            {/* Actions Overlay (Visible on Hover) */}
-            <div className="absolute top-3 right-3 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-white/90 dark:bg-slate-800/90 rounded-lg p-1 shadow-sm">
-                <button
-                    onClick={() => onEdit(conversation)}
-                    className="p-1.5 text-slate-400 hover:text-blue-500 transition-colors"
-                    title="Editar"
-                >
-                    <Edit2 size={14} />
-                </button>
-                <button
-                    onClick={() => onDelete(conversation.id)}
-                    className="p-1.5 text-slate-400 hover:text-red-500 transition-colors"
-                    title="Eliminar"
-                >
-                    <Trash2 size={14} />
-                </button>
-            </div>
-        </div>
-    );
-}
-
-function EmptyState({ text }) {
-    return (
-        <div className="text-center py-8 border border-dashed border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50/50 dark:bg-slate-800/30">
-            <div className="flex justify-center mb-2">
-                <MessageSquare size={32} className="text-slate-300 dark:text-slate-600" />
-            </div>
-            <p className="text-sm text-slate-400 dark:text-slate-500 italic">
-                {text}
-            </p>
         </div>
     );
 }
