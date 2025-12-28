@@ -8,6 +8,63 @@ Este proyecto sigue [Semantic Versioning](https://semver.org/lang/es/).
 
 ## [Unreleased]
 
+---
+
+## [0.21.0] - 2025-12-28
+
+### Added
+- Nueva sección **Órdenes de Extracción** dentro del detalle del paciente.
+- Implementación de un **wizard modal de 3 pasos** para el registro de órdenes de extracción:
+  1. **Odontograma oclusal interactivo**
+  2. **Carga de radiografías**
+  3. **Datos clínicos y administrativos de la orden**
+- Nuevo **odontograma oclusal dinámico**:
+  - Soporte para selección por áreas (norte, sur, este, oeste, centro).
+  - Diferenciación visual entre **Extracción** y **Tratamiento**.
+  - Indicadores anatómicos (Superior, Inferior, Izquierdo, Derecho).
+  - Numeración dual (dentadura permanente e infantil).
+- Soporte para **carga múltiple de radiografías** con vista previa:
+  - Drag & drop.
+  - Límite de archivos configurable.
+  - Eliminación individual antes de guardar.
+- Integración completa con la API para:
+  - Crear órdenes de extracción.
+  - Editar órdenes existentes.
+  - Eliminar órdenes (con confirmación).
+  - Listar órdenes reales del paciente.
+
+### Changed
+- Se eliminó el uso de datos mock en la sección de Órdenes de Extracción, utilizando ahora información real proveniente del perfil del paciente.
+- Se reutilizó el **mismo modal de registro** para creación y edición de órdenes de extracción.
+- Se ajustó el diseño del wizard para mantener coherencia visual con el resto de secciones clínicas:
+  - Estilos alineados con **Budgets**, **Gallery**, **Notes** y **Conversations**.
+  - Botones estandarizados (primary / accent).
+  - Soporte completo para **dark mode / light mode**.
+- Se refinó el encabezado del modal:
+  - Indicadores de pasos con progreso visual.
+  - Animaciones sutiles y feedback visual consistente.
+- Se unificó el manejo de fechas usando el mismo DatePicker utilizado en el formulario de pacientes.
+
+### Fixed
+- Se corrigieron errores en el envío de archivos al backend donde los radiographs no eran enviados como `File`.
+- Se solucionó un fallo que impedía guardar restauraciones (tratamientos por áreas) al normalizar el payload del odontograma.
+- Se corrigieron errores de estado nulo al procesar dientes sin selección previa.
+- Se corrigieron errores de validación y rutas inexistentes al guardar ediciones de órdenes.
+- Se mejoró la robustez del flujo de guardado evitando fallos silenciosos en órdenes con archivos.
+
+### Improved
+- Se mejoró significativamente la **experiencia clínica** al eliminar formularios manuales:
+  - Todo el registro se realiza de forma visual e intuitiva.
+  - Menor margen de error al seleccionar piezas dentales.
+- Se fortaleció la coherencia del sistema:
+  - Misma lógica de modales, confirmaciones y feedback visual que el resto de la aplicación.
+- Se dejó preparada la interfaz para futuras mejoras:
+  - Exportación de órdenes de extracción a PDF clínico.
+  - Visualización detallada de órdenes históricas.
+  - Estados avanzados (completada, cancelada, validada).
+
+---
+
 ## [0.20.0] - 2025-12-14
 
 ### Added

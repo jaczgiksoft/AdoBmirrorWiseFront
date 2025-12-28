@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<!-- Creator: CorelDRAW (Versión de evaluación) -->
+<svg xmlns="http://www.w3.org/2000/svg" xml:space="preserve" width="2458px" height="2458px" version="1.1" style="shape-rendering:geometricPrecision; text-rendering:geometricPrecision; image-rendering:optimizeQuality; fill-rule:evenodd; clip-rule:evenodd"
+viewBox="0 0 2458 2458"
+ xmlns:xlink="http://www.w3.org/1999/xlink"
+ xmlns:xodm="http://www.corel.com/coreldraw/odm/2003">
+ <defs>
+  <style type="text/css">
+   <![CDATA[
+    .str0 {stroke:#4B4B4D;stroke-width:10;stroke-miterlimit:22.9256}
+    .fil0 {fill:#FEFEFE}
+   ]]>
+  </style>
+ </defs>
+ <g id="area_center">
+  <metadata id="CorelCorpID_0Corel-Layer"/>
+  <circle id="oclusal-0" class="fil0 str0" cx="1229" cy="1229" r="536.76"/>
+ </g>
+ <g id="area_south">
+  <metadata id="CorelCorpID_1Corel-Layer"/>
+  <path id="oclusal-1" class="fil0 str0" d="M1608.55 1608.55l489.48 489.48c-222.4,222.41 -529.65,359.97 -869.03,359.97 -339.38,0 -646.63,-137.56 -869.04,-359.97l489.49 -489.48 -489.49 489.48 489.49 -489.48 0.88 0.86c97.07,96.62 230.89,156.35 378.67,156.35 148.22,0 282.41,-60.08 379.55,-157.21z"/>
+ </g>
+ <g id="area_west">
+  <metadata id="CorelCorpID_2Corel-Layer"/>
+  <path id="oclusal-2" class="fil0 str0" d="M359.96 2098.03l489.49 -489.48c-97.13,-97.14 -157.21,-231.33 -157.21,-379.55 0,-148.22 60.08,-282.41 157.21,-379.55l-489.48 -489.48c-222.41,222.4 -359.97,529.65 -359.97,869.03 0,339.38 137.56,646.63 359.96,869.03z"/>
+ </g>
+ <g id="area_north">
+  <metadata id="CorelCorpID_3Corel-Layer"/>
+  <path id="oclusal-3" class="fil0 str0" d="M1229 0c339.38,0 646.63,137.56 869.03,359.97l-489.48 489.48c-97.14,-97.13 -231.33,-157.21 -379.55,-157.21 -147.78,0 -281.6,59.73 -378.67,156.35l-0.88 0.86 -489.48 -489.48 489.48 489.48 -489.48 -489.48c222.4,-222.41 529.65,-359.97 869.03,-359.97z"/>
+ </g>
+ <g id="area_east">
+  <metadata id="CorelCorpID_4Corel-Layer"/>
+  <path id="oclusal-4" class="fil0 str0" d="M2098.03 359.97l-489.48 489.48 0 0c97.13,97.14 157.21,231.33 157.21,379.55 0,148.22 -60.08,282.41 -157.21,379.55l489.48 489.48 -489.48 -489.48 489.48 489.48 0.87 -0.88c221.89,-222.33 359.1,-529.21 359.1,-868.15 0,-339.38 -137.56,-646.63 -359.97,-869.03z"/>
+ </g>
+</svg>

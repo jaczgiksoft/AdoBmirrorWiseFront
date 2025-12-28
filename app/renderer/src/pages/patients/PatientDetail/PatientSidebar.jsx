@@ -18,7 +18,8 @@ import {
     StickyNote,
     Scan,
     Orbit,
-    ShieldUser
+    ShieldUser,
+    Scissors
 } from "lucide-react";
 
 const links = [
@@ -41,6 +42,7 @@ const links = [
     { id: "conversations", label: "Conversaciones", icon: MessageSquare },
     { id: "notes", label: "Notas", icon: StickyNote },
     { id: "gallery", label: "Galería", icon: StickyNote },
+    { id: "extraction-orders", label: "Órdenes de Extracción", icon: Scissors },
     { id: "odontogram", label: "Odontograma", icon: Scan },
     { id: "elastics", label: "Elásticos", icon: Orbit },
     { id: "account", label: "Cuenta", icon: ShieldUser },
