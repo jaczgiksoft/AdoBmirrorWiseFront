@@ -10,6 +10,40 @@ Este proyecto sigue [Semantic Versioning](https://semver.org/lang/es/).
 
 ---
 
+## [0.22.0] - 2025-12-29
+
+### Added
+- Nueva **sección de Odontograma** en el expediente del paciente con renderizado clínico por diente.
+- Implementación de un **odontograma modular por SVG individual**, utilizando assets separados por tipo de diente.
+- Soporte inicial para **tipos de diente dinámicos**, con arquitectura preparada para:
+  - Diente base (original)
+  - Tratamiento de endodoncia
+  - Extracción
+  - Diente ausente
+  - Diente no erupcionado
+  - Implante dental
+  - Corona dental
+  - Fisuras (completa, corona, raíz)
+- Sistema de **cambio de estado por diente** mediante selección + clic, sin afectar otros dientes.
+- **Contadores dinámicos** por tipo de diente, actualizados en tiempo real según el estado del odontograma.
+- Resumen visual superior del odontograma con opción de mostrar solo tipos activos o el listado completo.
+
+### Changed
+- Refactor completo del odontograma para reemplazar el SVG monolítico anterior por una solución escalable y mantenible.
+- Mejora en la distribución visual del maxilar y la mandíbula para una lectura clínica más clara.
+- Ajustes de espaciado y escala para una mejor visualización de molares y zonas posteriores.
+
+### Improved
+- Se añadió un **modo de colocación de brackets**:
+  - Activación mediante controles dedicados.
+  - Colocación y retiro de brackets por diente (toggle).
+  - Aplicación masiva de brackets a dientes sin bracket.
+  - Posicionamiento clínicamente correcto del bracket sobre la corona (diferenciado entre maxilar y mandíbula).
+- Preparación del odontograma para futuras extensiones clínicas sin necesidad de refactor estructural.
+- Mejora general de UX manteniendo coherencia visual con el resto del expediente del paciente.
+
+---
+
 ## [0.21.0] - 2025-12-28
 
 ### Added

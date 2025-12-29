@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<!-- Creator: CorelDRAW (Versión de evaluación) -->
+<svg xmlns="http://www.w3.org/2000/svg" xml:space="preserve" width="739px" height="2458px" version="1.1" style="shape-rendering:geometricPrecision; text-rendering:geometricPrecision; image-rendering:optimizeQuality; fill-rule:evenodd; clip-rule:evenodd"
+viewBox="0 0 739 2457.4"
+ xmlns:xlink="http://www.w3.org/1999/xlink"
+ xmlns:xodm="http://www.corel.com/coreldraw/odm/2003">
+ <defs>
+  <style type="text/css">
+   <![CDATA[
+    .str0 {stroke:#373435;stroke-width:10;stroke-miterlimit:22.9256}
+    .str1 {stroke:#F7A29B;stroke-width:10;stroke-miterlimit:22.9256}
+    .fil0 {fill:#FEFEFE}
+    .fil1 {fill:#F1C2C2}
+   ]]>
+  </style>
+ </defs>
+ <g id="tooth-root-canal-43">
+  <metadata id="CorelCorpID_0Corel-Layer"/>
+  <path id="crown" class="fil0 str0" d="M731.76 498.82c22.12,-120.88 -10.81,-235.23 -81.37,-332.51 -46.54,-64.15 -170.13,-177.6 -265.03,-165.39 -45.28,5.84 -95.41,56.75 -130.98,84.01 -51.43,39.39 -81.35,54.44 -138.52,78.95 -133.01,57.02 -115.58,186.65 -115.44,313.16 0.18,159.9 119.43,567.82 354.47,508.39 110.68,-27.97 185.99,-108.59 254.05,-180.88 108.58,-115.32 94.85,-153 122.82,-305.73z"/>
+  <path id="root" class="fil0 str0" d="M112.45 901.9c-7.94,54.39 26.81,360.53 38.74,431.04 78.34,463.06 129.8,484.14 169.97,1026.13 16.21,218.65 279.5,109.63 279.76,-706.41 0.13,-434.7 -9.04,-471.52 68.46,-871.05 -82.62,79.84 -129.5,154.91 -240.95,204.72 -158.82,70.96 -218.26,10.13 -315.98,-84.43z"/>
+  <g id="_2459238255456">
+   <path class="fil1 str1" d="M238.39 1121.15c6.4,63.7 13.1,130.42 23.69,193.03 15.55,91.91 33.1,183.21 52.95,274.28 14.88,68.29 31.03,136.31 45.49,204.68 30.05,142.14 48.57,282.99 61.89,426.09 4.92,-15.15 8.76,-28.26 11.11,-37.02 44.5,-165.92 54.89,-358.67 54.94,-529.59 0.05,-150.56 -4.34,-305.89 5.46,-456 2.68,-41.06 6.76,-82 11.86,-122.84 -9.96,5.21 -20.42,10.29 -31.48,15.23 -76.34,34.11 -155.65,52.68 -235.91,32.14z"/>
+  </g>
+ </g>
+</svg>
