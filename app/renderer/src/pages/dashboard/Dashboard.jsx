@@ -7,17 +7,7 @@ import { useNotificationStore } from "@/store/useNotificationStore";
 import { useHotkeys } from "@/hooks/useHotkeys";
 import { useToastStore } from "@/store/useToastStore";
 import { ConfirmDialog } from "@/components/feedback";
-import {
-    Settings,
-    FileText,
-    Bell,
-    Users,
-    UserCog,
-    ClipboardList,
-    Stethoscope,
-    AlertTriangle,
-    Building2,
-} from "lucide-react";
+import { MODULE_CONFIG } from "@/config/modules.config";
 
 export default function Dashboard() {
     const { user, logout } = useAuthStore();
@@ -73,61 +63,12 @@ export default function Dashboard() {
         );
     }
 
-    // 🧭 Módulos visibles según permisos
-    const MODULE_CONFIG = {
-        patients: {
-            order: 1,
-            label: "Pacientes",
-            icon: <Stethoscope size={28} />,
-            color: "#0ea5e9",
-            path: "/patients",
-            key: "F1",
-        },
-        patient_alerts: {
-            order: 2,
-            label: "Alertas de Paciente",
-            icon: <AlertTriangle size={28} />,
-            color: "#f59e0b",
-            path: "/patient-alerts",
-            key: "F2",
-        },
-        users: {
-            order: 3,
-            label: "Usuarios",
-            icon: <UserCog size={28} />,
-            color: "#0ea5e9",
-            path: "/users",
-            key: "F8",
-        },
-        notifications: {
-            order: 4,
-            label: "Notificaciones",
-            icon: <Bell size={28} />,
-            color: "#ef4444",
-            path: "/notifications",
-            key: "F10",
-        },
-        settings: {
-            order: 5,
-            label: "Configuración",
-            icon: <Settings size={28} />,
-            color: "#10b981",
-            path: "/settings",
-            key: "F11",
-        },
-        reports: {
-            order: 6,
-            label: "Reportes",
-            icon: <FileText size={28} />,
-            color: "#6b7280",
-            path: "/reports",
-        },
-    };
-
+    // 🧭 Módulos visibles según permisos y configuración global
     const shortcuts = (user.modules || [])
-        .filter((m) => MODULE_CONFIG[m] && user.permissions[m]?.read)
-        .map((m) => MODULE_CONFIG[m])
-        .sort((a, b) => a.order - b.order);
+        .filter((m) => MODULE_CONFIG[m]) // Existe en config
+        .filter((m) => user.is_superadmin || user.permissions[m]?.read) // Tiene permiso
+        .map((m) => MODULE_CONFIG[m]) // Mapear a objeto config
+        .sort((a, b) => a.order - b.order); // Ordenar
 
     return (
         <>
@@ -147,12 +88,14 @@ export default function Dashboard() {
                     transition={{ delay: 0.2 }}
                     className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-6 w-full max-w-5xl px-8 mt-10"
                 >
-                    {shortcuts.map((item, i) => (
-                        <motion.button
-                            key={i}
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.97 }}
-                            className="
+                    {shortcuts.map((item, i) => {
+                        const Icon = item.icon;
+                        return (
+                            <motion.button
+                                key={i}
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.97 }}
+                                className="
 flex flex-col items-center justify-center
     bg-slate-100 text-slate-800
     dark:bg-secondary dark:text-slate-50
@@ -164,20 +107,21 @@ dark:hover:ring-offset-dark
     box-border
 "
 
-                            onClick={() => navigate(item.path)}
-                        >
-                            <div
-                                style={{ color: item.color }}
-                                className="mb-2 flex items-center justify-center"
+                                onClick={() => navigate(item.path)}
                             >
-                                {item.icon}
-                            </div>
-                            <span className="text-base font-semibold">{item.label}</span>
-                            <span className="text-[12px] text-slate-400 mt-1">
-                                {item.key}
-                            </span>
-                        </motion.button>
-                    ))}
+                                <div
+                                    style={{ color: item.color }}
+                                    className="mb-2 flex items-center justify-center"
+                                >
+                                    {Icon && <Icon size={28} />}
+                                </div>
+                                <span className="text-base font-semibold">{item.label}</span>
+                                <span className="text-[12px] text-slate-400 mt-1">
+                                    {item.key}
+                                </span>
+                            </motion.button>
+                        );
+                    })}
                 </motion.div>
 
                 <ConfirmDialog

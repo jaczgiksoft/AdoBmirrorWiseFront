@@ -1,0 +1,68 @@
+import {
+    Stethoscope,
+    AlertTriangle,
+    UserCog,
+    Bell,
+    Settings,
+    FileText,
+    Briefcase
+} from "lucide-react";
+
+export const MODULE_CONFIG = {
+    patients: {
+        order: 1,
+        label: "Pacientes",
+        icon: Stethoscope,
+        color: "#0ea5e9",
+        path: "/patients",
+        key: "F1",
+    },
+    patient_alerts: {
+        order: 2,
+        label: "Alertas de Paciente",
+        icon: AlertTriangle,
+        color: "#f59e0b",
+        path: "/patient-alerts",
+        key: "F2",
+    },
+    services: {
+        order: 3,
+        label: "Servicios",
+        icon: Briefcase,
+        color: "#0ea5e9",
+        path: "/services",
+        key: null,
+    },
+    users: {
+        order: 4,
+        label: "Usuarios",
+        icon: UserCog,
+        color: "#0ea5e9",
+        path: "/users",
+        key: "F8",
+    },
+    notifications: {
+        order: 5,
+        label: "Notificaciones",
+        icon: Bell,
+        color: "#ef4444",
+        path: "/notifications",
+        key: "F10",
+    },
+    settings: {
+        order: 6,
+        label: "Configuración",
+        icon: Settings,
+        color: "#10b981",
+        path: "/settings",
+        key: "F11",
+    },
+    reports: {
+        order: 7,
+        label: "Reportes",
+        icon: FileText,
+        color: "#6b7280",
+        path: "/reports",
+        key: null,
+    },
+};

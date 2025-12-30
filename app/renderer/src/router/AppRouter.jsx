@@ -17,6 +17,7 @@ import StoreList from "@/pages/stores/StoreList";
 import StoreDetail from "@/pages/stores/StoreDetail";
 import CashRegisterList from "@/pages/cashRegisters/CashRegisterList";
 import CashRegisterDetail from "@/pages/cashRegisters/CashRegisterDetail";
+import ServiceList from "@/pages/services/ServiceList"; // ➕ Nuevo componente
 
 import PatientList from "@/pages/patients/PatientList";
 import PatientDetail from "@/pages/patients/PatientDetail";
@@ -218,7 +219,6 @@ export default function AppRouter() {
                     <Route path="representative" element={<RepresentativesSection />} />
                     <Route path="alerts" element={<AlertsSection />} />
 
-                    {/* Secciones extra */}
                     <Route path="billing" element={<BillingSection />} />
                     <Route path="appointments" element={<AppointmentsSection />} />
                     <Route path="prescriptions" element={<PrescriptionsSection />} />
@@ -252,6 +252,18 @@ export default function AppRouter() {
                         <PrivateRoute>
                             <PrivateLayout>
                                 <StoreDetail />
+                            </PrivateLayout>
+                        </PrivateRoute>
+                    }
+                />
+
+                {/* ➕ Servicios Clínicos (Nuevo) */}
+                <Route
+                    path="/services"
+                    element={
+                        <PrivateRoute>
+                            <PrivateLayout>
+                                <ServiceList />
                             </PrivateLayout>
                         </PrivateRoute>
                     }
@@ -298,6 +310,7 @@ function PrivateLayout({ children }) {
         { label: "IN", name: "Inicio", path: "/dashboard", bg: "#3b3b0a", color: "#facc15" },
         { label: "CP", name: "Control de pacientes", path: "/patients", bg: "#0f2d2d", color: "#10b981" },
         { label: "CA", name: "Calendario", path: "/calendar", bg: "#0a2a6b", color: "#3b82f6" },
+        { label: "SE", name: "Servicios", path: "/services", bg: "#0c4a6e", color: "#0ea5e9" }, // ➕ Nuevo atajo
         { label: "IN", name: "Inventarios", path: "/inventory", bg: "#3b0a3b", color: "#a855f7" },
         { label: "FA", name: "Facturación", path: "/billing", bg: "#422006", color: "#f59e0b" },
         { label: "EM", name: "Empleados", path: "/employees", bg: "#052e16", color: "#22c55e" },
@@ -320,6 +333,3 @@ function PrivateLayout({ children }) {
         </div>
     );
 }
-
-
-

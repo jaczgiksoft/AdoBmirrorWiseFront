@@ -10,6 +10,63 @@ Este proyecto sigue [Semantic Versioning](https://semver.org/lang/es/).
 
 ---
 
+## [0.23.0] - 2025-12-30
+
+### Added
+- Nueva **sección de Servicios Clínicos** en la aplicación Electron:
+  - Vista dedicada para listado, creación, edición y baja lógica de servicios.
+  - Integración completa con la API mediante **DataTable server-side**.
+  - Soporte para paginación, ordenamiento y búsqueda remota.
+
+- Implementación del **formulario de Servicios** con enfoque clínico-administrativo:
+  - Definición de duración total del servicio.
+  - Configuración de unidades sugeridas y valor por unidad para medir tiempo efectivo del doctor.
+  - Precio base con formato orientado a importes monetarios.
+  - Configuración operativa y fiscal (inventario, deducible, SAT, CFDI).
+
+- Integración de **selector de color avanzado** para servicios:
+  - Uso de librería especializada (`react-color`).
+  - Selector visual con previsualización inmediata.
+  - Persistencia del color como valor hexadecimal.
+
+### Changed
+- Se ajustó el **Dashboard** para renderizar módulos dinámicamente en función de:
+  - Módulos habilitados por tenant.
+  - Permisos del usuario autenticado.
+  - Eliminación de dependencias hardcodeadas para nuevos módulos.
+
+- Actualización semántica de acciones destructivas:
+  - “Eliminar definitivamente” reemplazado por **“Dar de baja”** para reflejar correctamente el soft delete.
+  - Mensajes de confirmación más claros y alineados al comportamiento real del sistema.
+
+### Improved
+- Mejora visual y de UX en formularios administrativos:
+  - Inputs numéricos monetarios alineados a la derecha.
+  - Símbolo `$` correctamente centrado verticalmente.
+  - Eliminación de controles nativos (spinners) en inputs numéricos para mayor coherencia visual.
+  - Reemplazo de checkboxes estándar por controles personalizados, modernos y consistentes con el tema dark.
+
+- Optimización del **filtro de búsqueda en Servicios**:
+  - Activación del filtrado solo a partir de **3 caracteres**.
+  - Reducción de llamadas innecesarias a la API.
+  - Comportamiento consistente con otros listados administrativos.
+
+### Fixed
+- Corrección del contrato de búsqueda entre Electron y API:
+  - Uso estricto de `search.value` y `order[column, dir]`.
+  - Filtrado correcto de resultados en búsquedas parciales.
+  - Evita retornar registros no relacionados cuando hay texto de búsqueda.
+
+### Notes
+- Esta versión consolida el **módulo de Servicios** como pilar para:
+  - Agenda clínica.
+  - Medición de desempeño del doctor.
+  - Implementación futura del módulo de Citas.
+- La UI queda alineada visual y semánticamente con un entorno clínico-profesional.
+- Base sólida para extender catálogos clínicos sin retrabajo de UX.
+
+---
+
 ## [0.22.0] - 2025-12-29
 
 ### Added
