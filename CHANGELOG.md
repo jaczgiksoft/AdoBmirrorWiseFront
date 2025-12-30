@@ -10,6 +10,42 @@ Este proyecto sigue [Semantic Versioning](https://semver.org/lang/es/).
 
 ---
 
+# [0.24.0] - 2025-12-30
+
+### Added
+- Nueva **sección de Áreas Clínicas (Clinic Areas)** en la aplicación Electron:
+  - Vista dedicada para listado, creación, edición y baja lógica de áreas de atención.
+  - Gestión de recursos clínicos como sillones, áreas de tratamiento y salas especializadas.
+  - Integración completa con la API reutilizando el patrón del módulo de **Servicios**.
+
+- Implementación del **CRUD de Áreas Clínicas**:
+  - Campo de nombre para identificación operativa del área.
+  - Gestión de estado mediante enum:
+    - Activa
+    - En mantenimiento
+    - Inactiva
+  - Soporte para **soft delete**, alineado a la semántica administrativa del sistema.
+
+- Integración del módulo en la navegación general:
+  - Registro del módulo en `modules.config.js` para acceso desde el Dashboard.
+  - Enrutamiento dedicado para áreas clínicas dentro de `AppRouter.jsx`.
+  - Control de acceso basado en permisos (`clinic_areas`).
+
+### Changed
+- Se extendió el esquema modular del Dashboard:
+  - Soporte explícito para catálogos clínicos adicionales sin cambios estructurales.
+  - Reutilización completa del flujo de navegación y permisos existente.
+
+### Notes
+- **Áreas Clínicas** representa un recurso físico-funcional reutilizable que será utilizado por:
+  - El módulo de **Citas**.
+  - La agenda visual por área/sillón.
+  - La asignación dinámica de pacientes en tiempo real.
+- Este release se enfoca exclusivamente en la **gestión administrativa del recurso**, sin incluir aún lógica de agenda o disponibilidad.
+- La UI mantiene coherencia visual, semántica y de experiencia con el resto de módulos administrativos.
+
+---
+
 ## [0.23.0] - 2025-12-30
 
 ### Added

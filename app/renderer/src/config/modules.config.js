@@ -5,10 +5,19 @@ import {
     Bell,
     Settings,
     FileText,
-    Briefcase
+    Briefcase,
+    Layout
 } from "lucide-react";
 
 export const MODULE_CONFIG = {
+    clinic_areas: {
+        order: 3.5,
+        label: "Áreas Clínicas",
+        icon: Layout,
+        color: "#0ea5e9",
+        path: "/clinic-areas",
+        key: null,
+    },
     patients: {
         order: 1,
         label: "Pacientes",
