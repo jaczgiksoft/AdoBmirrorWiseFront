@@ -19,6 +19,7 @@ import CashRegisterList from "@/pages/cashRegisters/CashRegisterList";
 import CashRegisterDetail from "@/pages/cashRegisters/CashRegisterDetail";
 import ServiceList from "@/pages/services/ServiceList"; // ➕ Nuevo componente
 import ClinicAreaList from "@/pages/clinic_areas/ClinicAreaList";
+import AppointmentList from "@/pages/appointments/AppointmentList";
 
 import PatientList from "@/pages/patients/PatientList";
 import PatientDetail from "@/pages/patients/PatientDetail";
@@ -277,6 +278,18 @@ export default function AppRouter() {
                         <PrivateRoute>
                             <PrivateLayout>
                                 <ClinicAreaList />
+                            </PrivateLayout>
+                        </PrivateRoute>
+                    }
+                />
+
+                {/* 📅 Citas (Appointments) */}
+                <Route
+                    path="/appointments"
+                    element={
+                        <PrivateRoute>
+                            <PrivateLayout>
+                                <AppointmentList />
                             </PrivateLayout>
                         </PrivateRoute>
                     }

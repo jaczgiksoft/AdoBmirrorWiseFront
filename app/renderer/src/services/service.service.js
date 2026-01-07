@@ -2,7 +2,12 @@ import api from "./api";
 
 /**
  * Obtener todos los servicios (sin paginación)
+ * Endpoint: /services
  */
+export async function getAllServices() {
+    return getAll(); // Alias for clarity
+}
+
 export async function getAll() {
     try {
         const res = await api.get("/services");

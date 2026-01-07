@@ -10,6 +10,77 @@ Este proyecto sigue [Semantic Versioning](https://semver.org/lang/es/).
 
 ---
 
+# [0.25.0] - 2026-01-06
+
+### Added
+- Nuevo **módulo de Citas Clínicas** en la aplicación Electron:
+  - Flujo completo de **registro y edición de citas** mediante wizard guiado.
+  - Separación clara por pasos:
+    1. Datos principales de la cita.
+    2. Selección de servicios con cálculo automático.
+    3. Definición del **Proceso clínico** (mock inicialmente).
+    4. Confirmación final en modo solo lectura.
+  - Validaciones progresivas y sincronización automática de tiempos.
+
+- Implementación de **agenda visual avanzada** para citas:
+  - Vista de **Calendario Mensual** para planeación general.
+  - Vista de **Calendario Diario por Área Clínica / Sillón** usando
+    **Resource Time Grid**.
+  - Representación de citas como fichas clínicas con:
+    - Datos del paciente.
+    - Doctor asignado.
+    - Área clínica.
+    - Duración y horario.
+    - Color dominante basado en el servicio principal.
+
+- Nuevo sistema de renderizado personalizado para eventos de calendario:
+  - Uso de componentes propios (`CalendarEventCard`) en lugar de UI nativa.
+  - Soporte completo para **dark / light mode**.
+  - Separación entre layout del calendario y diseño visual de la ficha.
+
+- Nuevos servicios de integración con la API:
+  - `appointment.service.js` para consumo del módulo de citas.
+  - `employee.service.js` para obtención de doctores elegibles para citas.
+  - Extensión de `clinic_area.service.js` con endpoints ligeros para selects.
+  - Extensión de `service.service.js` para uso en formularios clínicos.
+
+- Integración del módulo de citas en la navegación general:
+  - Registro del módulo en `modules.config.js`.
+  - Enrutamiento dedicado en `AppRouter.jsx`.
+  - Soporte para accesos rápidos y control de permisos.
+
+---
+
+### Changed
+- Actualización del Dashboard y ruteo principal:
+  - Soporte para alternar entre **vista de lista** y **vista de calendario** en citas.
+  - Navegación coherente entre módulos administrativos y operativos.
+
+- Mejora del comportamiento de actualización de datos:
+  - El listado de citas y el calendario se sincronizan automáticamente
+    tras crear o editar una cita.
+  - Eliminación de la necesidad de recargar la aplicación manualmente.
+
+- Ajustes visuales y de UX:
+  - Manejo correcto de fondos y contrastes en calendario según dark/light mode.
+  - Optimización del layout de fichas clínicas para distintas duraciones.
+
+---
+
+### Notes
+- El módulo de Citas pasa de ser un formulario aislado a un **sistema operativo de agenda clínica**.
+- La agenda visual queda alineada con flujos reales de clínica:
+  - Organización por sillón.
+  - Planeación diaria operativa.
+- El soporte de **Procesos clínicos** se mantiene inicialmente como *mock data*,
+  preparado para conectarse directamente con la API en el siguiente ciclo.
+- Este release sienta la base para:
+  - Seguimiento en tiempo real de citas.
+  - Vistas especializadas por rol (recepción, doctor, asistente).
+  - Integración futura de estados clínicos y métricas de atención.
+
+---
+
 # [0.24.0] - 2025-12-30
 
 ### Added

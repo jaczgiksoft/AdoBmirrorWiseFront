@@ -16,7 +16,7 @@ export const MODULE_CONFIG = {
         icon: Layout,
         color: "#0ea5e9",
         path: "/clinic-areas",
-        key: null,
+        key: "F4",
     },
     patients: {
         order: 1,
@@ -40,7 +40,7 @@ export const MODULE_CONFIG = {
         icon: Briefcase,
         color: "#0ea5e9",
         path: "/services",
-        key: null,
+        key: "F3",
     },
     users: {
         order: 4,

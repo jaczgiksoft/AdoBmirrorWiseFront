@@ -14,6 +14,14 @@ export async function getAll() {
 }
 
 /**
+ * Alias para coherencia con otros servicios (getClinicAreas)
+ */
+export async function getClinicAreas() {
+    return getAll();
+}
+
+
+/**
  * 📊 Obtener áreas clínicas paginados (para DataTable)
  */
 export async function getDatatable({
