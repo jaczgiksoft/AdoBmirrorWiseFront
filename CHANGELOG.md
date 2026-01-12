@@ -10,6 +10,108 @@ Este proyecto sigue [Semantic Versioning](https://semver.org/lang/es/).
 
 ---
 
+# [0.27.0] - 2026-01-12
+
+### Added
+- Nuevo **módulo de Presupuestos** integrado al expediente del paciente:
+  - Sección **Budgets** dentro del detalle del paciente.
+  - Soporte completo para:
+    - Creación, edición y eliminación de presupuestos.
+    - Visualización de presupuestos históricos por paciente.
+  - Modal de presupuesto reutilizable con flujo controlado.
+
+- Integración con **Catálogo de Servicios**:
+  - Selección de servicios mediante input filtrable (*Autocomplete*).
+  - Auto-llenado de:
+    - Descripción
+    - Precio unitario
+  - Cantidad editable por item.
+  - Soporte para captura manual cuando no se selecciona un servicio.
+  - Preparado para persistir *snapshot* de servicios.
+
+- Integración opcional con **Planes de Tratamiento**:
+  - Selector filtrable de planes existentes del paciente.
+  - Auto-llenado de:
+    - Título del presupuesto
+    - Fecha de inicio
+    - Duración
+  - Presupuesto independiente si no se selecciona un plan.
+
+- Nueva **capa financiera en Presupuestos**:
+  - Cálculo dinámico de:
+    - Total bruto
+    - Pago inicial (monto fijo o porcentaje)
+    - Descuento (monto fijo o porcentaje)
+    - Subtotal financiable
+    - Mensualidad según duración
+  - Campos calculados en tiempo real para feedback inmediato al usuario.
+  - Campos calculados en modo solo lectura.
+
+- Nuevo componente reutilizable:
+  - `AutocompleteInput`
+  - Usado en:
+    - Planes de Tratamiento
+    - Presupuestos
+  - Manejo seguro de:
+    - catálogos vacíos
+    - texto libre
+    - normalización defensiva de datos
+
+---
+
+### Changed
+- Eliminación total de **mock data** en la sección de Presupuestos.
+- Conexión completa con la API real de Presupuestos:
+  - Consumo de:
+    - `GET /budgets/patient/:id`
+    - `POST /budgets`
+    - `PUT /budgets/:id`
+    - `DELETE /budgets/:id`
+- Normalización de datos provenientes de la API:
+  - Conversión de valores numéricos (`DECIMAL`) a `number` en frontend.
+  - Adaptación de estructuras de items para edición (`quantity`, `unit_price`).
+- Refactor del flujo de edición de presupuestos:
+  - Precarga correcta de items, totales y metadatos.
+  - Manejo consistente de fechas (`start_date`).
+
+---
+
+### Fixed
+- Corrección de errores de cálculo (`NaN`) causados por valores numéricos serializados como `string`.
+- Corrección de errores de validación al crear/editar presupuestos:
+  - Mapeo correcto de campos (`quantity`, `unit_price`).
+  - Eliminación de IDs temporales del payload.
+- Corrección del Autocomplete:
+  - Prevención de errores por valores `undefined`.
+  - Manejo seguro de catálogos vacíos.
+- Corrección de carga de fechas en modo edición de presupuesto.
+
+---
+
+### Added — Business Rules
+- Bloqueo de edición para presupuestos con estado **`approved`**:
+  - Formulario en modo solo lectura.
+  - Deshabilitación de inputs y acciones de guardado.
+  - Indicador visual de estado aprobado.
+
+---
+
+### Notes
+- Este release consolida el **Presupuesto** como entidad financiera real en la aplicación.
+- Se establece una separación clara entre:
+  - **Servicios** (plantillas de precio).
+  - **Planes de Tratamiento** (contexto clínico).
+  - **Presupuestos** (snapshot financiero).
+- El frontend queda alineado con el backend para:
+  - Cálculos financieros confiables.
+  - Integración futura con pagos y facturación.
+- El módulo queda preparado para:
+  - Versionado de presupuestos.
+  - Flujos de aprobación.
+  - Conversión de presupuestos aprobados a ejecución clínica.
+
+---
+
 # [0.26.0] - 2026-01-12
 
 ### Added

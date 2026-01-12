@@ -19,44 +19,15 @@ import {
 import { useHotkeys } from '@/hooks/useHotkeys';
 import { ConfirmDialog } from '@/components/feedback';
 import { useToastStore } from '@/store/useToastStore';
+import AutocompleteInput from '@/components/inputs/AutocompleteInput';
+import { getAllServices } from '@/services/service.service';
+import { useOutletContext } from 'react-router-dom';
+import { getTreatmentPlans } from '@/services/treatmentPlan.service';
+import { getBudgets, createBudget, updateBudget, deleteBudget } from '@/services/budget.service';
 
 /* ==============================================================================================
    MOCK DATA & UTILS
    ============================================================================================== */
-
-const MOCK_BUDGETS = [
-    {
-        id: 1,
-        title: 'Tratamiento de Ortodoncia Completo',
-        createdAt: '2023-10-15T10:30:00Z',
-        status: 'approved',
-        items: [
-            { id: 101, description: 'Brackets Metálicos', qty: 1, price: 5000 },
-            { id: 102, description: 'Mensualidades (x12)', qty: 12, price: 800 },
-            { id: 103, description: 'Retenedores', qty: 2, price: 1500 }
-        ]
-    },
-    {
-        id: 2,
-        title: 'Diseño de Sonrisa',
-        createdAt: '2023-11-20T14:15:00Z',
-        status: 'pending',
-        items: [
-            { id: 201, description: 'Blanqueamiento Zoom', qty: 1, price: 3500 },
-            { id: 202, description: 'Carillas de Porcelana', qty: 6, price: 4500 }
-        ]
-    },
-    {
-        id: 3,
-        title: 'Limpieza y Profilaxis',
-        createdAt: '2023-09-05T09:00:00Z',
-        status: 'rejected',
-        items: [
-            { id: 301, description: 'Limpieza con ultrasonido', qty: 1, price: 800 },
-            { id: 302, description: 'Fluorigel', qty: 1, price: 300 }
-        ]
-    }
-];
 
 const STATUS_CONFIG = {
     pending: {
@@ -93,12 +64,16 @@ const calculateTotal = (items) => {
    ============================================================================================== */
 export default function BudgetsSection() {
     const { addToast } = useToastStore();
+    const { profile } = useOutletContext();
+    const patientId = profile?.id;
 
     // ---------------------------------------------------------
     // STATE
     // ---------------------------------------------------------
-    const [budgets, setBudgets] = useState(MOCK_BUDGETS);
-    const [loading, setLoading] = useState(false); // Mock loading
+    const [budgets, setBudgets] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [servicesCatalog, setServicesCatalog] = useState([]);
+    const [treatmentPlans, setTreatmentPlans] = useState([]);
 
     // Modal State
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -108,15 +83,63 @@ export default function BudgetsSection() {
     // Delete State
     const [deleteId, setDeleteId] = useState(null);
 
+    // Load Data (Catalog & Plans)
+    useEffect(() => {
+        if (!patientId) return;
+
+        // Load Services
+        getAllServices().then(data => {
+            setServicesCatalog(data || []);
+        }).catch(err => console.error("Could not load services catalog", err));
+
+        // Load Plans
+        getTreatmentPlans(patientId).then(data => {
+            setTreatmentPlans(data || []);
+        }).catch(err => console.error("Could not load treatment plans", err));
+
+        // Load Budgets
+        loadBudgets();
+    }, [patientId]);
+
     // ---------------------------------------------------------
     // HELPERS
     // ---------------------------------------------------------
-    const refreshData = () => {
+    const loadBudgets = async () => {
         setLoading(true);
-        setTimeout(() => {
+        try {
+            const rawData = await getBudgets(patientId);
+            // REQUIREMENT: Normalize all numeric fields and item keys
+            const normalizedData = (rawData || []).map(b => ({
+                ...b,
+                total: parseFloat(b.total) || 0,
+                subtotal: parseFloat(b.subtotal) || 0,
+                monthly_payment: parseFloat(b.monthly_payment) || 0,
+                down_payment_value: parseFloat(b.down_payment_value) || 0,
+                down_payment_amount: parseFloat(b.down_payment_amount) || 0,
+                discount_value: parseFloat(b.discount_value) || 0,
+                discount_amount: parseFloat(b.discount_amount) || 0,
+
+                // Map items: quantity -> qty, unit_price -> price
+                items: (b.items || []).map(i => ({
+                    id: i.id, // Backend ID
+                    description: i.description,
+                    qty: parseFloat(i.quantity) || 0,
+                    price: parseFloat(i.unit_price) || 0,
+                    total_price: parseFloat(i.total_price) || 0
+                }))
+            }));
+            setBudgets(normalizedData);
+        } catch (error) {
+            console.error(error);
+            addToast({ type: 'error', title: 'Error', message: 'No se pudieron cargar los presupuestos.' });
+        } finally {
             setLoading(false);
-            addToast({ type: 'success', title: 'Actualizado', message: 'Lista de presupuestos actualizada.' });
-        }, 600);
+        }
+    };
+
+    const refreshData = () => {
+        loadBudgets();
+        addToast({ type: 'success', title: 'Actualizado', message: 'Lista de presupuestos actualizada.' });
     };
 
     // ---------------------------------------------------------
@@ -150,30 +173,41 @@ export default function BudgetsSection() {
         setIsModalOpen(true);
     };
 
-    const handleSave = (budgetData) => {
-        if (modalMode === 'create') {
-            const newBudget = {
-                ...budgetData,
-                id: Date.now(),
-                createdAt: new Date().toISOString()
-            };
-            setBudgets(prev => [newBudget, ...prev]);
-            addToast({ type: 'success', title: 'Presupuesto Creado', message: 'El presupuesto se ha guardado exitosamente.' });
-        } else {
-            setBudgets(prev => prev.map(b => b.id === selectedBudget.id ? { ...budgetData, id: b.id, createdAt: b.createdAt } : b));
-            addToast({ type: 'success', title: 'Presupuesto Actualizado', message: 'Cambios guardados correctamente.' });
+    const handleSave = async (budgetData) => {
+        try {
+            if (modalMode === 'create') {
+                const payload = {
+                    ...budgetData,
+                    patient_id: patientId
+                };
+                await createBudget(payload);
+                addToast({ type: 'success', title: 'Presupuesto Creado', message: 'El presupuesto se ha guardado exitosamente.' });
+            } else {
+                await updateBudget(selectedBudget.id, budgetData);
+                addToast({ type: 'success', title: 'Presupuesto Actualizado', message: 'Cambios guardados correctamente.' });
+            }
+            setIsModalOpen(false);
+            loadBudgets();
+        } catch (error) {
+            console.error(error);
+            addToast({ type: 'error', title: 'Error', message: 'Hubo un error al guardar el presupuesto.' });
         }
-        setIsModalOpen(false);
     };
 
     const handleDeleteClick = (id) => {
         setDeleteId(id);
     };
 
-    const confirmDelete = () => {
-        setBudgets(prev => prev.filter(b => b.id !== deleteId));
-        setDeleteId(null);
-        addToast({ type: 'success', title: 'Eliminado', message: 'El presupuesto ha sido eliminado.' });
+    const confirmDelete = async () => {
+        try {
+            await deleteBudget(deleteId);
+            setDeleteId(null);
+            addToast({ type: 'success', title: 'Eliminado', message: 'El presupuesto ha sido eliminado.' });
+            loadBudgets();
+        } catch (error) {
+            console.error(error);
+            addToast({ type: 'error', title: 'Error', message: 'No se pudo eliminar el presupuesto.' });
+        }
     };
 
     // ---------------------------------------------------------
@@ -214,6 +248,8 @@ export default function BudgetsSection() {
                 open={isModalOpen}
                 mode={modalMode}
                 initialData={selectedBudget}
+                catalog={servicesCatalog}
+                plans={treatmentPlans}
                 onSave={handleSave}
                 onClose={() => setIsModalOpen(false)}
             />
@@ -342,7 +378,7 @@ function EmptyState({ onAdd }) {
 /* ==============================================================================================
    MODAL COMPONENT
    ============================================================================================== */
-function BudgetModal({ open, mode, initialData, onSave, onClose }) {
+function BudgetModal({ open, mode, initialData, catalog = [], plans = [], onSave, onClose }) {
     const { addToast } = useToastStore();
     const titleRef = useRef(null);
 
@@ -352,21 +388,74 @@ function BudgetModal({ open, mode, initialData, onSave, onClose }) {
     const [status, setStatus] = useState('pending');
     const [items, setItems] = useState([defaultItem]);
 
+    // Linking Fields
+    const [selectedPlanId, setSelectedPlanId] = useState(null); // ID only
+    const [selectedPlanTitle, setSelectedPlanTitle] = useState(''); // For autocomplete input
+    const [startDate, setStartDate] = useState('');
+    const [duration, setDuration] = useState('');
+
+    // Financial Fields
+    const [downPaymentType, setDownPaymentType] = useState('fixed');
+    const [downPaymentValue, setDownPaymentValue] = useState(0);
+    const [discountType, setDiscountType] = useState('fixed');
+    const [discountValue, setDiscountValue] = useState(0);
+
     // Effects
     useEffect(() => {
         if (open) {
             if (mode === 'edit' && initialData) {
                 setTitle(initialData.title);
                 setStatus(initialData.status);
-                setItems(initialData.items.map(i => ({ ...i }))); // deep clone somewhat
+                // Normalize items: Map backend (quantity, unit_price) to frontend (qty, price) and ensure numbers
+                setItems(initialData.items.map(i => ({
+                    id: i.id, // Keep backend ID for editing
+                    description: i.description,
+                    qty: (typeof i.qty === 'number') ? i.qty : (parseFloat(i.quantity) || 0),
+                    price: (typeof i.price === 'number') ? i.price : (parseFloat(i.unit_price) || 0)
+                })));
+
+                // Mock data won't have these yet, but preparing structure
+                // Backend returns "start_date" (YYYY-MM-DD or ISO). Input type="date" needs YYYY-MM-DD.
+                const rawDate = initialData.start_date || initialData.startDate;
+                setStartDate(rawDate ? rawDate.substring(0, 10) : '');
+                setDuration(initialData.duration_months || initialData.duration || '');
+                setSelectedPlanId(initialData.treatment_plan_id || null);
+
+                // Financials - Normalize strings to numbers
+                setDownPaymentType(initialData.down_payment_type || 'fixed');
+                setDownPaymentValue(parseFloat(initialData.down_payment_value) || 0);
+                setDiscountType(initialData.discount_type || 'fixed');
+                setDiscountValue(parseFloat(initialData.discount_value) || 0);
+
+                // Find plan title if id exists
+                const plan = plans.find(p => p.id === initialData.treatment_plan_id);
+                setSelectedPlanTitle(plan ? plan.title : '');
             } else {
                 setTitle('');
                 setStatus('pending');
                 setItems([{ ...defaultItem, id: Date.now() }]);
+                setStartDate('');
+                setDuration('');
+                setSelectedPlanId(null);
+                setSelectedPlanTitle('');
+                setDownPaymentType('fixed');
+                setDownPaymentValue(0);
+                setDiscountType('fixed');
+                setDiscountValue(0);
             }
             setTimeout(() => titleRef.current?.focus(), 100);
         }
     }, [open, mode, initialData]);
+
+    const handlePlanSelect = (plan) => {
+        setSelectedPlanId(plan.id);
+        setSelectedPlanTitle(plan.title);
+
+        // Auto-fill logic
+        setTitle(`${plan.title} - Presupuesto`);
+        if (plan.start_date) setStartDate(plan.start_date);
+        if (plan.duration_months) setDuration(plan.duration_months);
+    };
 
     // Handlers
     const handleAddItem = () => {
@@ -382,6 +471,20 @@ function BudgetModal({ open, mode, initialData, onSave, onClose }) {
         setItems(prev => prev.map(item => {
             if (item.id === id) {
                 return { ...item, [field]: value };
+            }
+            return item;
+        }));
+    };
+
+    const handleServiceSelect = (id, service) => {
+        setItems(prev => prev.map(item => {
+            if (item.id === id) {
+                return {
+                    ...item,
+                    description: service.name,
+                    price: parseFloat(service.price) || 0,
+                    // If visual color is needed later: color: service.color
+                };
             }
             return item;
         }));
@@ -403,8 +506,22 @@ function BudgetModal({ open, mode, initialData, onSave, onClose }) {
         onSave({
             title,
             status,
-            items: validItems,
-            total: calculateTotal(validItems)
+            items: validItems.map(item => ({
+                // Strict mapping: ID removed to avoid database overflow (frontend uses timestamps)
+                description: item.description,
+                quantity: item.qty,
+                unit_price: item.price
+            })),
+
+            treatment_plan_id: selectedPlanId,
+            start_date: startDate,
+            duration_months: parseInt(duration) || 0,
+
+            // Financials
+            down_payment_type: downPaymentType,
+            down_payment_value: parseFloat(downPaymentValue) || 0,
+            discount_type: discountType,
+            discount_value: parseFloat(discountValue) || 0,
         });
     };
 
@@ -422,7 +539,8 @@ function BudgetModal({ open, mode, initialData, onSave, onClose }) {
 
     const grandTotal = calculateTotal(items);
 
-    if (!open) return null;
+    // Determine read-only state
+    const isReadOnly = mode === 'edit' && initialData?.status === 'approved';
 
     return createPortal(
         <AnimatePresence>
@@ -445,26 +563,82 @@ function BudgetModal({ open, mode, initialData, onSave, onClose }) {
                     >
                         {/* Header */}
                         <div className="px-6 pt-6 pb-2">
-                            <input
-                                ref={titleRef}
-                                type="text"
-                                value={title}
-                                onChange={(e) => setTitle(e.target.value)}
-                                placeholder="Título del presupuesto..."
-                                className="w-full text-2xl font-bold bg-transparent border-none outline-none placeholder:text-slate-300 dark:placeholder:text-slate-600 text-slate-800 dark:text-slate-100"
-                            />
+                            <div className="flex justify-between items-start mb-4">
+                                <input
+                                    ref={titleRef}
+                                    type="text"
+                                    disabled={isReadOnly}
+                                    value={title}
+                                    onChange={(e) => setTitle(e.target.value)}
+                                    placeholder="Título del presupuesto..."
+                                    className="w-full text-2xl font-bold bg-transparent border-none outline-none placeholder:text-slate-300 dark:placeholder:text-slate-600 text-slate-800 dark:text-slate-100 disabled:opacity-70 disabled:cursor-not-allowed"
+                                />
+                                {isReadOnly && (
+                                    <div className="ml-4 flex items-center gap-1.5 px-3 py-1 bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 rounded-full text-xs font-bold uppercase tracking-wider whitespace-nowrap">
+                                        <CheckCircle2 size={14} />
+                                        <span>Aprobado</span>
+                                    </div>
+                                )}
+                            </div>
 
-                            <div className="flex items-center gap-4 mt-4">
+                            {/* Plan Linking Section */}
+                            <div className={`grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-50 dark:bg-slate-800 p-4 rounded-xl border border-slate-100 dark:border-slate-700 mb-4 ${isReadOnly ? 'opacity-70 pointer-events-none' : ''}`}>
+                                <div className="sm:col-span-2">
+                                    <label className="block text-xs font-semibold text-slate-500 uppercase mb-1.5">
+                                        Vincular Plan de Tratamiento (Opcional)
+                                    </label>
+                                    <div className={isReadOnly ? 'pointer-events-none' : ''}>
+                                        <AutocompleteInput
+                                            options={plans}
+                                            value={selectedPlanTitle}
+                                            onChange={(val) => {
+                                                setSelectedPlanTitle(val);
+                                                if (!val) setSelectedPlanId(null); // Clear ID if text cleared
+                                            }}
+                                            onSelect={handlePlanSelect}
+                                            placeholder="Buscar plan..."
+                                        />
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-semibold text-slate-500 uppercase mb-1.5">
+                                        Fecha Inicio
+                                    </label>
+                                    <input
+                                        type="date"
+                                        disabled={isReadOnly}
+                                        className="w-full px-3 py-2 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary/20 disabled:opacity-50"
+                                        value={startDate}
+                                        onChange={(e) => setStartDate(e.target.value)}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-semibold text-slate-500 uppercase mb-1.5">
+                                        Duración (Meses)
+                                    </label>
+                                    <input
+                                        type="number"
+                                        min="1"
+                                        disabled={isReadOnly}
+                                        className="w-full px-3 py-2 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary/20 disabled:opacity-50"
+                                        value={duration}
+                                        onChange={(e) => setDuration(e.target.value)}
+                                        placeholder="Ej: 6"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="flex items-center gap-4">
                                 <div className="flex items-center gap-2 text-sm text-slate-500">
                                     <span className="font-medium">Estado:</span>
-                                    <div className="flex bg-slate-100 dark:bg-slate-800 rounded-lg p-0.5">
+                                    <div className={`flex bg-slate-100 dark:bg-slate-800 rounded-lg p-0.5 ${isReadOnly ? 'opacity-60 pointer-events-none' : ''}`}>
                                         {Object.keys(STATUS_CONFIG).map(key => (
                                             <button
                                                 key={key}
                                                 onClick={() => setStatus(key)}
                                                 className={`px-3 py-1 rounded-md text-xs font-medium transition-all ${status === key
-                                                        ? 'bg-white dark:bg-[var(--color-secondary)] text-[var(--color-primary)] shadow-sm'
-                                                        : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
+                                                    ? 'bg-white dark:bg-[var(--color-secondary)] text-[var(--color-primary)] shadow-sm'
+                                                    : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
                                                     }`}
                                             >
                                                 {STATUS_CONFIG[key].label}
@@ -480,23 +654,24 @@ function BudgetModal({ open, mode, initialData, onSave, onClose }) {
                             <div className="space-y-1">
                                 {items.map((item, index) => (
                                     <div key={item.id} className="group flex items-start gap-3 py-2 border-b border-transparent hover:border-slate-100 dark:hover:border-slate-800 transition-colors">
-                                        <div className="flex-1">
-                                            <input
-                                                type="text"
-                                                placeholder="Descripción del ítem"
+                                        <div className={`flex-1 ${isReadOnly ? 'pointer-events-none opacity-80' : ''}`}>
+                                            <AutocompleteInput
+                                                options={catalog}
                                                 value={item.description}
-                                                onChange={(e) => handleItemChange(item.id, 'description', e.target.value)}
-                                                className="w-full bg-transparent border-none outline-none text-sm font-medium text-slate-700 dark:text-slate-200 placeholder:text-slate-400"
+                                                onChange={(val) => handleItemChange(item.id, 'description', val)}
+                                                onSelect={(service) => handleServiceSelect(item.id, service)}
+                                                placeholder="Descripción o buscar servicio..."
                                             />
                                         </div>
                                         <div className="w-20">
                                             <input
                                                 type="number"
                                                 min="1"
+                                                disabled={isReadOnly}
                                                 placeholder="Cant."
                                                 value={item.qty}
                                                 onChange={(e) => handleItemChange(item.id, 'qty', parseInt(e.target.value) || 0)}
-                                                className="w-full bg-transparent border-none outline-none text-sm text-right text-slate-600 dark:text-slate-400"
+                                                className="w-full bg-transparent border-none outline-none text-sm text-right text-slate-600 dark:text-slate-400 disabled:opacity-50"
                                             />
                                         </div>
                                         <div className="w-28 relative">
@@ -504,17 +679,18 @@ function BudgetModal({ open, mode, initialData, onSave, onClose }) {
                                             <input
                                                 type="number"
                                                 min="0"
+                                                disabled={isReadOnly}
                                                 placeholder="0.00"
                                                 value={item.price}
                                                 onChange={(e) => handleItemChange(item.id, 'price', parseFloat(e.target.value) || 0)}
-                                                className="w-full bg-transparent border-none outline-none text-sm text-right font-medium text-slate-700 dark:text-slate-200"
+                                                className="w-full bg-transparent border-none outline-none text-sm text-right font-medium text-slate-700 dark:text-slate-200 disabled:opacity-50"
                                             />
                                         </div>
-                                        <div className="w-8 flex justify-end opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <div className={`w-8 flex justify-end transition-opacity ${isReadOnly ? 'opacity-0 pointer-events-none' : 'opacity-0 group-hover:opacity-100'}`}>
                                             <button
                                                 onClick={() => handleRemoveItem(item.id)}
                                                 className="text-slate-300 hover:text-[var(--color-error)] transition-colors"
-                                                disabled={items.length === 1}
+                                                disabled={items.length === 1 || isReadOnly}
                                             >
                                                 <X size={16} />
                                             </button>
@@ -523,22 +699,112 @@ function BudgetModal({ open, mode, initialData, onSave, onClose }) {
                                 ))}
                             </div>
 
-                            <button
-                                onClick={handleAddItem}
-                                className="mt-4 flex items-center gap-1.5 text-xs font-semibold text-[var(--color-primary)] hover:opacity-80 transition-opacity"
-                            >
-                                <Plus size={14} />
-                                Agregar ítem
-                            </button>
+                            {!isReadOnly && (
+                                <button
+                                    onClick={handleAddItem}
+                                    className="mt-4 flex items-center gap-1.5 text-xs font-semibold text-[var(--color-primary)] hover:opacity-80 transition-opacity"
+                                >
+                                    <Plus size={14} />
+                                    Agregar ítem
+                                </button>
+                            )}
+
+                            {/* Financial Summary Controls */}
+                            <div className={`mt-8 grid grid-cols-1 sm:grid-cols-2 gap-6 pt-6 border-t border-slate-100 dark:border-slate-800 ${isReadOnly ? 'pointer-events-none opacity-80' : ''}`}>
+                                {/* Discount */}
+                                <div className="space-y-3">
+                                    <div className="flex items-center justify-between">
+                                        <label className="text-xs font-semibold text-slate-500 uppercase">Descuento</label>
+                                        <div className="flex bg-slate-100 dark:bg-slate-800 rounded-lg p-0.5">
+                                            <button
+                                                onClick={() => setDiscountType('fixed')}
+                                                className={`px-2 py-0.5 text-[10px] font-bold rounded ${discountType === 'fixed' ? 'bg-white shadow text-slate-800' : 'text-slate-400'}`}
+                                            >
+                                                $
+                                            </button>
+                                            <button
+                                                onClick={() => setDiscountType('percentage')}
+                                                className={`px-2 py-0.5 text-[10px] font-bold rounded ${discountType === 'percentage' ? 'bg-white shadow text-slate-800' : 'text-slate-400'}`}
+                                            >
+                                                %
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div className="relative">
+                                        <input
+                                            type="number"
+                                            min="0"
+                                            disabled={isReadOnly}
+                                            value={discountValue}
+                                            onChange={e => setDiscountValue(parseFloat(e.target.value) || 0)}
+                                            className="w-full px-3 py-2 text-right bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-sm disabled:opacity-50"
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Down Payment */}
+                                <div className="space-y-3">
+                                    <div className="flex items-center justify-between">
+                                        <label className="text-xs font-semibold text-slate-500 uppercase">Anticipo / Enganche</label>
+                                        <div className="flex bg-slate-100 dark:bg-slate-800 rounded-lg p-0.5">
+                                            <button
+                                                onClick={() => setDownPaymentType('fixed')}
+                                                className={`px-2 py-0.5 text-[10px] font-bold rounded ${downPaymentType === 'fixed' ? 'bg-white shadow text-slate-800' : 'text-slate-400'}`}
+                                            >
+                                                $
+                                            </button>
+                                            <button
+                                                onClick={() => setDownPaymentType('percentage')}
+                                                className={`px-2 py-0.5 text-[10px] font-bold rounded ${downPaymentType === 'percentage' ? 'bg-white shadow text-slate-800' : 'text-slate-400'}`}
+                                            >
+                                                %
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div className="relative">
+                                        <input
+                                            type="number"
+                                            min="0"
+                                            disabled={isReadOnly}
+                                            value={downPaymentValue}
+                                            onChange={e => setDownPaymentValue(parseFloat(e.target.value) || 0)}
+                                            className="w-full px-3 py-2 text-right bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-sm disabled:opacity-50"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
-                        {/* Footer */}
                         <div className="bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-800 px-6 py-4 flex items-center justify-between">
-                            <div className="flex flex-col">
-                                <span className="text-xs text-slate-400 font-medium uppercase tracking-wider">Total Presupuesto</span>
-                                <span className="text-xl font-bold text-slate-800 dark:text-white">
-                                    {formatCurrency(grandTotal)}
-                                </span>
+                            <div className="flex gap-8">
+                                <div className="flex flex-col">
+                                    <span className="text-xs text-slate-400 font-medium uppercase tracking-wider">Total</span>
+                                    <span className="text-xl font-bold text-slate-800 dark:text-white">
+                                        {formatCurrency(grandTotal)}
+                                    </span>
+                                </div>
+                                <div className="flex flex-col">
+                                    <span className="text-xs text-slate-400 font-medium uppercase tracking-wider">Subtotal</span>
+                                    <span className="text-xl font-bold text-[var(--color-primary)]">
+                                        {formatCurrency(Math.max(0, grandTotal
+                                            - (discountType === 'percentage' ? grandTotal * (discountValue / 100) : discountValue)
+                                            - (downPaymentType === 'percentage' ? grandTotal * (downPaymentValue / 100) : downPaymentValue)
+                                        ))}
+                                    </span>
+                                </div>
+                                {(duration && parseInt(duration) > 0) && (
+                                    <div className="flex flex-col">
+                                        <span className="text-xs text-slate-400 font-medium uppercase tracking-wider">Mensualidad ({parseInt(duration)})</span>
+                                        <span className="text-lg font-semibold text-slate-600 dark:text-slate-300">
+                                            {formatCurrency(
+                                                Math.max(0, grandTotal
+                                                    - (discountType === 'percentage' ? grandTotal * (discountValue / 100) : discountValue)
+                                                    - (downPaymentType === 'percentage' ? grandTotal * (downPaymentValue / 100) : downPaymentValue)
+                                                ) / parseInt(duration)
+                                            )}
+                                        </span>
+                                    </div>
+                                )}
                             </div>
 
                             <div className="flex items-center gap-3">
@@ -546,15 +812,17 @@ function BudgetModal({ open, mode, initialData, onSave, onClose }) {
                                     onClick={onClose}
                                     className="px-4 py-2 text-sm font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 transition-colors"
                                 >
-                                    Cancelar
+                                    {isReadOnly ? 'Cerrar' : 'Cancelar'}
                                 </button>
-                                <button
-                                    onClick={handleSaveInternal}
-                                    className="flex items-center gap-2 px-6 py-2 bg-[var(--color-primary)] hover:opacity-90 text-white text-sm font-bold rounded-lg shadow-lg active:scale-95 transition-all"
-                                >
-                                    <Save size={16} />
-                                    Guardar
-                                </button>
+                                {!isReadOnly && (
+                                    <button
+                                        onClick={handleSaveInternal}
+                                        className="flex items-center gap-2 px-6 py-2 bg-[var(--color-primary)] hover:opacity-90 text-white text-sm font-bold rounded-lg shadow-lg active:scale-95 transition-all"
+                                    >
+                                        <Save size={16} />
+                                        Guardar
+                                    </button>
+                                )}
                             </div>
                         </div>
                     </motion.div>
