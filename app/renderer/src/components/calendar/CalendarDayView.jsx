@@ -3,7 +3,7 @@ import resourceTimeGridPlugin from '@fullcalendar/resource-timegrid';
 import interactionPlugin from "@fullcalendar/interaction";
 import CalendarEventCard from "./CalendarEventCard";
 
-export default function CalendarDayView({ events, onEventClick, calendarRef, resources }) {
+export default function CalendarDayView({ events, onEventClick, calendarRef, resources, datesSet }) {
 
     return (
         <div className="h-full calendar-day-wrapper">
@@ -49,6 +49,7 @@ export default function CalendarDayView({ events, onEventClick, calendarRef, res
                 resources={resources} // Array of { id, title }
                 eventContent={(arg) => <CalendarEventCard event={arg.event} />}
                 eventClick={onEventClick}
+                datesSet={datesSet}
                 slotMinTime="08:00:00"
                 slotMaxTime="19:00:00"
                 allDaySlot={false}

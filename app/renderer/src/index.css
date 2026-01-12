@@ -16,14 +16,6 @@
 }
 
 /* 🎨 Custom Primary Utilities */
-.text-primary {
-    color: var(--color-primary);
-}
-
-.hover\:text-primary:hover {
-    color: var(--color-primary);
-}
-
 .btn-primary-soft {
     color: var(--color-primary);
     background-color: color-mix(in srgb, var(--color-primary) 10%, transparent);

@@ -44,13 +44,12 @@ export default function RepresentativesSection() {
                     className="
             flex items-center gap-2
             px-4 py-2
-            bg-primary text-white
+            bg-primary/10 text-primary
             rounded-xl shadow-sm
             text-sm font-medium
-            hover:bg-primary/90
+            hover:bg-primary hover:text-white
             active:scale-[0.97]
-            transition-all duration-150
-        "
+            transition-all duration-150 cursor-pointer"
                 >
                     <UserPlus size={16} />
                     Agregar representante

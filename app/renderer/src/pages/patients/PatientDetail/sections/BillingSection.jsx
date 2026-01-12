@@ -35,15 +35,14 @@ export default function BillingSection() {
                 <button
                     onClick={() => console.log("AGREGAR DATO FISCAL")}
                     className="
-                        flex items-center gap-2
-                        px-4 py-2
-                        bg-primary text-white
-                        rounded-xl shadow-sm
-                        text-sm font-medium
-                        hover:bg-primary/90
-                        active:scale-[0.97]
-                        transition-all duration-150
-                    "
+                     flex items-center gap-2
+            px-4 py-2
+            bg-primary/10 text-primary
+            rounded-xl shadow-sm
+            text-sm font-medium
+            hover:bg-primary hover:text-white
+            active:scale-[0.97]
+            transition-all duration-150 cursor-pointer"
                 >
                     <PlusCircle size={16} />
                     Agregar dato fiscal
@@ -181,9 +180,8 @@ function InfoItem({ label, icon: Icon, children, email }) {
 
             {/* Texto truncado si es email */}
             <p
-                className={`font-medium text-[13px] block truncate max-w-[140px] ${
-                    email ? "cursor-help" : ""
-                }`}
+                className={`font-medium text-[13px] block truncate max-w-[140px] ${email ? "cursor-help" : ""
+                    }`}
             >
                 {children}
             </p>

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import { SketchPicker } from 'react-color';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     ClipboardList,
@@ -12,7 +13,8 @@ import {
     Check,
     X,
     Save,
-    GripVertical
+    GripVertical,
+    Search
 } from 'lucide-react';
 import {
     DndContext,
@@ -34,61 +36,49 @@ import { CSS } from '@dnd-kit/utilities';
 import { useHotkeys } from '@/hooks/useHotkeys';
 import { useToastStore } from '@/store/useToastStore';
 
-/* ==============================================================================================
-   MOCK DATA & CATALOG
-   ============================================================================================== */
-const MOCK_TREATMENT_PLANS = [
-    {
-        id: 1,
-        title: "Orthodontic Phase 1",
-        start_date: "2025-01-15",
-        duration_months: 12,
-        is_main: true,
-        treatments: [
-            { id: 'tx-101', title: "Metal brackets", description: "Initial placement", color: "blue" },
-            { id: 'tx-102', title: "Dental alignment", description: "Progressive correction", color: "green" }
-        ]
-    },
-    {
-        id: 2,
-        title: "Retainers",
-        start_date: "2025-12-01",
-        duration_months: 6,
-        is_main: false,
-        treatments: [
-            { id: 'tx-201', title: "Hawley retainers", description: "Night-only use", color: "purple" }
-        ]
-    }
-];
-
-const MOCK_TREATMENT_CATALOG = [
-    { title: "Metal brackets", color: "blue", description: "Initial placement" },
-    { title: "Dental alignment", color: "green", description: "Progressive correction" },
-    { title: "Hawley retainers", color: "purple", description: "Night use" },
-    { title: "Ceramic brackets", color: "white", description: "Aesthetic option" },
-    { title: "Invisalign", color: "teal", description: "Clear aligners" },
-    { title: "Hyrax Expander", color: "red", description: "Palatal expansion" }
-];
+import { useOutletContext } from 'react-router-dom';
+import * as treatmentPlanService from '@/services/treatmentPlan.service';
 
 /* ==============================================================================================
    MAIN COMPONENT
    ============================================================================================== */
-export default function TreatmentPlanSection() {
+export default function TreatmentPlanSection({ patientId }) {
+    const { profile } = useOutletContext();
+    const activeId = patientId || profile?.id;
     const { addToast } = useToastStore();
 
     // -- State --
     const [plans, setPlans] = useState([]);
+    const [catalog, setCatalog] = useState([]);
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
 
-    // -- Data Loading (Mock) --
-    useEffect(() => {
-        const timer = setTimeout(() => {
-            setPlans(MOCK_TREATMENT_PLANS);
+    // -- Data Loading --
+    const loadData = async () => {
+        if (!activeId) return;
+        setLoading(true);
+        try {
+            const [plansData, catalogData] = await Promise.all([
+                treatmentPlanService.getTreatmentPlans(activeId),
+                treatmentPlanService.getTreatmentCatalogs()
+            ]);
+            setPlans(plansData);
+            setCatalog(catalogData);
+        } catch (err) {
+            console.error("Error loading treatment plans:", err);
+            addToast({
+                type: 'error',
+                title: 'Error',
+                message: 'No se pudieron cargar los planes de tratamiento.'
+            });
+        } finally {
             setLoading(false);
-        }, 600);
-        return () => clearTimeout(timer);
-    }, []);
+        }
+    };
+
+    useEffect(() => {
+        loadData();
+    }, [activeId]);
 
     // -- Shortcuts (Global) --
     useHotkeys(
@@ -106,24 +96,48 @@ export default function TreatmentPlanSection() {
     const openModal = () => setIsModalOpen(true);
     const closeModal = () => setIsModalOpen(false);
 
-    const handleSave = (newPlan) => {
-        const planWithId = { ...newPlan, id: Date.now() };
-        setPlans(prev => [planWithId, ...prev]);
-        addToast({
-            type: 'success',
-            title: 'Plan Creado',
-            message: 'El plan de tratamiento se ha guardado correctamente.'
-        });
-        closeModal();
+    const handleSave = async (newPlan) => {
+        try {
+            await treatmentPlanService.createTreatmentPlan({
+                ...newPlan,
+                patient_id: activeId
+            });
+            addToast({
+                type: 'success',
+                title: 'Plan Creado',
+                message: 'El plan de tratamiento se ha guardado correctamente.'
+            });
+            await loadData();
+            closeModal();
+        } catch (err) {
+            console.error("Error saving plan:", err);
+            addToast({
+                type: 'error',
+                title: 'Error',
+                message: 'No se pudo guardar el plan.'
+            });
+        }
     };
 
-    const handleDelete = (id) => {
-        setPlans(prev => prev.filter(p => p.id !== id));
-        addToast({
-            type: 'success',
-            title: 'Plan Eliminado',
-            message: 'El plan de tratamiento ha sido eliminado.'
-        });
+    const handleDelete = async (id) => {
+        if (!window.confirm("¿Seguro que deseas eliminar este plan?")) return;
+
+        try {
+            await treatmentPlanService.deleteTreatmentPlan(id);
+            addToast({
+                type: 'success',
+                title: 'Plan Eliminado',
+                message: 'El plan de tratamiento ha sido eliminado.'
+            });
+            await loadData();
+        } catch (err) {
+            console.error("Error deleting plan:", err);
+            addToast({
+                type: 'error',
+                title: 'Error',
+                message: 'No se pudo eliminar el plan.'
+            });
+        }
     };
 
     // -- Render --
@@ -157,6 +171,7 @@ export default function TreatmentPlanSection() {
                 isOpen={isModalOpen}
                 onClose={closeModal}
                 onSave={handleSave}
+                catalog={catalog}
             />
         </div>
     );
@@ -190,11 +205,14 @@ function SectionHeader({ title, subtitle, onAdd }) {
                     onClick={onAdd}
                     title="Nueva (N)"
                     className="
-                        flex items-center gap-1.5 px-3 py-1.5
-                        bg-primary/10 text-cyan border border-primary/20
-                        hover:bg-primary hover:text-white hover:border-primary
-                        rounded-lg text-xs font-semibold transition-all duration-200
-                    "
+                        flex items-center gap-2
+            px-4 py-2
+            bg-primary/10 text-primary
+            rounded-xl shadow-sm
+            text-sm font-medium
+            hover:bg-primary hover:text-white
+            active:scale-[0.97]
+            transition-all duration-150 cursor-pointer"
                 >
                     <Plus size={14} />
                     Nuevo Plan
@@ -290,7 +308,7 @@ function TreatmentPlanCard({ plan, onDelete }) {
                         className="border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30"
                     >
                         <div className="p-3 pl-8 grid gap-2">
-                            {plan.treatments.map((tx, idx) => (
+                            {(plan.items || []).map((tx, idx) => (
                                 <div key={idx} className="flex items-start gap-3 text-sm">
                                     <span
                                         className="mt-1.5 w-2 h-2 rounded-full flex-shrink-0"
@@ -306,7 +324,7 @@ function TreatmentPlanCard({ plan, onDelete }) {
                                     </div>
                                 </div>
                             ))}
-                            {plan.treatments.length === 0 && (
+                            {(!plan.items || plan.items.length === 0) && (
                                 <p className="text-slate-400 text-xs italic">Sin tratamientos definidos.</p>
                             )}
                         </div>
@@ -317,10 +335,138 @@ function TreatmentPlanCard({ plan, onDelete }) {
     );
 }
 
+/**
+ * Custom Autocomplete Input (Combobox behavior)
+ * Allows free text entry + selection from options
+ */
+function AutocompleteInput({ options, value, onChange, onSelect, placeholder = "Escribir tratamiento..." }) {
+    const [open, setOpen] = useState(false);
+    const [inputValue, setInputValue] = useState(value || '');
+    const triggerRef = useRef(null);
+    const [coords, setCoords] = useState({ top: 0, left: 0, width: 0 });
+
+    // Sync input value if prop changes
+    useEffect(() => {
+        setInputValue(value || '');
+    }, [value]);
+
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (triggerRef.current && !triggerRef.current.contains(event.target)) {
+                if (!event.target.closest('.autocomplete-portal')) {
+                    setOpen(false);
+                }
+            }
+        };
+
+        if (open) {
+            document.addEventListener('mousedown', handleClickOutside);
+            window.addEventListener('scroll', updatePosition, true);
+            window.addEventListener('resize', updatePosition);
+        }
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+            window.removeEventListener('scroll', updatePosition, true);
+            window.removeEventListener('resize', updatePosition);
+        };
+    }, [open]);
+
+    const updatePosition = () => {
+        if (triggerRef.current) {
+            const rect = triggerRef.current.getBoundingClientRect();
+            setCoords({
+                top: rect.bottom + window.scrollY + 4,
+                left: rect.left + window.scrollX,
+                width: rect.width
+            });
+        }
+    };
+
+    const handleFocus = () => {
+        updatePosition();
+        setOpen(true);
+    };
+
+    const handleChange = (e) => {
+        const newVal = e.target.value;
+        setInputValue(newVal);
+        onChange(newVal);
+        setOpen(true);
+    };
+
+    const handleSelect = (item) => {
+        onSelect(item);
+        setInputValue(item.title);
+        setOpen(false);
+    };
+
+    const filteredOptions = options.filter(opt =>
+        opt.title.toLowerCase().includes(inputValue.toLowerCase())
+    );
+
+    return (
+        <>
+            <div ref={triggerRef} className="relative w-full">
+                <input
+                    type="text"
+                    value={inputValue}
+                    onChange={handleChange}
+                    onFocus={handleFocus}
+                    placeholder={placeholder}
+                    className="
+                        w-full rounded-md border border-slate-200 dark:border-slate-700 
+                        bg-white dark:bg-slate-800 px-3 py-2 pl-3 pr-8 text-xs 
+                        placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/20
+                    "
+                />
+                <div className="absolute right-2 top-2.5 pointer-events-none">
+                    <Search size={14} className="text-slate-400" />
+                </div>
+            </div>
+
+            {open && filteredOptions.length > 0 && createPortal(
+                <div
+                    className="autocomplete-portal absolute z-[9999] overflow-hidden rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-secondary shadow-md animate-in fade-in zoom-in-95 duration-100"
+                    style={{
+                        top: coords.top,
+                        left: coords.left,
+                        width: coords.width,
+                        maxHeight: '200px',
+                        overflowY: 'auto'
+                    }}
+                >
+                    {filteredOptions.map((option) => (
+                        <div
+                            key={option.id || option.title}
+                            onClick={() => handleSelect(option)}
+                            className={`
+                                relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-xs outline-none 
+                                hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 cursor-pointer
+                                ${inputValue === option.title ? 'bg-slate-100 dark:bg-slate-800' : ''}
+                            `}
+                        >
+                            <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
+                                <div className={`w-2 h-2 rounded-full`} style={{ backgroundColor: option.color || 'gray' }} />
+                            </span>
+                            <div className="flex flex-col">
+                                <span className="font-medium text-slate-900 dark:text-slate-100">{option.title}</span>
+                                {option.description && (
+                                    <span className="text-[10px] text-slate-500 truncate max-w-[200px]">{option.description}</span>
+                                )}
+                            </div>
+                        </div>
+                    ))}
+                </div>,
+                document.body
+            )}
+        </>
+    );
+}
+
 /* ==============================================================================================
    SORTABLE ITEM COMPONENT
    ============================================================================================== */
-function SortableTreatmentItem({ id, treatment, onUpdate, onSelectCatalog, onRemove }) {
+function SortableTreatmentItem({ id, treatment, onUpdate, onSelectCatalog, onRemove, catalog }) {
     const {
         attributes,
         listeners,
@@ -329,6 +475,41 @@ function SortableTreatmentItem({ id, treatment, onUpdate, onSelectCatalog, onRem
         transition,
         isDragging
     } = useSortable({ id });
+
+    const [showColorPicker, setShowColorPicker] = useState(false);
+    const triggerRef = useRef(null);
+    const [coords, setCoords] = useState({ top: 0, left: 0 });
+
+    const updatePickerPosition = () => {
+        if (triggerRef.current) {
+            const rect = triggerRef.current.getBoundingClientRect();
+            setCoords({
+                top: rect.bottom + window.scrollY + 4,
+                left: rect.left + window.scrollX - 100 // Shift left to keep in view
+            });
+        }
+    };
+
+    const handleTogglePicker = (e) => {
+        e.stopPropagation(); // prevent drag start
+        if (!showColorPicker) {
+            updatePickerPosition();
+            setShowColorPicker(true);
+        } else {
+            setShowColorPicker(false);
+        }
+    };
+
+    useEffect(() => {
+        if (showColorPicker) {
+            window.addEventListener('scroll', updatePickerPosition, true);
+            window.addEventListener('resize', updatePickerPosition);
+        }
+        return () => {
+            window.removeEventListener('scroll', updatePickerPosition, true);
+            window.removeEventListener('resize', updatePickerPosition);
+        };
+    }, [showColorPicker]);
 
     const style = {
         transform: CSS.Transform.toString(transform),
@@ -359,21 +540,55 @@ function SortableTreatmentItem({ id, treatment, onUpdate, onSelectCatalog, onRem
                 {/* Row 1: Catalog Select & Color */}
                 <div className="flex gap-2 items-center">
                     <div className="flex-1">
-                        <CustomSelect
-                            options={MOCK_TREATMENT_CATALOG}
+                        <AutocompleteInput
+                            options={catalog}
                             value={treatment.title}
+                            onChange={(val) => {
+                                onUpdate('title', val);
+                                if (treatment.catalog_id) {
+                                    onUpdate('catalog_id', null);
+                                }
+                            }}
                             onSelect={onSelectCatalog}
-                            placeholder="Seleccionar tratamiento..."
+                            placeholder="Escribir tratamiento..."
                         />
                     </div>
                     {/* Color Display (Auto-set) */}
-                    {treatment.color && (
+                    {/* Color Display (Auto-set or Manual) */}
+                    {/* Color Display (Auto-set or Manual) */}
+                    <div ref={triggerRef} className="relative">
                         <div
-                            className="w-8 h-8 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700"
-                            style={{ backgroundColor: treatment.color }}
+                            className="w-8 h-8 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 cursor-pointer transition-transform hover:scale-105"
+                            style={{ backgroundColor: treatment.color || '#3b82f6' }}
                             title={`Color asignado: ${treatment.color}`}
+                            onPointerDown={(e) => e.stopPropagation()}
+                            onClick={handleTogglePicker}
                         />
-                    )}
+                        {showColorPicker && createPortal(
+                            <div
+                                className="fixed inset-0 z-[9999]"
+                                onClick={() => setShowColorPicker(false)}
+                            >
+                                <div
+                                    className="absolute shadow-xl rounded-lg overflow-hidden animate-in fade-in zoom-in-95 duration-100"
+                                    style={{ top: coords.top, left: coords.left }}
+                                    onClick={(e) => e.stopPropagation()}
+                                    onPointerDown={(e) => e.stopPropagation()}
+                                >
+                                    <SketchPicker
+                                        color={treatment.color || '#3b82f6'}
+                                        onChangeComplete={(color) => onUpdate('color', color.hex)}
+                                        disableAlpha
+                                        presetColors={[
+                                            '#3b82f6', '#ef4444', '#10b981', '#f59e0b',
+                                            '#8b5cf6', '#ec4899', '#6366f1', '#14b8a6', '#f43f5e'
+                                        ]}
+                                    />
+                                </div>
+                            </div>,
+                            document.body
+                        )}
+                    </div>
                 </div>
 
                 {/* Row 2: Description */}
@@ -399,7 +614,7 @@ function SortableTreatmentItem({ id, treatment, onUpdate, onSelectCatalog, onRem
 /* ==============================================================================================
    MODAL COMPONENT
    ============================================================================================== */
-function TreatmentPlanModal({ isOpen, onClose, onSave }) {
+function TreatmentPlanModal({ isOpen, onClose, onSave, catalog = [] }) {
     const [title, setTitle] = useState('');
     const [startDate, setStartDate] = useState('');
     const [durationMonths, setDurationMonths] = useState(6);
@@ -462,8 +677,9 @@ function TreatmentPlanModal({ isOpen, onClose, onSave }) {
             t.id === id ? {
                 ...t,
                 title: catalogItem.title,
-                description: catalogItem.description,
-                color: catalogItem.color
+                description: catalogItem.description || t.description,
+                color: catalogItem.color || t.color,
+                catalog_id: catalogItem.id
             } : t
         ));
     };
@@ -599,6 +815,7 @@ function TreatmentPlanModal({ isOpen, onClose, onSave }) {
                                             key={tx.id}
                                             id={tx.id}
                                             treatment={tx}
+                                            catalog={catalog}
                                             onUpdate={(field, val) => updateTreatment(tx.id, field, val)}
                                             onSelectCatalog={(item) => handleCatalogSelect(tx.id, item)}
                                             onRemove={() => removeTreatment(tx.id)}

@@ -3,7 +3,7 @@ import dayGridPlugin from "@fullcalendar/daygrid";
 import interactionPlugin from "@fullcalendar/interaction";
 import CalendarEventCard from "./CalendarEventCard";
 
-export default function CalendarMonthView({ events, onEventClick, calendarRef }) {
+export default function CalendarMonthView({ events, onEventClick, calendarRef, customEventContent, datesSet }) {
     return (
         <div className="h-full calendar-month-wrapper">
             <style>{`
@@ -20,8 +20,9 @@ export default function CalendarMonthView({ events, onEventClick, calendarRef })
                 initialView="dayGridMonth"
                 headerToolbar={false}
                 events={events}
-                eventContent={(arg) => <CalendarEventCard event={arg.event} />}
+                eventContent={customEventContent ? customEventContent : (arg) => <CalendarEventCard event={arg.event} />}
                 eventClick={onEventClick}
+                datesSet={datesSet}
                 height="100%"
                 locale="es"
                 dayMaxEvents={false} /* Show all events, let cell scroll */

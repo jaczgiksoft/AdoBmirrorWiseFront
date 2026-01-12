@@ -21,6 +21,7 @@ import {
     LayoutGrid
 } from "lucide-react";
 import { Pagination } from "@/components/ui";
+import AppointmentDetailModal from "@/components/appointments/AppointmentDetailModal";
 
 export default function AppointmentList() {
     const navigate = useNavigate();
@@ -42,8 +43,13 @@ export default function AppointmentList() {
     const [confirmOpen, setConfirmOpen] = useState(false);
     const [appointmentToDelete, setAppointmentToDelete] = useState(null);
 
+    // Edit / Create Form State
     const [showForm, setShowForm] = useState(false);
     const [appointmentToEdit, setAppointmentToEdit] = useState(null);
+
+    // Detail Modal State
+    const [showDetail, setShowDetail] = useState(false);
+    const [selectedAppointment, setSelectedAppointment] = useState(null);
 
     const searchRef = useRef(null);
     const { addToast } = useToastStore();
@@ -98,36 +104,36 @@ export default function AppointmentList() {
     useHotkeys(
         {
             arrowdown: (e) => {
-                if (showForm || confirmOpen || viewMode === 'calendar') return;
+                if (showForm || confirmOpen || viewMode === 'calendar' || showDetail) return;
                 e.preventDefault();
                 setSelectedIndex((prev) => (prev + 1 < appointments.length ? prev + 1 : prev));
             },
             arrowup: (e) => {
-                if (showForm || confirmOpen || viewMode === 'calendar') return;
+                if (showForm || confirmOpen || viewMode === 'calendar' || showDetail) return;
                 e.preventDefault();
                 setSelectedIndex((prev) => (prev - 1 >= 0 ? prev - 1 : 0));
             },
             enter: (e) => {
-                if (showForm || confirmOpen) return;
+                if (showForm || confirmOpen || showDetail) return;
                 e.preventDefault();
                 if (viewMode === 'list') {
                     const appt = appointments[selectedIndex];
-                    if (appt) handleEdit(appt);
+                    if (appt) handleViewDetail(appt);
                 }
             },
             delete: (e) => {
-                if (showForm || confirmOpen || viewMode === 'calendar') return;
+                if (showForm || confirmOpen || viewMode === 'calendar' || showDetail) return;
                 e.preventDefault();
                 const appt = appointments[selectedIndex];
                 if (appt) handleDeleteClick(appt);
             },
             f12: (e) => {
-                if (showForm || confirmOpen) return;
+                if (showForm || confirmOpen || showDetail) return;
                 e.preventDefault();
                 handleCreate();
             }
         },
-        [appointments, selectedIndex, showForm, confirmOpen, viewMode]
+        [appointments, selectedIndex, showForm, confirmOpen, viewMode, showDetail]
     );
 
     const handleCreate = () => {
@@ -135,9 +141,17 @@ export default function AppointmentList() {
         setShowForm(true);
     };
 
-    const handleEdit = (appt) => {
+    // Called when clicking a card or calendar event -> Opens Detail Modal (Read-only)
+    const handleViewDetail = (appt) => {
+        setSelectedAppointment(appt);
+        setShowDetail(true);
+    };
+
+    // Called from Detail Modal -> Opens Edit Form
+    const handleEditFromDetail = (appt) => {
+        setShowDetail(false); // Close detail
         setAppointmentToEdit(appt);
-        setShowForm(true);
+        setShowForm(true); // Open form
     };
 
     const handleDeleteClick = (appt) => {
@@ -180,6 +194,40 @@ export default function AppointmentList() {
         setShowForm(false);
         // 2. Trigger robust refresh
         await refreshAppointments();
+    };
+
+    // --- Month View Custom Rendering ---
+    const getReadableTextColor = (hex) => {
+        if (!hex) return '#000000';
+        const c = hex.substring(1); // strip #
+        const rgb = parseInt(c, 16); // convert rrggbb to decimal
+        const r = (rgb >> 16) & 0xff; // extract red
+        const g = (rgb >> 8) & 0xff; // extract green
+        const b = (rgb >> 0) & 0xff; // extract blue
+        const luma = 0.2126 * r + 0.7152 * g + 0.0722 * b; // per ITU-R BT.709
+        return luma < 128 ? "#ffffff" : "#000000";
+    };
+
+    const renderMonthEvent = (eventInfo) => {
+        const { event } = eventInfo;
+        const patientName = event.extendedProps.patient
+            ? `${event.extendedProps.patient.first_name} ${event.extendedProps.patient.last_name}`.trim()
+            : "Sin Paciente";
+
+        // ClinicCalendar already sets backgroundColor in the event object based on service
+        // We use that, or fallback
+        const bgColor = event.backgroundColor || 'var(--fc-event-bg-default, #3788d8)';
+        const textColor = getReadableTextColor(bgColor);
+
+        return (
+            <div
+                className="flex items-center gap-1.5 px-1.5 py-0.5 w-full h-full overflow-hidden text-xs rounded-sm shadow-sm"
+                style={{ backgroundColor: bgColor, borderColor: bgColor, color: textColor }}
+            >
+                <span className="font-semibold whitespace-nowrap">{event.startStr.split('T')[1].substring(0, 5)}</span>
+                <span className="truncate font-medium">{patientName}</span>
+            </div>
+        );
     };
 
     return (
@@ -242,7 +290,11 @@ export default function AppointmentList() {
             <div className="flex-1 w-full max-w-[110rem] mx-auto px-10 pb-6 overflow-hidden flex flex-col">
                 {viewMode === 'calendar' ? (
                     <div className="flex-1 overflow-hidden h-full">
-                        <ClinicCalendar appointments={calendarAppointments} onEditAppointment={handleEdit} />
+                        <ClinicCalendar
+                            appointments={calendarAppointments}
+                            onEditAppointment={handleViewDetail}
+                            monthEventContent={renderMonthEvent}
+                        />
                     </div>
                 ) : (
                     <div className="flex-1 overflow-y-auto pr-1">
@@ -261,7 +313,7 @@ export default function AppointmentList() {
                                             <motion.div
                                                 key={appt.id}
                                                 whileHover={{ scale: 1.02 }}
-                                                onClick={() => handleEdit(appt)}
+                                                onClick={() => handleViewDetail(appt)}
                                                 className={`
                                                     relative rounded-2xl p-6 cursor-pointer border flex flex-col justify-between
                                                     bg-white border-slate-300 text-slate-800 shadow-sm
@@ -299,7 +351,7 @@ export default function AppointmentList() {
                                                 {/* Actions */}
                                                 <div className="flex justify-end gap-2 mt-auto">
                                                     <button
-                                                        onClick={(e) => { e.stopPropagation(); handleEdit(appt); }}
+                                                        onClick={(e) => { e.stopPropagation(); handleViewDetail(appt); }}
                                                         className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 hover:text-cyan-600 transition"
                                                     >
                                                         <Edit2 size={16} />
@@ -333,6 +385,14 @@ export default function AppointmentList() {
                 confirmLabel="Eliminar"
                 cancelLabel="Cancelar"
                 confirmVariant="error"
+            />
+
+            {/* DETAIL MODAL */}
+            <AppointmentDetailModal
+                open={showDetail}
+                appointment={selectedAppointment}
+                onClose={() => setShowDetail(false)}
+                onEdit={handleEditFromDetail}
             />
 
             <AppointmentForm

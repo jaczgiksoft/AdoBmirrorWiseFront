@@ -1,11 +1,11 @@
 import api from "./api";
 
 /**
- * 🧾 Obtener todas las citas del tenant actual
+ * 🧾 Obtener todas las citas del tenant actual (con filtros opcionales)
  */
-export async function getAppointments() {
+export async function getAppointments(params = {}) {
     try {
-        const res = await api.get("/appointments");
+        const res = await api.get("/appointments", { params });
         return res.data;
     } catch (err) {
         console.error("❌ Error al obtener citas:", err);

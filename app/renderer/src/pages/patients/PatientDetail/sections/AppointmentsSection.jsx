@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Datepicker from "react-tailwindcss-datepicker";
 import {
     Calendar,
@@ -12,90 +12,53 @@ import {
     ChevronDown,
     ChevronUp,
     Filter,
-    X
+    X,
+    Loader2
 } from 'lucide-react';
+import { getAppointments } from '../../../../services/appointment.service';
+import { useOutletContext } from 'react-router-dom';
 
 export default function AppointmentsSection() {
-    // Mock Data
-    const appointments = [
-        {
-            id: 1,
-            date: "2025-11-20",
-            start_time: "09:00",
-            end_time: "09:45",
-            method: "presencial",
-            status: "confirmed",
-            employee_name: "Dr. Roberto Martínez",
-            clinic_area: "Ortodoncia",
-            activities: "Ajuste de brackets",
-            notes: "Paciente reporta molestia en molar inferior derecho.",
-            payment_status: "paid",
-            total_amount: "$800.00"
-        },
-        {
-            id: 2,
-            date: "2025-12-05",
-            start_time: "11:00",
-            end_time: "12:00",
-            method: "presencial",
-            status: "pending",
-            employee_name: "Dra. Ana López",
-            clinic_area: "Limpieza",
-            activities: "Limpieza general y flúor",
-            notes: "",
-            payment_status: "pending",
-            total_amount: "$1,200.00"
-        },
-        {
-            id: 3,
-            date: "2025-12-20",
-            start_time: "16:30",
-            end_time: "17:00",
-            method: "remota",
-            status: "completed",
-            employee_name: "Dr. Roberto Martínez",
-            clinic_area: "Seguimiento",
-            activities: "Revisión de progreso",
-            notes: "Todo avanza según lo planeado.",
-            payment_status: "paid",
-            total_amount: "$500.00"
-        },
-        {
-            id: 4,
-            date: "2025-03-10",
-            start_time: "10:00",
-            end_time: "11:30",
-            method: "presencial",
-            status: "cancelled",
-            employee_name: "Dr. Carlos Ruiz",
-            clinic_area: "Cirugía",
-            activities: "Extracción de tercer molar",
-            notes: "Cancelada por el paciente (motivos personales).",
-            payment_status: "refunded",
-            total_amount: "$3,500.00"
-        },
-        {
-            id: 5,
-            date: "2025-04-01",
-            start_time: "09:00",
-            end_time: "09:30",
-            method: "presencial",
-            status: "no_show",
-            employee_name: "Dra. Ana López",
-            clinic_area: "Revisión General",
-            activities: "Chequeo semestral",
-            notes: "Paciente no se presentó.",
-            payment_status: "pending",
-            total_amount: "$600.00"
-        }
-    ];
+    const { profile } = useOutletContext();
+    const patientId = profile?.id;
+    const [appointments, setAppointments] = useState([]);
+    const [loading, setLoading] = useState(false);
 
     // --- FILTERS STATE ---
     const [dateRange, setDateRange] = useState({ startDate: null, endDate: null });
     const [statusFilter, setStatusFilter] = useState("all");
-    const [typeFilter, setTypeFilter] = useState("all");
-    const [exactTimeFilter, setExactTimeFilter] = useState("");
-    const [timeRangeFilter, setTimeRangeFilter] = useState({ from: "", to: "" });
+
+    // --- DATA FETCHING ---
+    const fetchAppointments = useCallback(async () => {
+        if (!patientId) return;
+        setLoading(true);
+        try {
+            const params = {
+                patient_id: patientId,
+            };
+
+            // Dates
+            if (dateRange?.startDate) params.date_from = dateRange.startDate;
+            if (dateRange?.endDate) params.date_to = dateRange.endDate;
+
+            // Status
+            if (statusFilter !== "all") params.status = statusFilter;
+
+            const data = await getAppointments(params);
+            console.log("data", data);
+            setAppointments(data);
+        } catch (error) {
+            console.error("Error fetching patient appointments:", error);
+        } finally {
+            setLoading(false);
+        }
+    }, [patientId, dateRange, statusFilter]);
+
+    useEffect(() => {
+        console.log("patientId", patientId);
+        fetchAppointments();
+    }, [fetchAppointments]);
+
 
     // --- HANDLERS ---
     const handleDateChange = (value) => {
@@ -105,54 +68,7 @@ export default function AppointmentsSection() {
     const clearFilters = () => {
         setDateRange({ startDate: null, endDate: null });
         setStatusFilter("all");
-        setTypeFilter("all");
-        setExactTimeFilter("");
-        setTimeRangeFilter({ from: "", to: "" });
     };
-
-    // --- FILTERING LOGIC ---
-    const filteredAppointments = appointments.filter(app => {
-        // 1. Date Range Filter
-        if (dateRange?.startDate && dateRange?.endDate) {
-            const appDate = new Date(app.date);
-            const start = new Date(dateRange.startDate);
-            const end = new Date(dateRange.endDate);
-
-            // Normalize to ignore time components
-            appDate.setHours(0, 0, 0, 0);
-            start.setHours(0, 0, 0, 0);
-            end.setHours(0, 0, 0, 0);
-
-            if (appDate < start || appDate > end) {
-                return false;
-            }
-        }
-
-        // 2. Status Filter
-        if (statusFilter !== "all") {
-            if (app.status !== statusFilter) return false;
-        }
-
-        // 3. Type Filter (Clinic Area)
-        if (typeFilter !== "all") {
-            if (app.clinic_area !== typeFilter) return false;
-        }
-
-        // 4. Exact Hour Filter
-        if (exactTimeFilter) {
-            if (app.start_time !== exactTimeFilter) return false;
-        }
-
-        // 5. Hour Range Filter
-        if (timeRangeFilter.from && timeRangeFilter.to) {
-            // Logic: start_time >= from && end_time <= to
-            if (!(app.start_time >= timeRangeFilter.from && app.end_time <= timeRangeFilter.to)) {
-                return false;
-            }
-        }
-
-        return true;
-    });
 
     // Common input styles
     const inputClass = "w-full px-3 py-2 text-sm text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 transition-colors";
@@ -181,7 +97,7 @@ export default function AppointmentsSection() {
                         </button>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
                         {/* 1. Date Range Filter */}
                         <div>
@@ -230,73 +146,23 @@ export default function AppointmentsSection() {
                                 <option value="no_show">No asistió</option>
                             </select>
                         </div>
-
-                        {/* 3. Type Filter */}
-                        <div>
-                            <label className={labelClass}>Tipo de Tratamiento</label>
-                            <select
-                                value={typeFilter}
-                                onChange={(e) => setTypeFilter(e.target.value)}
-                                className={inputClass}
-                            >
-                                <option value="all">Todos</option>
-                                <option value="Ortodoncia">Ortodoncia</option>
-                                <option value="Limpieza">Limpieza</option>
-                                <option value="Seguimiento">Seguimiento</option>
-                                <option value="Cirugía">Cirugía</option>
-                                <option value="Revisión General">Revisión General</option>
-                            </select>
-                        </div>
-
-                        {/* 4. Exact Hour Filter */}
-                        <div>
-                            <label className={labelClass}>Hora Exacta (Inicio)</label>
-                            <input
-                                type="time"
-                                value={exactTimeFilter}
-                                onChange={(e) => setExactTimeFilter(e.target.value)}
-                                className={inputClass}
-                            />
-                        </div>
-
-                        {/* 5. Hour Range Filter */}
-                        <div className="lg:col-span-2">
-                            <label className={labelClass}>Rango de Horas</label>
-                            <div className="flex items-center gap-2">
-                                <div className="flex-1">
-                                    <input
-                                        type="time"
-                                        placeholder="Desde"
-                                        value={timeRangeFilter.from}
-                                        onChange={(e) => setTimeRangeFilter(prev => ({ ...prev, from: e.target.value }))}
-                                        className={inputClass}
-                                    />
-                                </div>
-                                <span className="text-slate-400">-</span>
-                                <div className="flex-1">
-                                    <input
-                                        type="time"
-                                        placeholder="Hasta"
-                                        value={timeRangeFilter.to}
-                                        onChange={(e) => setTimeRangeFilter(prev => ({ ...prev, to: e.target.value }))}
-                                        className={inputClass}
-                                    />
-                                </div>
-                            </div>
-                        </div>
-
                     </div>
                 </div>
 
                 {/* --- LIST --- */}
                 <div className="space-y-4">
-                    {filteredAppointments.length === 0 ? (
+                    {loading ? (
+                        <div className="text-center py-10">
+                            <Loader2 className="animate-spin mx-auto text-primary" size={32} />
+                            <p className="mt-2 text-slate-500">Cargando citas...</p>
+                        </div>
+                    ) : appointments.length === 0 ? (
                         <div className="text-center py-10 text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/30 rounded-xl border border-dashed border-slate-300 dark:border-slate-700">
                             <Calendar size={40} className="mx-auto mb-2 opacity-50" />
                             <p>No se encontraron citas con los filtros seleccionados.</p>
                         </div>
                     ) : (
-                        filteredAppointments.map((appointment) => (
+                        appointments.map((appointment) => (
                             <AppointmentCard key={appointment.id} appointment={appointment} />
                         ))
                     )}
@@ -366,113 +232,202 @@ function AppointmentCard({ appointment }) {
     };
 
     const getPaymentStatusColor = (status) => {
-        switch (status) {
-            case 'paid': return 'text-green-600 dark:text-green-400';
-            case 'pending': return 'text-yellow-600 dark:text-yellow-400';
-            case 'refunded': return 'text-purple-600 dark:text-purple-400';
-            default: return 'text-slate-500';
-        }
+        // Mocked logic - simplified since we want visual enrichment mostly
+        return 'text-slate-500';
     };
 
-    const getPaymentStatusLabel = (status) => {
-        switch (status) {
-            case 'paid': return 'Pagado';
-            case 'pending': return 'Pendiente de pago';
-            case 'refunded': return 'Reembolsado';
-            default: return status;
-        }
-    };
+    // Helper to calculate total effective duration or use API field
+    const effectiveMinutes = appointment.effective_minutes ||
+        (appointment.services?.reduce((acc, s) => acc + (s.duration_minutes || 0), 0)) ||
+        0;
 
     return (
         <div className="border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden transition-all hover:shadow-md bg-slate-50/50 dark:bg-slate-800/50">
             {/* Header / Resumen */}
             <div
-                className="p-4 cursor-pointer flex items-center justify-between"
+                className="p-4 cursor-pointer flex items-center justify-between gap-4"
                 onClick={() => setIsExpanded(!isExpanded)}
             >
-                <div className="flex items-center gap-4">
+                <div className="flex items-start gap-4 flex-1">
                     {/* Fecha Box */}
-                    <div className="flex flex-col items-center justify-center bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg w-14 h-14 shadow-sm">
+                    <div className="flex flex-col items-center justify-center bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg w-14 h-14 shadow-sm shrink-0">
                         <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">
                             {new Date(appointment.date).toLocaleString('es-MX', { month: 'short' }).replace('.', '')}
                         </span>
                         <span className="text-xl font-bold text-slate-800 dark:text-slate-200">
-                            {new Date(appointment.date).getDate()}
+                            {new Date(appointment.date).getDate() + 1}
                         </span>
                     </div>
 
                     {/* Detalles Principales */}
-                    <div>
-                        <h3 className="font-semibold text-slate-800 dark:text-slate-100 text-base">
-                            {appointment.activities}
-                        </h3>
-                        <div className="flex items-center gap-3 mt-1 text-sm text-slate-500 dark:text-slate-400">
-                            <div className="flex items-center gap-1">
-                                <Clock size={14} />
-                                <span>{appointment.start_time} - {appointment.end_time}</span>
+                    <div className="flex-1 min-w-0">
+                        {/* Row 1: Services Chips (High Priority) */}
+                        <div className="flex flex-wrap gap-2 mb-2">
+                            {appointment.services && appointment.services.length > 0 ? (
+                                appointment.services.map((svc, idx) => (
+                                    <span
+                                        key={idx}
+                                        className="px-2 py-0.5 rounded-md text-xs font-semibold border truncate max-w-[200px]"
+                                        style={{
+                                            backgroundColor: svc.color ? `${svc.color}15` : '#f1f5f9', // 15 = ~8% opacity
+                                            color: svc.color || '#475569',
+                                            borderColor: svc.color ? `${svc.color}40` : '#cbd5e1'
+                                        }}
+                                    >
+                                        {svc.name}
+                                    </span>
+                                ))
+                            ) : (
+                                <span className="text-base font-semibold text-slate-800 dark:text-slate-100">
+                                    {appointment.activities || 'Sin servicios especificados'}
+                                </span>
+                            )}
+                        </div>
+
+                        {/* Row 2: Metadata (Time, Duration, Method) */}
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-500 dark:text-slate-400">
+                            <div className="flex items-center gap-1.5">
+                                <Clock size={14} className="text-slate-400" />
+                                <span className="font-medium text-slate-700 dark:text-slate-300">
+                                    {appointment.start_time?.slice(0, 5)} - {appointment.end_time?.slice(0, 5)}
+                                </span>
                             </div>
-                            <span className="text-slate-300 dark:text-slate-600">•</span>
-                            <div className="flex items-center gap-1">
-                                {appointment.method === 'remota' ? <Video size={14} /> : <MapPin size={14} />}
-                                <span className="capitalize">{appointment.method}</span>
-                            </div>
+
+                            {effectiveMinutes > 0 && (
+                                <div className="flex items-center gap-1.5 text-xs bg-slate-100 dark:bg-slate-700/50 px-2 py-0.5 rounded-full">
+                                    <span>{effectiveMinutes} min</span>
+                                </div>
+                            )}
+
+                            {appointment.method && (
+                                <div className="flex items-center gap-1.5">
+                                    <span className="text-slate-300 dark:text-slate-600">•</span>
+                                    {appointment.method === 'remota' ? <Video size={14} /> : <MapPin size={14} />}
+                                    <span className="capitalize text-xs">{appointment.method}</span>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Row 3: Compact Context (Doctor & Area) */}
+                        <div className="mt-2 flex items-center gap-3 text-xs text-slate-500 dark:text-slate-500">
+                            {appointment.employee && (
+                                <span className="flex items-center gap-1">
+                                    <User size={12} />
+                                    {appointment.employee.first_name} {appointment.employee.last_name}
+                                </span>
+                            )}
+                            {appointment.clinic_area && (
+                                <span className="flex items-center gap-1">
+                                    <FileText size={12} />
+                                    {appointment.clinic_area.name}
+                                </span>
+                            )}
                         </div>
                     </div>
                 </div>
 
-                {/* Status y Toggle */}
-                <div className="flex items-center gap-4">
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(appointment.status)}`}>
+                {/* Right Column: Status & Price */}
+                <div className="flex flex-col items-end gap-2 shrink-0">
+                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide border ${getStatusColor(appointment.status)}`}>
                         {getStatusLabel(appointment.status)}
                     </span>
-                    {isExpanded ? <ChevronUp size={20} className="text-slate-400" /> : <ChevronDown size={20} className="text-slate-400" />}
+
+                    {/* Financial Context */}
+                    {appointment.total_amount && (
+                        <div className="text-right">
+                            <p className="text-sm font-bold text-slate-700 dark:text-slate-300">
+                                ${appointment.total_amount}
+                            </p>
+                        </div>
+                    )}
+
+                    <div className="mt-1">
+                        {isExpanded ? <ChevronUp size={18} className="text-slate-400" /> : <ChevronDown size={18} className="text-slate-400" />}
+                    </div>
                 </div>
             </div>
 
             {/* Detalles Expandidos */}
             {isExpanded && (
                 <div className="px-4 pb-4 pt-0 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/30">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-4">
 
-                        {/* Info Doctor y Area */}
-                        <div className="space-y-3">
-                            <div className="flex items-start gap-3">
-                                <User size={16} className="text-slate-400 mt-0.5" />
-                                <div>
-                                    <p className="text-xs text-slate-500 uppercase font-semibold">Especialista</p>
-                                    <p className="text-sm text-slate-700 dark:text-slate-300">{appointment.employee_name}</p>
-                                </div>
+                        {/* Col 1: Detalles Básicos (Doctor, Area, Payment) */}
+                        <div className="space-y-4 lg:col-span-1">
+                            <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Detalles Generales</h4>
+
+                            <div className="space-y-3">
+                                <InfoItem icon={User} label="Especialista" value={appointment.employee ? `${appointment.employee.first_name} ${appointment.employee.last_name}` : 'No asignado'} />
+                                <InfoItem icon={FileText} label="Área Clínica" value={appointment.clinic_area ? appointment.clinic_area.name : 'General'} />
+                                <InfoItem icon={CreditCard} label="Total Estimado" value={appointment.total_amount ? `$${appointment.total_amount}` : '$0.00'} highlighted />
                             </div>
-                            <div className="flex items-start gap-3">
-                                <FileText size={16} className="text-slate-400 mt-0.5" />
-                                <div>
-                                    <p className="text-xs text-slate-500 uppercase font-semibold">Área Clínica</p>
-                                    <p className="text-sm text-slate-700 dark:text-slate-300">{appointment.clinic_area}</p>
+
+                            {appointment.notes && (
+                                <div className="mt-4 p-3 bg-yellow-50 dark:bg-yellow-900/10 border border-yellow-100 dark:border-yellow-900/30 rounded-lg">
+                                    <div className="flex items-start gap-2">
+                                        <AlertCircle size={14} className="text-yellow-600 dark:text-yellow-500 mt-0.5" />
+                                        <div>
+                                            <p className="text-xs font-bold text-yellow-700 dark:text-yellow-500 uppercase mb-1">Notas</p>
+                                            <p className="text-sm text-slate-700 dark:text-slate-300 italic leading-relaxed">"{appointment.notes}"</p>
+                                        </div>
+                                    </div>
                                 </div>
-                            </div>
+                            )}
                         </div>
 
-                        {/* Info Pago y Notas */}
-                        <div className="space-y-3">
-                            <div className="flex items-start gap-3">
-                                <CreditCard size={16} className="text-slate-400 mt-0.5" />
-                                <div>
-                                    <p className="text-xs text-slate-500 uppercase font-semibold">Pago</p>
-                                    <div className="flex items-center gap-2">
-                                        <p className={`text-sm font-medium ${getPaymentStatusColor(appointment.payment_status)}`}>
-                                            {getPaymentStatusLabel(appointment.payment_status)}
-                                        </p>
-                                        <span className="text-sm text-slate-400">({appointment.total_amount})</span>
-                                    </div>
+                        {/* Col 2: Servicios Detallados */}
+                        <div className="lg:col-span-1">
+                            <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Servicios Incluidos</h4>
+
+                            {appointment.services && appointment.services.length > 0 ? (
+                                <div className="space-y-2">
+                                    {appointment.services.map((svc, i) => (
+                                        <div key={i} className="flex items-center justify-between p-2 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700/50">
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: svc.color || '#cbd5e1' }} />
+                                                <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{svc.name}</span>
+                                            </div>
+                                            <div className="text-xs text-slate-500">
+                                                {svc.price && <span>${svc.price}</span>}
+                                                {svc.duration_minutes && <span> • {svc.duration_minutes}m</span>}
+                                            </div>
+                                        </div>
+                                    ))}
                                 </div>
-                            </div>
-                            {appointment.notes && (
-                                <div className="flex items-start gap-3">
-                                    <AlertCircle size={16} className="text-slate-400 mt-0.5" />
-                                    <div>
-                                        <p className="text-xs text-slate-500 uppercase font-semibold">Notas</p>
-                                        <p className="text-sm text-slate-600 dark:text-slate-400 italic">"{appointment.notes}"</p>
+                            ) : (
+                                <p className="text-sm text-slate-500 italic">No hay detalle de servicios.</p>
+                            )}
+                        </div>
+
+                        {/* Col 3: Process Timeline (If present) */}
+                        <div className="lg:col-span-1 border-l border-slate-200 dark:border-slate-700 pl-0 lg:pl-6 border-t lg:border-t-0 pt-4 lg:pt-0">
+                            {appointment.process_snapshot && appointment.process_snapshot.steps && appointment.process_snapshot.steps.length > 0 ? (
+                                <>
+                                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">
+                                        Seguimiento del Proceso
+                                    </h4>
+                                    <div className="relative space-y-0 ml-2">
+                                        {/* Line */}
+                                        <div className="absolute top-2 bottom-2 left-[5px] w-0.5 bg-slate-200 dark:bg-slate-700" />
+
+                                        {appointment.process_snapshot.steps.map((step, idx) => (
+                                            <div key={idx} className="relative pl-6 pb-4 last:pb-0">
+                                                <div className="absolute left-0 top-1.5 w-3 h-3 rounded-full border-2 border-white dark:border-slate-800 bg-primary shadow-sm z-10" />
+                                                <p className="text-sm font-medium text-slate-800 dark:text-slate-200 leading-none mb-1">
+                                                    {step.name_snapshot}
+                                                </p>
+                                                {step.duration_minutes > 0 && (
+                                                    <p className="text-xs text-slate-400">
+                                                        Duración: {step.duration_minutes} min
+                                                    </p>
+                                                )}
+                                            </div>
+                                        ))}
                                     </div>
+                                </>
+                            ) : (
+                                <div className="h-full flex items-center justify-center text-center p-4 text-slate-400 border border-dashed border-slate-200 dark:border-slate-700 rounded-lg">
+                                    <p className="text-xs">Este procedimiento no tiene seguimiento detallado.</p>
                                 </div>
                             )}
                         </div>
@@ -480,6 +435,21 @@ function AppointmentCard({ appointment }) {
                     </div>
                 </div>
             )}
+        </div>
+    );
+}
+
+// Mini Helper Component
+function InfoItem({ icon: Icon, label, value, highlighted }) {
+    return (
+        <div className="flex items-start gap-3">
+            <Icon size={16} className={`mt-0.5 ${highlighted ? 'text-green-500' : 'text-slate-400'}`} />
+            <div>
+                <p className="text-xs text-slate-500 uppercase font-semibold">{label}</p>
+                <p className={`text-sm ${highlighted ? 'font-bold text-slate-800 dark:text-slate-100' : 'text-slate-700 dark:text-slate-300'}`}>
+                    {value}
+                </p>
+            </div>
         </div>
     );
 }

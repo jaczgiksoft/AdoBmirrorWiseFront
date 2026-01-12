@@ -282,10 +282,14 @@ function Section({ title, icon: Icon, subtitle, children, onAdd }) {
                 <button
                     onClick={onAdd}
                     className="
-                        flex items-center gap-1.5 px-3 py-1.5
-                        bg-primary/10 text-primary hover:bg-primary hover:text-white
-                        rounded-lg text-xs font-semibold transition-all
-                    "
+                        flex items-center gap-2
+            px-4 py-2
+            bg-primary/10 text-primary
+            rounded-xl shadow-sm
+            text-sm font-medium
+            hover:bg-primary hover:text-white
+            active:scale-[0.97]
+            transition-all duration-150 cursor-pointer"
                 >
                     <Plus size={14} />
                     Agregar Receta
@@ -304,16 +308,16 @@ function PrescriptionCard({ prescription: rx, onEdit, onDelete }) {
             group relative flex flex-col gap-3
             bg-white dark:bg-secondary
             border border-slate-200 dark:border-slate-700
-            rounded-xl p-4 shadow-sm
+            rounded-xl p-4 shadow-sm h-full
             hover:shadow-md hover:border-primary/30 transition-all duration-200
         ">
             {/* Header */}
             <div className="flex items-start gap-3">
-                <div className="p-2 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400">
+                <div className="p-2 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 shrink-0">
                     <FileText size={20} />
                 </div>
                 <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-sm text-slate-800 dark:text-slate-100 leading-tight line-clamp-2">
+                    <h3 className="font-semibold text-sm text-slate-800 dark:text-slate-100 leading-tight truncate" title={rx.title}>
                         {rx.title}
                     </h3>
                     <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 mt-1">
@@ -329,7 +333,9 @@ function PrescriptionCard({ prescription: rx, onEdit, onDelete }) {
 
             {/* Content Preview */}
             <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-3 text-xs text-slate-600 dark:text-slate-300 leading-relaxed min-h-[60px]">
-                {rx.content}
+                <p className="line-clamp-3">
+                    {rx.content}
+                </p>
             </div>
 
             {/* Actions Overlay (Visible on Hover) */}

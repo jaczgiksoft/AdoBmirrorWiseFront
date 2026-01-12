@@ -4,7 +4,7 @@ import { getClinicAreas } from "@/services/clinic_area.service";
 import CalendarMonthView from "./CalendarMonthView";
 import CalendarDayView from "./CalendarDayView";
 
-export default function ClinicCalendar({ appointments, onEditAppointment }) {
+export default function ClinicCalendar({ appointments, onEditAppointment, monthEventContent }) {
     const [view, setView] = useState("month"); // 'month' | 'day'
     const [currentDate, setCurrentDate] = useState(new Date());
     const [resources, setResources] = useState([]);
@@ -36,12 +36,13 @@ export default function ClinicCalendar({ appointments, onEditAppointment }) {
             backgroundColor: primaryServiceColor, // Use service color
             borderColor: primaryServiceColor,
             extendedProps: {
-                patient: appt.patient,
+                ...appt, // PASS EVERYTHING: services, process_snapshot, steps, etc.
+                patient: appt.patient, // Explicit overrides if needed (though ...appt covers it if structure matches)
                 employee: appt.employee,
                 clinic_area: appt.clinic_area,
                 status: appt.status,
-                process_name: appt.process?.name, // Mock or real data structure
-                primaryServiceColor: primaryServiceColor // Pass explicitly
+                process_name: appt.process?.name,
+                primaryServiceColor: primaryServiceColor
             }
         };
     });
@@ -70,6 +71,13 @@ export default function ClinicCalendar({ appointments, onEditAppointment }) {
         }
     };
 
+    // Callback for FullCalendar to notify us when date range changes (nav or view switch)
+    const handleDatesSet = (arg) => {
+        // arg.view.currentStart is reliable for the visible range
+        // For month view, it's start of month. For day view, start of day.
+        setCurrentDate(arg.view.currentStart);
+    };
+
     // When view changes, we might need to re-render or notify parent, but actually simpler:
     // Just swap the component. Note: Switching views usually involves the SAME FullCalendar instance 
     // changing its `initialView`. But since we separated them deeply for custom configs, we swap components.
@@ -82,6 +90,16 @@ export default function ClinicCalendar({ appointments, onEditAppointment }) {
         }
     }, [view]); // When swapping view, ref attaches to new instance, we might need to set date.
 
+    // Calculate header title based on view
+    const getHeaderTitle = () => {
+        if (view === 'day') {
+            // "Thursday, January 8, 2026"
+            return currentDate.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+        }
+        // "January 2026"
+        return currentDate.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
+    };
+
     return (
         <div className="flex flex-col h-full bg-white dark:bg-secondary rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
             {/* Calendar Toolbar */}
@@ -93,7 +111,7 @@ export default function ClinicCalendar({ appointments, onEditAppointment }) {
                         <button onClick={handleNext} className="p-1.5 hover:bg-slate-50 dark:hover:bg-slate-600"><ChevronRight size={16} /></button>
                     </div>
                     <span className="ml-2 text-lg font-semibold text-slate-800 dark:text-white capitalize">
-                        {currentDate.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })}
+                        {getHeaderTitle()}
                     </span>
                 </div>
 
@@ -119,6 +137,8 @@ export default function ClinicCalendar({ appointments, onEditAppointment }) {
                     <CalendarMonthView
                         events={events}
                         calendarRef={calendarRef}
+                        customEventContent={monthEventContent}
+                        datesSet={handleDatesSet}
                         onEventClick={(info) => onEditAppointment({
                             id: parseInt(info.event.id),
                             ...info.event.extendedProps,
@@ -132,6 +152,7 @@ export default function ClinicCalendar({ appointments, onEditAppointment }) {
                         events={events}
                         resources={resources}
                         calendarRef={calendarRef}
+                        datesSet={handleDatesSet}
                         onEventClick={(info) => onEditAppointment({
                             id: parseInt(info.event.id),
                             ...info.event.extendedProps,

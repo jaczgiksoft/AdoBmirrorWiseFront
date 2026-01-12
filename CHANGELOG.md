@@ -10,6 +10,84 @@ Este proyecto sigue [Semantic Versioning](https://semver.org/lang/es/).
 
 ---
 
+# [0.26.0] - 2026-01-12
+
+### Added
+- Nuevo **módulo de Planes de Tratamiento** integrado a la vista de Paciente:
+  - Gestión completa de planes clínicos por paciente:
+    - Creación de planes con título, fecha de inicio y duración.
+    - Marcado de plan principal.
+    - Eliminación de planes existentes.
+  - Soporte para **tratamientos múltiples por plan** con:
+    - Orden configurable mediante *drag & drop*.
+    - Persistencia real vía API (sin uso de mock data).
+    - Snapshot clínico independiente por tratamiento
+      (`nombre`, `descripción`, `color`).
+
+- Implementación de **catálogo dinámico de tratamientos**:
+  - Autocomplete con búsqueda en tiempo real.
+  - Capacidad de:
+    - Seleccionar tratamientos existentes.
+    - Crear tratamientos nuevos directamente desde el plan.
+  - Crecimiento orgánico del catálogo basado en uso clínico real.
+
+- Selector visual de color por tratamiento:
+  - Integración de **color picker** para asignación manual.
+  - Persistencia del color como parte del snapshot clínico.
+  - Representación visual consistente en planes y listados.
+
+- Nuevos servicios de integración con la API:
+  - `treatmentPlan.service.js` para planes de tratamiento.
+  - `process.service.js` para consumo de procesos clínicos.
+  - `step.service.js` para consumo de pasos clínicos.
+
+---
+
+### Changed
+- **Integración real frontend ↔ backend** en secciones de Paciente:
+  - Eliminación de *mock data* en:
+    - Planes de tratamiento.
+    - Prescripciones.
+    - Representantes.
+    - Facturación.
+  - Consumo directo de la API como fuente única de verdad.
+
+- Refactor del módulo de **Citas**:
+  - Ajustes en:
+    - `AppointmentForm`
+    - `AppointmentList`
+    - `AppointmentsSection`
+  - Alineación con cambios recientes en la API
+    (procesos, estructura de respuesta, servicios).
+
+- Mejoras en el **Calendario Clínico**:
+  - Refinamiento de vistas:
+    - Día
+    - Mes
+    - Agenda general
+  - Mejor sincronización de eventos tras operaciones CRUD.
+  - Optimización de render y experiencia visual.
+
+- Ajustes globales de estilos:
+  - Refinamiento de `index.css`.
+  - Correcciones de contraste y legibilidad.
+  - Mejor comportamiento en dark/light mode.
+
+---
+
+### Notes
+- Este release introduce formalmente los **Planes de Tratamiento** como
+  un componente clínico central dentro de la aplicación.
+- Se completa la transición desde:
+  - UI basada en *mock data*
+  - hacia una aplicación **completamente integrada con la API**.
+- La aplicación queda preparada para:
+  - Visualizar planes clínicos junto a citas.
+  - Integrar ejecución clínica futura (check-in, inicio y fin de tratamiento).
+  - Métricas basadas en planificación vs ejecución real.
+
+---
+
 # [0.25.0] - 2026-01-06
 
 ### Added

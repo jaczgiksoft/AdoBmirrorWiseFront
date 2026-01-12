@@ -8,6 +8,8 @@ import { getPatients } from "@/services/patient.service";
 import { getClinicAreas } from "@/services/clinic_area.service";
 import { getDoctors } from "@/services/employee.service";
 import { getAllServices } from "@/services/service.service";
+import { getAllProcesses, getProcessById, createProcess, updateProcess } from "@/services/process.service";
+import { getAllSteps, createStep } from "@/services/step.service";
 import { useHotkeys } from "@/hooks/useHotkeys";
 import { ConfirmDialog } from "@/components/feedback";
 
@@ -16,38 +18,7 @@ import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, us
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
-// --- MOCK DATA ---
-const INITIAL_STEPS = [
-    { id: 1, name: "Anesthesia", duration_minutes: 15 },
-    { id: 2, name: "Cleaning", duration_minutes: 20 },
-    { id: 3, name: "Drilling", duration_minutes: 30 },
-    { id: 4, name: "Filling", duration_minutes: 20 },
-    { id: 5, name: "Polishing", duration_minutes: 10 },
-    { id: 6, name: "X-Ray", duration_minutes: 10 },
-    { id: 7, name: "Consultation", duration_minutes: 15 },
-];
-
-const INITIAL_PROCESSES = [
-    {
-        id: 1,
-        name: "Standard Cleaning",
-        steps: [
-            { id: "s1", step_id: 1, duration_override: 10 }, // Anesthesia
-            { id: "s2", step_id: 2, duration_override: null }, // Cleaning
-            { id: "s3", step_id: 5, duration_override: null }  // Polishing
-        ]
-    },
-    {
-        id: 2,
-        name: "Cavity Filling",
-        steps: [
-            { id: "s4", step_id: 1, duration_override: 15 },
-            { id: "s5", step_id: 3, duration_override: null },
-            { id: "s6", step_id: 4, duration_override: null },
-            { id: "s7", step_id: 5, duration_override: 5 }
-        ]
-    }
-];
+// Helpers kept, Mocks removed
 
 // Helper to add minutes to HH:mm string
 const addMinutes = (timeStr, minutes) => {
@@ -92,7 +63,7 @@ function SortableStepItem({ pStep, stepDef, onChangeDuration, onRemove }) {
                 type="number"
                 className="w-16 h-7 text-xs border border-slate-200 rounded px-2 dark:bg-slate-800 dark:border-slate-600 text-right focus:border-primary outline-none"
                 placeholder={stepDef?.duration_minutes}
-                value={pStep.duration_override !== null ? pStep.duration_override : ""}
+                value={pStep.duration_override !== null ? pStep.duration_override : (stepDef?.duration_minutes || "")}
                 onChange={(e) => {
                     const val = e.target.value === "" ? null : parseInt(e.target.value);
                     onChangeDuration(val);
@@ -104,6 +75,33 @@ function SortableStepItem({ pStep, stepDef, onChangeDuration, onRemove }) {
         </div>
     );
 }
+
+const adaptProcessFromApi = (apiProcess) => {
+    if (!apiProcess) return null;
+    let steps = [];
+
+    // Check if we have nested process_steps (API structure)
+    if (Array.isArray(apiProcess.process_steps)) {
+        steps = apiProcess.process_steps
+            .sort((a, b) => (a.order_index || 0) - (b.order_index || 0))
+            .map(ps => ({
+                id: ps.id,
+                step_id: ps.step?.id,
+                duration_override: ps.duration_override,
+                // Embed details for fallback
+                _name: ps.step?.name,
+                _baseDuration: ps.step?.duration_minutes
+            }));
+    } else if (Array.isArray(apiProcess.steps)) {
+        // Already flat or older structure?
+        steps = apiProcess.steps;
+    }
+
+    return {
+        ...apiProcess,
+        steps
+    };
+};
 
 export default function AppointmentForm({ open, onClose, onSaved, itemToEdit = null }) {
     const { addToast } = useToastStore();
@@ -145,8 +143,8 @@ export default function AppointmentForm({ open, onClose, onSaved, itemToEdit = n
     const [serviceSearch, setServiceSearch] = useState("");
 
     // --- PROCESS LOGIC STATS ---
-    const [availableSteps, setAvailableSteps] = useState(INITIAL_STEPS);
-    const [availableProcesses, setAvailableProcesses] = useState(INITIAL_PROCESSES);
+    const [availableSteps, setAvailableSteps] = useState([]);
+    const [availableProcesses, setAvailableProcesses] = useState([]);
     const [selectedProcessId, setSelectedProcessId] = useState(""); // "" or ID
 
     // UI States for Step 3
@@ -178,43 +176,88 @@ export default function AppointmentForm({ open, onClose, onSaved, itemToEdit = n
         if (!open) return;
         setStep(1);
         setHasChanges(false);
-        async function loadData() {
+
+        async function initData() {
+            // 1. Fetch Dictionaries (Parallel-ish)
             try { const p = await getPatients(); setPatients(Array.isArray(p) ? p : []); } catch (e) { }
             try { const c = await getClinicAreas(); setClinicAreas(Array.isArray(c) ? c : (c?.data || [])); } catch (e) { }
             try { const d = await getDoctors(); setDoctors(Array.isArray(d) ? d : []); } catch (e) { }
             try { const s = await getAllServices(); setServices(Array.isArray(s) ? s : []); } catch (e) { }
-        }
-        loadData();
+            try { const st = await getAllSteps(); setAvailableSteps(Array.isArray(st) ? st : []); } catch (e) { }
 
-        if (itemToEdit) {
-            const initialDuration = getDuration(itemToEdit.start_time || "09:00", itemToEdit.end_time || "09:30");
-            setForm({
-                ...initialForm,
-                ...itemToEdit,
-                duration_minutes: initialDuration,
-                patient_id: itemToEdit.patient_id || "",
-                employee_id: itemToEdit.employee_id || "",
-                clinic_area_id: itemToEdit.clinic_area_id || "",
-            });
-            setSelectedProcessId("");
-        } else {
-            setForm(initialForm);
-            setSelectedServiceIds([]);
-            setSelectedProcessId("");
+            // 2. Fetch Processes
+            let loadedProcesses = [];
+            try {
+                const pr = await getAllProcesses();
+                loadedProcesses = Array.isArray(pr) ? pr : [];
+            } catch (e) { }
+
+            // 3. Hydration Logic (Synchronous with loading)
+            if (itemToEdit) {
+                const initialDuration = getDuration(itemToEdit.start_time || "09:00", itemToEdit.end_time || "09:30");
+                const serviceIds = itemToEdit.services?.map(s => s.id) || [];
+
+                // Process & Steps Hydration
+                const snapshot = itemToEdit.process_snapshot;
+                const processId = snapshot?.process_id || itemToEdit.process?.id || "";
+
+                // Inject Snapshot Steps into loaded processes context
+                if (processId && snapshot && snapshot.steps && snapshot.steps.length > 0) {
+                    const existingIdx = loadedProcesses.findIndex(p => p.id === processId);
+                    if (existingIdx !== -1) {
+                        const hydratedSteps = snapshot.steps.map(s => ({
+                            id: s.id || `snap-${s.step_id}`,
+                            step_id: s.step_id,
+                            duration_override: s.duration_minutes,
+                            _name: s.name_snapshot,
+                            _baseDuration: s.duration_minutes
+                        })).sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
+
+                        loadedProcesses[existingIdx] = {
+                            ...loadedProcesses[existingIdx],
+                            steps: hydratedSteps
+                        };
+                    }
+                }
+
+                // Set Form State
+                setForm({
+                    ...initialForm,
+                    ...itemToEdit,
+                    duration_minutes: initialDuration,
+                    patient_id: itemToEdit.patient_id || "",
+                    employee_id: itemToEdit.employee_id || "",
+                    clinic_area_id: itemToEdit.clinic_area_id || "",
+                });
+                setSelectedServiceIds(serviceIds);
+                setSelectedProcessId(processId);
+
+            } else {
+                // Reset for Create Mode
+                setForm(initialForm);
+                setSelectedServiceIds([]);
+                setSelectedProcessId("");
+            }
+
+            // 4. Update Available Processes State (with overrides applied)
+            setAvailableProcesses(loadedProcesses);
+
+            setTimeout(() => firstRef.current?.focus(), 50);
         }
-        setTimeout(() => firstRef.current?.focus(), 50);
+
+        initData();
     }, [open, itemToEdit]);
 
     // --- HELPER: Calculate Process Duration ---
     const calculateProcessDuration = (processId) => {
         const process = availableProcesses.find(p => p.id === processId);
         if (!process) return 0;
-        return process.steps.reduce((acc, pStep) => {
+        return process.steps?.reduce((acc, pStep) => {
             const stepDef = availableSteps.find(s => s.id === pStep.step_id);
             if (!stepDef) return acc;
             const duration = pStep.duration_override !== null ? pStep.duration_override : stepDef.duration_minutes;
             return acc + parseInt(duration || 0);
-        }, 0);
+        }, 0) || 0;
     };
 
     // --- RECALCULATION & SYNC LOGIC ---
@@ -303,10 +346,11 @@ export default function AppointmentForm({ open, onClose, onSaved, itemToEdit = n
 
 
     // --- STEP 3 DnD HANDLERS ---
-    const handleDragEnd = (event) => {
+    const handleDragEnd = async (event) => {
         setHasChanges(true);
         const { active, over } = event;
         if (!over) return;
+
         if (active.id !== over.id) {
             if (isCreatingProcess) {
                 setNewProcessSteps((items) => {
@@ -315,19 +359,33 @@ export default function AppointmentForm({ open, onClose, onSaved, itemToEdit = n
                     return arrayMove(items, oldIndex, newIndex);
                 });
             } else if (selectedProcessId) {
+                // Optimistic Update
+                let newSteps = [];
                 setAvailableProcesses(prev => prev.map(proc => {
                     if (proc.id !== selectedProcessId) return proc;
-                    const items = proc.steps;
+                    const items = proc.steps || [];
                     const oldIndex = items.findIndex((i) => i.id === active.id);
                     const newIndex = items.findIndex((i) => i.id === over.id);
-                    return { ...proc, steps: arrayMove(items, oldIndex, newIndex) };
+                    newSteps = arrayMove(items, oldIndex, newIndex);
+                    return { ...proc, steps: newSteps };
                 }));
+
+                // Persist to API
+                try {
+                    const currentProc = availableProcesses.find(p => p.id === selectedProcessId);
+                    if (currentProc) {
+                        await updateProcess(selectedProcessId, { ...currentProc, steps: newSteps });
+                    }
+                } catch (error) {
+                    console.error("Failed to reorder details", error);
+                    addToast({ type: 'error', title: 'Error', message: 'No se pudo guardar el orden.' });
+                }
             }
         }
     };
 
     // --- GENERIC LIST ACTIONS ---
-    const confirmAddSteps = () => {
+    const confirmAddSteps = async () => {
         if (!addingStepsTargetId) return;
         setHasChanges(true);
         if (stepsToAdd.length === 0) {
@@ -335,8 +393,13 @@ export default function AppointmentForm({ open, onClose, onSaved, itemToEdit = n
             return;
         }
 
+        // Prepare new steps objects
+        // Note: For existing processes, we might just need the step_id. The backend handles relation creation.
+        // But to keep UI optimistic, we need a structure.
         const newStepObjs = stepsToAdd.map(stepId => ({
-            id: `s-${Date.now()}-${stepId}-${Math.random().toString(36).substr(2, 5)}`,
+            // For temporary UI usage, we generata a random ID. Real ID comes from backend if we cared to reload.
+            // But better: we will reload the process from backend after update.
+            id: `temp-${Date.now()}-${stepId}`,
             step_id: stepId,
             duration_override: null
         }));
@@ -344,10 +407,22 @@ export default function AppointmentForm({ open, onClose, onSaved, itemToEdit = n
         if (addingStepsTargetId === "new") {
             setNewProcessSteps(prev => [...prev, ...newStepObjs]);
         } else {
-            setAvailableProcesses(prev => prev.map(proc => {
-                if (proc.id !== addingStepsTargetId) return proc;
-                return { ...proc, steps: [...proc.steps, ...newStepObjs] };
-            }));
+            // Updating existing process
+            const proc = availableProcesses.find(p => p.id === addingStepsTargetId);
+            if (proc) {
+                const updatedSteps = [...(proc.steps || []), ...newStepObjs];
+
+                // Optimistic
+                setAvailableProcesses(prev => prev.map(p => p.id === addingStepsTargetId ? { ...p, steps: updatedSteps } : p));
+
+                try {
+                    const res = await updateProcess(addingStepsTargetId, { ...proc, steps: updatedSteps });
+                    // Update with real data from server (ids etc)
+                    setAvailableProcesses(prev => prev.map(p => p.id === addingStepsTargetId ? res : p));
+                } catch (err) {
+                    addToast({ type: 'error', title: 'Error', message: 'No se pudieron agregar los pasos.' });
+                }
+            }
         }
 
         // Reset
@@ -360,49 +435,80 @@ export default function AppointmentForm({ open, onClose, onSaved, itemToEdit = n
         setStepsToAdd(prev => prev.includes(stepId) ? prev.filter(id => id !== stepId) : [...prev, stepId]);
     };
 
-    const removeStepFromProcess = (targetProcessId, stepInstanceId) => {
+    const removeStepFromProcess = async (targetProcessId, stepInstanceId) => {
         setHasChanges(true);
         if (targetProcessId === "new") {
             setNewProcessSteps(prev => prev.filter(s => s.id !== stepInstanceId));
         } else {
-            setAvailableProcesses(prev => prev.map(proc => {
-                if (proc.id !== targetProcessId) return proc;
-                return { ...proc, steps: proc.steps.filter(s => s.id !== stepInstanceId) };
-            }));
+            const proc = availableProcesses.find(p => p.id === targetProcessId);
+            if (proc) {
+                const updatedSteps = proc.steps.filter(s => s.id !== stepInstanceId);
+                // Optimistic
+                setAvailableProcesses(prev => prev.map(p => p.id === targetProcessId ? { ...p, steps: updatedSteps } : p));
+                try {
+                    await updateProcess(targetProcessId, { ...proc, steps: updatedSteps });
+                } catch (err) {
+                    addToast({ type: 'error', title: 'Error', message: 'No se pudo eliminar el paso.' });
+                }
+            }
         }
     };
 
-    const updateStepDuration = (targetProcessId, stepInstanceId, duration) => {
-        setHasChanges(true);
+    const updateStepDuration = async (targetProcessId, stepInstanceId, duration) => {
+        setHasChanges(true); // Technically persistent changes happen immediately here for API
         if (targetProcessId === "new") {
             setNewProcessSteps(prev => prev.map(s => s.id === stepInstanceId ? { ...s, duration_override: duration } : s));
         } else {
-            setAvailableProcesses(prev => prev.map(proc => {
-                if (proc.id !== targetProcessId) return proc;
-                return { ...proc, steps: proc.steps.map(s => s.id === stepInstanceId ? { ...s, duration_override: duration } : s) };
-            }));
+            const proc = availableProcesses.find(p => p.id === targetProcessId);
+            if (proc) {
+                const updatedSteps = proc.steps.map(s => s.id === stepInstanceId ? { ...s, duration_override: duration } : s);
+                // Optimistic
+                setAvailableProcesses(prev => prev.map(p => p.id === targetProcessId ? { ...p, steps: updatedSteps } : p));
+                // Debouncing could be good here, but for now strict update
+                try {
+                    // We don't await strictly to block UI, but we catch errors
+                    await updateProcess(targetProcessId, { ...proc, steps: updatedSteps });
+                } catch (err) {
+                    console.error("Failed to update duration", err);
+                }
+            }
         }
     };
 
 
-    const handleSaveNewProcess = () => {
+    const handleSaveNewProcess = async () => {
         setHasChanges(true);
         if (!newProcessName.trim()) return;
-        const newProc = { id: Date.now(), name: newProcessName, steps: newProcessSteps };
-        setAvailableProcesses(prev => [...prev, newProc]);
-        setSelectedProcessId(newProc.id);
-        setIsCreatingProcess(false);
-        setNewProcessName("");
-        setNewProcessSteps([]);
+
+        try {
+            const payload = { name: newProcessName, steps: newProcessSteps };
+            // Ensure payload steps have correct structure for API if needed, 
+            // but assuming backend can handle the array of objects with step_id and duration_override
+            const created = await createProcess(payload);
+            setAvailableProcesses(prev => [...prev, created]);
+            setSelectedProcessId(created.id);
+            setIsCreatingProcess(false);
+            setNewProcessName("");
+            setNewProcessSteps([]);
+            addToast({ type: 'success', title: 'Éxito', message: 'Proceso creado correctamente.' });
+        } catch (err) {
+            addToast({ type: 'error', title: 'Error', message: 'No se pudo crear el proceso.' });
+        }
     };
 
-    const handleSaveNewStep = () => {
+    const handleSaveNewStep = async () => {
         if (!newStepName.trim()) return;
-        const newStep = { id: Date.now(), name: newStepName, duration_minutes: parseInt(newStepDuration) || 15 };
-        setAvailableSteps(prev => [...prev, newStep]);
-        setIsCreatingStep(false);
-        setNewStepName("");
-        setNewStepDuration(15);
+        try {
+            const payload = { name: newStepName, duration_minutes: parseInt(newStepDuration) || 15 };
+            const created = await createStep(payload);
+            setAvailableSteps(prev => [...prev, created]);
+            setIsCreatingStep(false);
+            setNewStepName("");
+            setNewStepDuration(15);
+            addToast({ type: 'success', title: 'Éxito', message: 'Paso creado correctamente.' });
+        } catch (err) {
+            addToast({ type: 'error', title: 'Error', message: 'No se pudo crear el paso.' });
+        }
     };
 
     // Navigation and Submit Handlers
@@ -438,6 +544,35 @@ export default function AppointmentForm({ open, onClose, onSaved, itemToEdit = n
                 });
             } else { payload.services = []; }
 
+            // Process Snapshot
+            if (selectedProcessId) {
+                const procDef = availableProcesses.find(p => p.id === selectedProcessId);
+                if (procDef) {
+                    payload.process = {
+                        process_id: selectedProcessId,
+                        name: procDef.name,
+                        steps: (procDef.steps || []).map((s, idx) => {
+                            // Effective duration resolution:
+                            // 1. duration_override from current state (UI inputs)
+                            // 2. _baseDuration (from generic step)
+                            // 3. Fallback to 0
+                            const effectiveDuration = (s.duration_override !== null && s.duration_override !== undefined)
+                                ? parseInt(s.duration_override)
+                                : (parseInt(s.duration_minutes || s._baseDuration || s.step?.duration_minutes || 0));
+
+                            return {
+                                step_id: s.step_id || null,
+                                name: s._name || s.name || s.step?.name || "Sin Nombre",
+                                order_index: idx,
+                                duration_minutes: effectiveDuration
+                            };
+                        })
+                    };
+                }
+            } else {
+                payload.process = null;
+            }
+
             if (isEditing) {
                 await updateAppointment(itemToEdit.id, payload);
                 addToast({ type: "success", title: "Cita actualizada", message: "Cambios guardados." });
@@ -472,15 +607,21 @@ export default function AppointmentForm({ open, onClose, onSaved, itemToEdit = n
                 <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                     <SortableContext items={stepsList} strategy={verticalListSortingStrategy}>
                         <div className="space-y-2">
-                            {stepsList.map((pStep) => (
-                                <SortableStepItem
-                                    key={pStep.id}
-                                    pStep={pStep}
-                                    stepDef={availableSteps.find(s => s.id === pStep.step_id)}
-                                    onChangeDuration={(val) => updateStepDuration(targetId, pStep.id, val)}
-                                    onRemove={() => removeStepFromProcess(targetId, pStep.id)}
-                                />
-                            ))}
+                            {stepsList.map((pStep) => {
+                                // Fallback: If not found in availableSteps, use embedded details from adapter
+                                const foundStep = availableSteps.find(s => s.id === pStep.step_id);
+                                const stepDef = foundStep || { name: pStep._name, duration_minutes: pStep._baseDuration, id: pStep.step_id };
+
+                                return (
+                                    <SortableStepItem
+                                        key={pStep.id}
+                                        pStep={pStep}
+                                        stepDef={stepDef}
+                                        onChangeDuration={(val) => updateStepDuration(targetId, pStep.id, val)}
+                                        onRemove={() => removeStepFromProcess(targetId, pStep.id)}
+                                    />
+                                );
+                            })}
                         </div>
                     </SortableContext>
                 </DndContext>
@@ -589,7 +730,21 @@ export default function AppointmentForm({ open, onClose, onSaved, itemToEdit = n
 
                                 <div className="flex gap-2 mb-4">
                                     <div className="flex-1">
-                                        <select className="input" value={selectedProcessId} onChange={(e) => { setHasChanges(true); setSelectedProcessId(e.target.value ? parseInt(e.target.value) : ""); }}>
+                                        <select className="input" value={selectedProcessId} onChange={async (e) => {
+                                            setHasChanges(true);
+                                            const pid = e.target.value ? parseInt(e.target.value) : "";
+                                            setSelectedProcessId(pid);
+                                            if (pid) {
+                                                // Fetch full details for this process (steps)
+                                                try {
+                                                    const rawData = await getProcessById(pid);
+                                                    const fullData = adaptProcessFromApi(rawData);
+                                                    setAvailableProcesses(prev => prev.map(p => p.id === pid ? fullData : p));
+                                                } catch (err) {
+                                                    console.error("Failed to load process details", err);
+                                                }
+                                            }
+                                        }}>
                                             <option value="">Seleccionar proceso...</option>
                                             {availableProcesses.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                                         </select>
@@ -683,7 +838,7 @@ export default function AppointmentForm({ open, onClose, onSaved, itemToEdit = n
                                                 <span className="text-xs font-semibold bg-sky-100 text-primary px-2 py-0.5 rounded-full">{calculateProcessDuration(selectedProcessId)} min</span>
                                             </div>
                                             <ul className="text-sm space-y-1 pl-2 border-l-2 border-slate-200 dark:border-slate-700">
-                                                {availableProcesses.find(p => p.id === selectedProcessId)?.steps.map(s => {
+                                                {availableProcesses.find(p => p.id === selectedProcessId)?.steps?.map(s => {
                                                     const stepDef = availableSteps.find(def => def.id === s.step_id);
                                                     const duration = s.duration_override !== null ? s.duration_override : stepDef?.duration_minutes;
                                                     return (
