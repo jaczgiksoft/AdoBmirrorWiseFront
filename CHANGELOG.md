@@ -10,6 +10,98 @@ Este proyecto sigue [Semantic Versioning](https://semver.org/lang/es/).
 
 ---
 
+# [0.28.0] - 2026-01-13
+
+### Added
+- Nuevo **módulo de Instrucciones de Elásticos** integrado al expediente del paciente:
+  - Sección **Elastics** dentro del detalle del paciente.
+  - Listado inicial de instrucciones registradas (mock data).
+  - Flujo dedicado para creación de nuevas instrucciones mediante modal.
+
+- Nuevo **modal de Registro de Instrucción de Elásticos**:
+  - Layout clínico completo preparado para lógica avanzada.
+  - Secciones claramente delimitadas:
+    - Odontograma de Elásticos.
+    - Acción a realizar (Bracket / Elásticos).
+    - Detalles de la instrucción.
+  - Campos disponibles:
+    - Fecha de inicio.
+    - Fecha de fin (opcional).
+    - Tipo de elástico (texto libre por ahora).
+    - Horas de uso por día.
+    - Instrucciones adicionales.
+
+- Implementación del **Odontograma de Elásticos (SVG)**:
+  - Basado en el mismo diseño visual del odontograma principal.
+  - Uso de **dientes base clínicos** con escala aumentada para mejor legibilidad.
+  - Inclusión de etiquetas clínicas:
+    - SUPERIOR (MAXILAR)
+    - INFERIOR (MANDÍBULA)
+    - IZQUIERDO / DERECHO
+  - Espaciado y proporción ajustados para uso dentro de modal.
+
+- Integración de **brackets reales** en el odontograma:
+  - Uso del asset SVG existente:
+    - `assets/images/odontogram/bracket.svg`
+  - Estados visuales claros:
+    - Bracket normal.
+    - Bracket seleccionado.
+    - Bracket origen del ciclo.
+  - Feedback visual consistente con el odontograma clínico.
+
+---
+
+### Added — Interaction Logic
+- Implementación de **lógica secuencial de selección de brackets** para elásticos:
+  - Primer click define el **origen** del ciclo.
+  - Clicks subsecuentes agregan puntos a la secuencia activa.
+  - Click nuevamente en el origen **cierra el ciclo**.
+  - Al cerrar:
+    - El loop se guarda como instrucción lógica.
+    - El estado activo se reinicia.
+- Soporte para:
+  - Un solo ciclo activo a la vez.
+  - Múltiples ciclos completados por instrucción (persistencia lógica).
+
+---
+
+### Changed
+- Refinamiento visual iterativo del odontograma de elásticos:
+  - Ajuste real de escala de dientes (no solo del contenedor).
+  - Reducción de espacio muerto dentro del SVG (`viewBox` y offsets).
+  - Mejora de jerarquía visual en textos y numeración dental.
+- Mejora en la claridad de textos de ayuda dentro del modal:
+  - Instrucciones más explícitas para guiar la selección de puntos de anclaje.
+
+---
+
+### Fixed
+- Corrección de confusión visual causada por:
+  - Aumento de contenedor sin escalado de SVG interno.
+- Alineación definitiva entre:
+  - Tamaño de dientes.
+  - Numeración.
+  - Etiquetas clínicas.
+- Eliminación de inconsistencias visuales entre:
+  - Odontograma clínico.
+  - Odontograma de elásticos.
+
+---
+
+### Notes
+- Este release establece el **lienzo clínico definitivo** para el módulo de Elásticos.
+- El odontograma queda **cerrado a nivel visual y estructural**.
+- Se valida el modelo mental clínico de:
+  - **Liga = ciclo cerrado de puntos de anclaje**.
+- El sistema queda preparado para las siguientes etapas:
+  - Dibujo de ligas (segmentos SVG).
+  - Definición de ligas internas / externas.
+  - Estilos por tipo de elástico.
+  - Undo clínico por ciclo.
+- No se incluye aún persistencia backend ni lógica de render de ligas.
+
+---
+
 # [0.27.0] - 2026-01-12
 
 ### Added
