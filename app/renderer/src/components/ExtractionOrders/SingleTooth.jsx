@@ -1,6 +1,6 @@
 import React from 'react';
 
-const SingleTooth = ({ id, status, onClick, selectedMode }) => {
+const SingleTooth = ({ id, status, onClick, selectedMode, showLabels = true, strokeColor }) => {
     // Defines safe fallback if status is null/undefined
     const safeStatus = status || { extraction: false };
     // status is object { north: 'extraction', south: 'treatment', etc }
@@ -15,6 +15,10 @@ const SingleTooth = ({ id, status, onClick, selectedMode }) => {
         const state = safeStatus[area];
         if (state === 'extraction') return 'fill-red-500 hover:fill-red-600 dark:fill-red-600 dark:hover:fill-red-500';
         if (state === 'treatment') return 'fill-emerald-500 hover:fill-emerald-600 dark:fill-emerald-600 dark:hover:fill-emerald-500';
+        // New Clinical Interactive States
+        if (state === 'caries') return 'fill-amber-400 hover:fill-amber-500 dark:fill-amber-500 dark:hover:fill-amber-400';
+        if (state === 'fracture') return 'fill-amber-800 hover:fill-amber-900 dark:fill-amber-700 dark:hover:fill-amber-600';
+        if (state === 'restoration') return 'fill-emerald-500 hover:fill-emerald-600 dark:fill-emerald-600 dark:hover:fill-emerald-500';
 
         // Default interactive hover
         if (selectedMode === 'extraction') return 'fill-white dark:fill-slate-800 hover:fill-red-50 dark:hover:fill-red-900/30';
@@ -45,7 +49,7 @@ const SingleTooth = ({ id, status, onClick, selectedMode }) => {
 
     // Common props for paths
     const commonProps = {
-        className: "transition-colors duration-200 cursor-pointer stroke-slate-500 dark:stroke-slate-600",
+        className: `transition-colors duration-200 cursor-pointer ${strokeColor || 'stroke-slate-500 dark:stroke-slate-600'}`,
         strokeWidth: "10",
         strokeMiterlimit: "22.9256"
     };
@@ -53,14 +57,16 @@ const SingleTooth = ({ id, status, onClick, selectedMode }) => {
     return (
         <div className="flex flex-col items-center group">
             {/* Labels Container */}
-            <div className="flex flex-col items-center leading-none mb-1 select-none">
-                <span className="text-xs font-bold text-slate-400 group-hover:text-slate-600 dark:text-slate-500 dark:group-hover:text-slate-400 transition-colors">
-                    {id}
-                </span>
-                <span className="text-[10px] font-medium text-slate-300 dark:text-slate-600">
-                    {pediatricId}
-                </span>
-            </div>
+            {showLabels && (
+                <div className="flex flex-col items-center leading-none mb-1 select-none">
+                    <span className="text-xs font-bold text-slate-400 group-hover:text-slate-600 dark:text-slate-500 dark:group-hover:text-slate-400 transition-colors">
+                        {id}
+                    </span>
+                    <span className="text-[10px] font-medium text-slate-300 dark:text-slate-600">
+                        {pediatricId}
+                    </span>
+                </div>
+            )}
 
             <svg
                 viewBox="0 0 2458 2458"

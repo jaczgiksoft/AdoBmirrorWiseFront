@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<!-- Creator: CorelDRAW (Versión de evaluación) -->
+<svg xmlns="http://www.w3.org/2000/svg" xml:space="preserve" width="739px" height="2458px" version="1.1" style="shape-rendering:geometricPrecision; text-rendering:geometricPrecision; image-rendering:optimizeQuality; fill-rule:evenodd; clip-rule:evenodd"
+viewBox="0 0 739 2457.4"
+ xmlns:xlink="http://www.w3.org/1999/xlink"
+ xmlns:xodm="http://www.corel.com/coreldraw/odm/2003">
+ <defs>
+  <style type="text/css">
+   <![CDATA[
+    .str0 {stroke:#D6D2C8;stroke-width:10;stroke-miterlimit:22.9256}
+    .fil0 {fill:#F5F1E8}
+   ]]>
+  </style>
+ </defs>
+ <g id="tooth-deciduous-42">
+  <metadata id="CorelCorpID_0Corel-Layer"/>
+  <path id="root" class="fil0 str0" d="M88.71 793.8c4.4,112.08 32.6,296.97 48.58,415.16l57.77 833.93c3.74,93.57 -14.15,346.4 21.4,412.25 114.72,14.34 128.61,-41.27 172.3,-118.95 285.18,-507.25 216.43,-1074.36 304.34,-1531.14 -67.93,32.21 -130.32,94.96 -207.57,126.17 -198.47,80.21 -250.75,-73.41 -396.82,-137.42z"/>
+  <path id="crown" class="fil0 str0" d="M518.43 878.56c82.1,-43.32 186.61,-98.81 204.82,-182.02 21.65,-99.04 22.9,-591.64 -12.71,-675.77 -74.96,-42.41 -357.09,-6.71 -465.02,-6.73 -168.39,-0.04 -262.19,45.66 -243.59,192.05 11.82,93.13 21.59,489.75 99.4,553.74 129.07,106.14 232.4,216.19 417.1,118.73z"/>
+ </g>
+</svg>

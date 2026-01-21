@@ -21,6 +21,14 @@ const TOOTH_HEIGHT = 150; // Increased from 80 (+25%)
 const GAP = 8;            // Increased from 6
 const MIDLINE_GAP = 60;   // Increased from 40
 
+const ELASTIC_TYPES = [
+    { id: 'standard', label: 'Estándar (Azul)', color: '#3b82f6', strokeWidth: '4' },
+    { id: 'heavy', label: 'Heavy (Rojo)', color: '#ef4444', strokeWidth: '5' },
+    { id: 'light', label: 'Ligero (Verde)', color: '#22c55e', strokeWidth: '3' },
+    { id: 'chain', label: 'Cadena (Púrpura)', color: '#a855f7', strokeWidth: '4' },
+    { id: 'rubber', label: 'Goma (Naranja)', color: '#f97316', strokeWidth: '4' },
+];
+
 // Organize IDs in display order (Left to Right on screen)
 // Upper: 18..11 | 21..28
 // Lower: 48..41 | 31..38
@@ -50,8 +58,17 @@ export default function ElasticsSection() {
     const [isModalOpen, setIsModalOpen] = useState(false);
 
     // Sequential Selection State
-    const [activeSequence, setActiveSequence] = useState([]); // Array of tooth IDs: [18, 17, 16...]
-    const [completedLoops, setCompletedLoops] = useState([]); // Array of arrays: [[18, 17, 16, 18], ...]
+    // Segment-based State
+    // activeChain: { typeId: string, segments: Array<{from, to, config}>, lastPoint: number | null, startPoint: number | null }
+    const [activeChain, setActiveChain] = useState({ segments: [], lastPoint: null, startPoint: null });
+
+    // completedChains: Array<{ typeId: string, segments: Array<{from, to, config}> }>
+    const [completedChains, setCompletedChains] = useState([]);
+    const [selectedElasticTypeId, setSelectedElasticTypeId] = useState(ELASTIC_TYPES[0].id);
+
+    // Config Modal State
+    const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
+    const [pendingLoopSequence, setPendingLoopSequence] = useState(null);
 
     // Calculate Teeth Coordinates
     const teethData = useMemo(() => {
@@ -110,58 +127,111 @@ export default function ElasticsSection() {
         };
     };
 
-    const renderElasticPath = (sequence, isCompleted = false) => {
-        if (!sequence || sequence.length < 2) return null;
+    // Updated Renderer for Chains of Segments
+    const renderElasticChain = (chain, isCompleted = false) => {
+        if (!chain || !chain.segments || chain.segments.length === 0) return null;
 
-        const points = sequence.map(id => {
-            const pos = getBracketCenter(id);
-            return `${pos.x},${pos.y}`;
-        }).join(' ');
+        const type = ELASTIC_TYPES.find(t => t.id === chain.typeId) || ELASTIC_TYPES.find(t => t.id === selectedElasticTypeId);
+        const color = type?.color || "#3b82f6";
+        const strokeWidth = type?.strokeWidth || "3";
+        const opacity = isCompleted ? 0.8 : 1;
 
         return (
-            <polyline
-                points={points}
-                fill="none"
-                stroke={isCompleted ? "#64748b" : "#3b82f6"} // slate-500 vs blue-500
-                strokeWidth="3"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className={`transition-all duration-300 ${isCompleted ? 'opacity-80' : 'drop-shadow-md'}`}
-            />
+            <g>
+                {chain.segments.map((segment, idx) => {
+                    const start = getBracketCenter(segment.from);
+                    const end = getBracketCenter(segment.to);
+                    // Internal = dashed, External = solid
+                    const strokeDasharray = segment.config === 'internal' ? "6, 8" : "none";
+
+                    return (
+                        <line
+                            key={`seg-${idx}`}
+                            x1={start.x} y1={start.y}
+                            x2={end.x} y2={end.y}
+                            stroke={color}
+                            strokeWidth={strokeWidth}
+                            strokeLinecap="round"
+                            strokeDasharray={strokeDasharray}
+                            opacity={opacity}
+                            className="transition-all duration-300 drop-shadow-md"
+                        />
+                    );
+                })}
+            </g>
         );
     };
 
     const handleBracketClick = (id) => {
-        setActiveSequence((prev) => {
-            // 1. Start new sequence if empty
-            if (prev.length === 0) {
-                return [id];
+        setActiveChain((prev) => {
+            // 1. Start new chain if empty
+            if (prev.segments.length === 0 && !prev.lastPoint) {
+                return {
+                    typeId: selectedElasticTypeId,
+                    segments: [],
+                    lastPoint: id,
+                    startPoint: id
+                };
             }
 
-            const origin = prev[0];
+            const origin = prev.startPoint;
+            const last = prev.lastPoint;
 
-            // 2. Check if clicking the origin relative to current sequence (Close Loop)
-            if (id === origin) {
-                // Determine if loop is valid (min 2 points? usually elastics need at least 2)
-                if (prev.length < 2) {
-                    // Clicking origin immediately again - maybe cancel? or just ignore
-                    return prev;
-                }
-
-                // Close the loop
-                const newLoop = [...prev, id]; // e.g. [18, 17] -> [18, 17, 18]
-                setCompletedLoops((loops) => [...loops, newLoop]);
-                return []; // Reset active sequence
-            }
-
-            // 3. Add to sequence (if not immediately clicking the last one, to avoid double clicks)
-            if (prev[prev.length - 1] === id) {
+            // 2. Prevent immediate backtrack/double-click on same bracket
+            if (id === last) {
                 return prev;
             }
 
-            // Append
-            return [...prev, id];
+            // 3. Create New Segment (Valid for both intermediate and closing segments)
+            // Trigger Dialog for ALL segments including the one closing the loop
+            setPendingLoopSequence({ from: last, to: id });
+            setIsConfigModalOpen(true);
+
+            // Return prev state as-is, waiting for confirmation
+            return prev;
         });
+    };
+
+    const confirmElasticConfig = (configType) => {
+        if (!pendingLoopSequence) return;
+
+        setActiveChain(prev => {
+            // 1. Create the new segment with chosen config
+            const newSegment = {
+                from: pendingLoopSequence.from,
+                to: pendingLoopSequence.to,
+                config: configType
+            };
+
+            const updatedChain = {
+                ...prev,
+                lastPoint: pendingLoopSequence.to,
+                segments: [...prev.segments, newSegment]
+            };
+
+            // 2. Check if this segment closes the loop
+            // It closes if the 'to' point connects back to the startPoint
+            if (pendingLoopSequence.to === prev.startPoint) {
+                // If it closes, commit to completed chains
+                setCompletedChains(chains => [...chains, updatedChain]);
+
+                // Reset active chain
+                return { segments: [], lastPoint: null, startPoint: null };
+            }
+
+            // 3. Otherwise, just update active chain
+            return updatedChain;
+        });
+
+        // Cleanup
+        setPendingLoopSequence(null);
+        setIsConfigModalOpen(false);
+    };
+
+    const cancelElasticConfig = () => {
+        setPendingLoopSequence(null);
+        setIsConfigModalOpen(false);
+        // Abort this segment, stay at previous lastPoint
     };
 
     return (
@@ -295,8 +365,63 @@ export default function ElasticsSection() {
                                     w-full overflow-x-auto
                                     bg-slate-50 dark:bg-slate-800/30
                                     rounded-xl border border-slate-200 dark:border-slate-600
-                                    px-2 py-0 flex flex-col items-center
+                                    px-2 py-0 flex flex-col items-center relative
                                 ">
+                                    {/* Config Dialog Overlay */}
+                                    {isConfigModalOpen && (
+                                        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/10 backdrop-blur-[2px] rounded-xl">
+                                            <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-600 animate-in zoom-in-95 duration-200 max-w-sm w-full mx-4">
+                                                <h4 className="text-lg font-bold text-slate-800 dark:text-white mb-2 text-center">
+                                                    Configuración de Elástico
+                                                </h4>
+                                                <p className="text-sm text-slate-500 dark:text-slate-400 text-center mb-6">
+                                                    ¿El elástico es interno o externo?
+                                                </p>
+
+                                                <div className="grid grid-cols-2 gap-3">
+                                                    <button
+                                                        onClick={() => confirmElasticConfig('external')}
+                                                        className="
+                                                            flex flex-col items-center justify-center gap-2 p-3
+                                                            rounded-xl border-2 border-slate-100 dark:border-slate-700
+                                                            hover:border-primary/50 hover:bg-primary/5
+                                                            active:scale-95 transition-all
+                                                            group
+                                                        "
+                                                    >
+                                                        <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-colors">
+                                                            <div className="w-4 h-[2px] bg-current rounded-full" />
+                                                        </div>
+                                                        <span className="text-sm font-semibold text-slate-600 dark:text-slate-300 group-hover:text-primary">Externo</span>
+                                                    </button>
+
+                                                    <button
+                                                        onClick={() => confirmElasticConfig('internal')}
+                                                        className="
+                                                            flex flex-col items-center justify-center gap-2 p-3
+                                                            rounded-xl border-2 border-slate-100 dark:border-slate-700
+                                                            hover:border-primary/50 hover:bg-primary/5
+                                                            active:scale-95 transition-all
+                                                            group
+                                                        "
+                                                    >
+                                                        <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-colors">
+                                                            <div className="w-4 h-[2px] bg-transparent border-t-2 border-dotted border-current w-4" />
+                                                        </div>
+                                                        <span className="text-sm font-semibold text-slate-600 dark:text-slate-300 group-hover:text-primary">Interno</span>
+                                                    </button>
+                                                </div>
+
+                                                <button
+                                                    onClick={cancelElasticConfig}
+                                                    className="w-full mt-4 text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 underline"
+                                                >
+                                                    Cancelar
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
+
                                     {/* SVG Container - Compact ViewBox */}
                                     <svg
                                         width="1400"
@@ -306,135 +431,79 @@ export default function ElasticsSection() {
                                     >
                                         <rect width="1400" height="440" fill="transparent" />
 
-                                        {/* Clinical Labels - Larger & Higher Contrast */}
-                                        {/* Top */}
-                                        <text x="700" y="0" textAnchor="middle" className="fill-slate-500 dark:fill-slate-400 text-sm font-bold tracking-[0.2em] uppercase">
-                                            Superior (Maxilar)
-                                        </text>
+                                        {/* BACKGROUND LAYER: Labels & Grid */}
+                                        <g id="background-layer" className="pointer-events-none select-none">
+                                            {/* Labels */}
+                                            <text x="700" y="0" textAnchor="middle" className="fill-slate-500 dark:fill-slate-400 text-sm font-bold tracking-[0.2em] uppercase">
+                                                Superior (Maxilar)
+                                            </text>
+                                            <text x="700" y="450" textAnchor="middle" className="fill-slate-500 dark:fill-slate-400 text-sm font-bold tracking-[0.2em] uppercase">
+                                                Inferior (Mandíbula)
+                                            </text>
+                                            <text x="20" y="220" textAnchor="middle" transform="rotate(-90, 20, 220)" className="fill-slate-500 dark:fill-slate-400 text-sm font-bold tracking-[0.2em] uppercase">
+                                                Derecho
+                                            </text>
+                                            <text x="1380" y="220" textAnchor="middle" transform="rotate(90, 1380, 220)" className="fill-slate-500 dark:fill-slate-400 text-sm font-bold tracking-[0.2em] uppercase">
+                                                Izquierdo
+                                            </text>
 
-                                        {/* Bottom */}
-                                        <text x="700" y="450" textAnchor="middle" className="fill-slate-500 dark:fill-slate-400 text-sm font-bold tracking-[0.2em] uppercase">
-                                            Inferior (Mandíbula)
-                                        </text>
+                                            {/* Midline / Center Lines */}
+                                            <line x1="700" y1="50" x2="700" y2="200" stroke="currentColor" strokeOpacity="0.1" strokeDasharray="4" className="text-slate-400" />
+                                            <line x1="700" y1="230" x2="700" y2="380" stroke="currentColor" strokeOpacity="0.1" strokeDasharray="4" className="text-slate-400" />
+                                        </g>
 
-                                        {/* Right (Visual Left) */}
-                                        <text
-                                            x="20" y="220"
-                                            textAnchor="middle"
-                                            transform="rotate(-90, 20, 220)"
-                                            className="fill-slate-500 dark:fill-slate-400 text-sm font-bold tracking-[0.2em] uppercase"
-                                        >
-                                            Derecho
-                                        </text>
-
-                                        {/* Left (Visual Right) */}
-                                        <text
-                                            x="1380" y="220"
-                                            textAnchor="middle"
-                                            transform="rotate(90, 1380, 220)"
-                                            className="fill-slate-500 dark:fill-slate-400 text-sm font-bold tracking-[0.2em] uppercase"
-                                        >
-                                            Izquierdo
-                                        </text>
-
-                                        {/* Render Completed Loops (Under active) */}
-                                        {completedLoops.map((loop, idx) => (
-                                            <g key={`loop-${idx}`}>
-                                                {renderElasticPath(loop, true)}
-                                            </g>
-                                        ))}
-
-                                        {/* Render Active Sequence */}
-                                        {renderElasticPath(activeSequence, false)}
-
-                                        {/* Render Teeth & Brackets */}
-                                        {teethData.map((tooth) => {
-                                            // Bracket Position - Scaled for 150px height:
-                                            // Upper (isUpper=true): 75% from top
-                                            // Lower (isUpper=false): 15% from top
-                                            const bracketYOffset = tooth.isUpper ? (TOOTH_HEIGHT * 0.75) : (TOOTH_HEIGHT * 0.15);
-                                            // Center bracket (width 20)
-                                            const bracketXOffset = (TOOTH_WIDTH - 20) / 2;
-
-                                            // Determine interaction state
-                                            const activeIndex = activeSequence.indexOf(tooth.id);
-                                            const isActive = activeIndex !== -1;
-                                            const isOrigin = activeIndex === 0;
-                                            const isCompleted = completedLoops.some(loop => loop.includes(tooth.id));
-
-                                            return (
-                                                <g key={tooth.id} transform={`translate(${tooth.x}, ${tooth.y})`}>
-                                                    {/* Tooth Image */}
+                                        {/* LAYER 1: Teeth (Base) */}
+                                        <g id="teeth-layer">
+                                            {teethData.map((tooth) => (
+                                                <g key={`tooth-${tooth.id}`} transform={`translate(${tooth.x}, ${tooth.y})`}>
                                                     {tooth.src ? (
-                                                        <image
-                                                            href={tooth.src}
-                                                            width={TOOTH_WIDTH}
-                                                            height={TOOTH_HEIGHT}
-                                                            className="opacity-90 hover:opacity-100 transition-opacity"
-                                                        />
+                                                        <image href={tooth.src} width={TOOTH_WIDTH} height={TOOTH_HEIGHT} className="opacity-90 transition-opacity" />
                                                     ) : (
                                                         <rect width={TOOTH_WIDTH} height={TOOTH_HEIGHT} fill="#ccc" rx="4" />
                                                     )}
-
-                                                    {/* Tooth Number Label - Larger */}
-                                                    <text
-                                                        x={TOOTH_WIDTH / 2}
-                                                        y={tooth.isUpper ? -15 : TOOTH_HEIGHT + 25}
-                                                        textAnchor="middle"
-                                                        className="fill-slate-500 text-sm font-sans font-bold"
-                                                    >
+                                                    <text x={TOOTH_WIDTH / 2} y={tooth.isUpper ? -15 : TOOTH_HEIGHT + 25} textAnchor="middle" className="fill-slate-500 text-sm font-sans font-bold">
                                                         {tooth.id}
                                                     </text>
-
-                                                    {/* Clickable Bracket Area */}
-                                                    <g
-                                                        transform={`translate(${bracketXOffset}, ${bracketYOffset})`}
-                                                        className="cursor-pointer"
-                                                        onClick={() => handleBracketClick(tooth.id)}
-                                                    >
-                                                        {/* Hitbox (larger transparent rect for easier clicking) */}
-                                                        <rect
-                                                            x="-6" y="-6" width="32" height="32"
-                                                            fill="transparent"
-                                                        />
-
-                                                        {/* SVG Bracket Image (20px) */}
-                                                        {/* Visual Feedback Logic */}
-                                                        <image
-                                                            href={bracketImg}
-                                                            width={20}
-                                                            height={20}
-                                                            className={`
-                                                                transition-all duration-200
-                                                                ${isOrigin
-                                                                    ? 'drop-shadow-[0_0_8px_rgba(34,197,94,0.9)] brightness-125 scale-125' // Green Origin
-                                                                    : isActive
-                                                                        ? 'drop-shadow-[0_0_5px_rgba(59,130,246,0.9)] brightness-125 scale-110' // Blue Sequence
-                                                                        : isCompleted
-                                                                            ? 'opacity-100 drop-shadow-sm brightness-90' // Completed (static)
-                                                                            : 'opacity-80 hover:opacity-100 hover:scale-105'} // Default
-                                                            `}
-                                                        />
-                                                    </g>
                                                 </g>
-                                            );
-                                        })}
+                                            ))}
+                                        </g>
 
-                                        {/* Midline / Center Lines */}
-                                        <line
-                                            x1="700" y1="50" x2="700" y2="200"
-                                            stroke="currentColor"
-                                            strokeOpacity="0.1"
-                                            strokeDasharray="4"
-                                            className="text-slate-400"
-                                        />
-                                        <line
-                                            x1="700" y1="230" x2="700" y2="380"
-                                            stroke="currentColor"
-                                            strokeOpacity="0.1"
-                                            strokeDasharray="4"
-                                            className="text-slate-400"
-                                        />
+                                        {/* LAYER 2: Elastics (Middle) */}
+                                        <g id="elastic-layer" className="pointer-events-none">
+                                            {completedChains.map((chain, idx) => (
+                                                <g key={`completed-chain-${idx}`}>
+                                                    {renderElasticChain(chain, true)}
+                                                </g>
+                                            ))}
+                                            {/* Render Active Chain */}
+                                            {renderElasticChain(activeChain, false)}
+                                        </g>
+
+                                        {/* LAYER 3: Brackets & Interactivity (Top) */}
+                                        <g id="bracket-layer">
+                                            {teethData.map((tooth) => {
+                                                const bracketYOffset = tooth.isUpper ? (TOOTH_HEIGHT * 0.75) : (TOOTH_HEIGHT * 0.15);
+                                                const bracketXOffset = (TOOTH_WIDTH - 20) / 2;
+                                                const activeIndex = activeChain.lastPoint === tooth.id || activeChain.startPoint === tooth.id || activeChain.segments.some(s => s.from === tooth.id || s.to === tooth.id);
+                                                const isActive = activeIndex;
+                                                const isOrigin = activeChain.startPoint === tooth.id;
+                                                const isCompleted = completedChains.some(chain => chain.segments.some(s => s.from === tooth.id || s.to === tooth.id));
+
+                                                return (
+                                                    <g key={`bracket-${tooth.id}`} transform={`translate(${tooth.x}, ${tooth.y})`}>
+                                                        <g transform={`translate(${bracketXOffset}, ${bracketYOffset})`} className="cursor-pointer" onClick={() => handleBracketClick(tooth.id)}>
+                                                            <rect x="-6" y="-6" width="32" height="32" fill="transparent" />
+                                                            <image
+                                                                href={bracketImg}
+                                                                width={20}
+                                                                height={20}
+                                                                className={`transition-all duration-200 ${isOrigin ? 'drop-shadow-[0_0_8px_rgba(34,197,94,0.9)] brightness-125 scale-125' : isActive ? 'drop-shadow-[0_0_5px_rgba(59,130,246,0.9)] brightness-125 scale-110' : isCompleted ? 'opacity-100 drop-shadow-sm brightness-90' : 'opacity-80 hover:opacity-100 hover:scale-105'}`}
+                                                            />
+                                                        </g>
+                                                    </g>
+                                                );
+                                            })}
+                                        </g>
                                     </svg>
 
                                     <p className="text-base font-light text-slate-600 dark:text-slate-300 text-center mt-0 max-w-lg">
@@ -510,9 +579,9 @@ export default function ElasticsSection() {
                                         <label className="text-xs font-medium text-slate-500 dark:text-slate-400">
                                             Tipo de Elástico
                                         </label>
-                                        <input
-                                            type="text"
-                                            placeholder="Ej. Clase II, Triangulares, 1/4 Heavy..."
+                                        <select
+                                            value={selectedElasticTypeId}
+                                            onChange={(e) => setSelectedElasticTypeId(e.target.value)}
                                             className="
                                                 w-full px-3 py-2 rounded-lg text-sm
                                                 bg-slate-50 dark:bg-slate-800
@@ -520,8 +589,15 @@ export default function ElasticsSection() {
                                                 focus:ring-2 focus:ring-primary/20 focus:border-primary
                                                 outline-none transition-all
                                                 text-slate-700 dark:text-slate-200
+                                                appearance-none cursor-pointer
                                             "
-                                        />
+                                        >
+                                            {ELASTIC_TYPES.map(type => (
+                                                <option key={type.id} value={type.id}>
+                                                    {type.label}
+                                                </option>
+                                            ))}
+                                        </select>
                                     </div>
                                     <div className="space-y-1.5">
                                         <label className="text-xs font-medium text-slate-500 dark:text-slate-400">

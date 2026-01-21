@@ -8,7 +8,7 @@ import OdontogramStep from './Steps/OdontogramStep';
 import RadiographsStep from './Steps/RadiographsStep';
 import AdditionalDataStep from './Steps/AdditionalDataStep';
 
-const ExtractionOrderWizard = ({ isOpen, onClose, onSave, mode = 'create', initialData = null }) => {
+const ExtractionOrderWizard = ({ isOpen, onClose, onSave, mode = 'create', initialData = null, clinicalMode }) => {
     const [step, setStep] = useState(1);
     const [teethStatus, setTeethStatus] = useState({});
     const [files, setFiles] = useState([]);
@@ -64,6 +64,7 @@ const ExtractionOrderWizard = ({ isOpen, onClose, onSave, mode = 'create', initi
                         teethStatus={teethStatus}
                         onStatusChange={(id, status) => setTeethStatus(prev => ({ ...prev, [id]: status }))}
                         onResetRequest={() => setShowResetConfirm(true)}
+                        clinicalMode={clinicalMode}
                     />
                 );
             case 2:
@@ -75,6 +76,18 @@ const ExtractionOrderWizard = ({ isOpen, onClose, onSave, mode = 'create', initi
         }
     };
 
+    // Helper to get title based on mode + clinicalMode
+    const getTitle = () => {
+        if (mode === 'edit') {
+            return clinicalMode === 'extraction'
+                ? 'Editar Orden de Extracción'
+                : 'Editar Orden Restaurativa';
+        }
+        return clinicalMode === 'extraction'
+            ? 'Nueva Orden de Extracción'
+            : 'Nueva Orden Restaurativa';
+    };
+
     return createPortal(
         <>
             <AnimatePresence>
@@ -84,14 +97,14 @@ const ExtractionOrderWizard = ({ isOpen, onClose, onSave, mode = 'create', initi
                             initial={{ opacity: 0, scale: 0.95 }}
                             animate={{ opacity: 1, scale: 1 }}
                             exit={{ opacity: 0, scale: 0.95 }}
-                            className="bg-white dark:bg-secondary rounded-2xl shadow-2xl w-full max-w-5xl h-[85vh] flex flex-col overflow-hidden"
+                            className="bg-white dark:bg-secondary rounded-2xl shadow-2xl w-full max-w-5xl h-[70vh] flex flex-col overflow-hidden"
                         >
 
                             {/* Header */}
                             <div className="bg-white dark:bg-secondary border-b border-slate-100 dark:border-slate-800 px-6 py-4 flex justify-between items-center shrink-0">
                                 <div>
                                     <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100">
-                                        {mode === 'edit' ? 'Editar Orden de Extracción' : 'Nueva Orden de Extracción'}
+                                        {getTitle()}
                                     </h2>
                                     <p className="text-slate-500 text-xs font-medium mt-0.5 uppercase tracking-wide">Paso {step} de 3</p>
                                 </div>
