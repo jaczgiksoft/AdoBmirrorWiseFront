@@ -16,10 +16,10 @@ const getToothSrc = (id) => {
 };
 
 // 2. Constants & Helper Data - FINAL SCALE ADJUSTMENT
-const TOOTH_WIDTH = 70;   // Increased from 55 (+27%)
-const TOOTH_HEIGHT = 150; // Increased from 80 (+25%)
-const GAP = 8;            // Increased from 6
-const MIDLINE_GAP = 60;   // Increased from 40
+const TOOTH_WIDTH = 60;   // Increased from 55 (+27%)
+const TOOTH_HEIGHT = 180; // Increased from 80 (+25%)
+const GAP = 20;            // Increased from 6
+const MIDLINE_GAP = 20;   // Increased from 40
 
 const ELASTIC_TYPES = [
     { id: 'standard', label: 'Estándar (Azul)', color: '#3b82f6', strokeWidth: '4' },
@@ -97,10 +97,13 @@ export default function ElasticsSection() {
         addQuadrant(UPPER_RIGHT, startX_Left, 50, true);
         addQuadrant(UPPER_LEFT, startX_Left + (8 * (TOOTH_WIDTH + GAP)) + MIDLINE_GAP, 50, true);
 
+        const LOWER_ARCH_OFFSET_Y = 20; // Vertical separation between arches
+
         // Lower Arch (Y=230) - Moved up to close gap and reduce bottom space
         // 50 (top) + 150 (tooth) + 30 (gap) = 230
-        addQuadrant(LOWER_RIGHT, startX_Left, 230, false);
-        addQuadrant(LOWER_LEFT, startX_Left + (8 * (TOOTH_WIDTH + GAP)) + MIDLINE_GAP, 230, false);
+        const lowerBaseY = 230 + LOWER_ARCH_OFFSET_Y;
+        addQuadrant(LOWER_RIGHT, startX_Left, lowerBaseY, false);
+        addQuadrant(LOWER_LEFT, startX_Left + (8 * (TOOTH_WIDTH + GAP)) + MIDLINE_GAP, lowerBaseY, false);
 
         return teeth;
     }, []);
@@ -434,16 +437,16 @@ export default function ElasticsSection() {
                                         {/* BACKGROUND LAYER: Labels & Grid */}
                                         <g id="background-layer" className="pointer-events-none select-none">
                                             {/* Labels */}
-                                            <text x="700" y="0" textAnchor="middle" className="fill-slate-500 dark:fill-slate-400 text-sm font-bold tracking-[0.2em] uppercase">
+                                            <text x="700" y="0" textAnchor="middle" className="fill-slate-500 dark:fill-slate-400 text-xl font-bold tracking-[0.2em] uppercase">
                                                 Superior (Maxilar)
                                             </text>
-                                            <text x="700" y="450" textAnchor="middle" className="fill-slate-500 dark:fill-slate-400 text-sm font-bold tracking-[0.2em] uppercase">
+                                            <text x="700" y="490" textAnchor="middle" className="fill-slate-500 dark:fill-slate-400 text-xl font-bold tracking-[0.2em] uppercase">
                                                 Inferior (Mandíbula)
                                             </text>
-                                            <text x="20" y="220" textAnchor="middle" transform="rotate(-90, 20, 220)" className="fill-slate-500 dark:fill-slate-400 text-sm font-bold tracking-[0.2em] uppercase">
+                                            <text x="20" y="220" textAnchor="middle" transform="rotate(-90, 20, 220)" className="fill-slate-500 dark:fill-slate-400 text-xl font-bold tracking-[0.2em] uppercase">
                                                 Derecho
                                             </text>
-                                            <text x="1380" y="220" textAnchor="middle" transform="rotate(90, 1380, 220)" className="fill-slate-500 dark:fill-slate-400 text-sm font-bold tracking-[0.2em] uppercase">
+                                            <text x="1380" y="220" textAnchor="middle" transform="rotate(90, 1380, 220)" className="fill-slate-500 dark:fill-slate-400 text-xl font-bold tracking-[0.2em] uppercase">
                                                 Izquierdo
                                             </text>
 
@@ -461,7 +464,7 @@ export default function ElasticsSection() {
                                                     ) : (
                                                         <rect width={TOOTH_WIDTH} height={TOOTH_HEIGHT} fill="#ccc" rx="4" />
                                                     )}
-                                                    <text x={TOOTH_WIDTH / 2} y={tooth.isUpper ? -15 : TOOTH_HEIGHT + 25} textAnchor="middle" className="fill-slate-500 text-sm font-sans font-bold">
+                                                    <text x={TOOTH_WIDTH / 2} y={tooth.isUpper ? -15 : TOOTH_HEIGHT + 25} textAnchor="middle" className="fill-slate-500 text-xl font-sans font-bold">
                                                         {tooth.id}
                                                     </text>
                                                 </g>

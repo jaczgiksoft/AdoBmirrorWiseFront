@@ -33,8 +33,10 @@ const TEETH_TO_SCALE = [18, 17, 16, 26, 27, 28, 36, 37, 38, 46, 47, 48];
 
 
 function FrontalTooth({ id, isExtracted, onClick, isUpper }) {
-    // In this simplified wizard view, we mostly care about "original" vs "extraction" visualization
-    const src = getToothSrc(id, 'original');
+    // Determine source based on state
+    // If extracted, use the specific 'extraction' asset which includes the visual indicator
+    const type = isExtracted ? 'extraction' : 'original';
+    const src = getToothSrc(id, type);
     const shouldScale = TEETH_TO_SCALE.includes(id);
 
     if (!src) return <div className="w-10 h-14 bg-red-100 text-xs flex items-center justify-center">{id}</div>;
@@ -53,8 +55,8 @@ function FrontalTooth({ id, isExtracted, onClick, isUpper }) {
             {/* Number ABOVE for Upper Arch */}
             {isUpper && NumberLabel}
 
-            <div className={`relative w-10 h-14 md:w-12 md:h-16 transition-all duration-200 
-                ${isExtracted ? 'opacity-50 grayscale' : 'hover:scale-110 drop-shadow-lg'} 
+            <div className={`relative w-10 h-14 md:w-12 md:h-28 transition-all duration-200 
+                ${isExtracted ? '' : 'hover:scale-110 drop-shadow-lg'} 
                 ${shouldScale ? 'scale-y-[0.85] origin-bottom' : ''}`}
             >
                 <img
@@ -63,15 +65,6 @@ function FrontalTooth({ id, isExtracted, onClick, isUpper }) {
                     className="w-full h-full object-contain pointer-events-none"
                     draggable="false"
                 />
-
-                {isExtracted && (
-                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                        <svg className="w-8 h-8 text-red-600 drop-shadow-md" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
-                            <line x1="18" y1="6" x2="6" y2="18"></line>
-                            <line x1="6" y1="6" x2="18" y2="18"></line>
-                        </svg>
-                    </div>
-                )}
             </div>
 
             {/* Number BELOW for Lower Arch */}

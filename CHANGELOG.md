@@ -10,6 +10,96 @@ Este proyecto sigue [Semantic Versioning](https://semver.org/lang/es/).
 
 ---
 
+# [0.29.0] - 2026-02-06
+
+### Added
+- Soporte completo para **TADs (Temporary Anchorage Devices / Microimplantes)** en el odontograma clínico:
+  - Nuevo modo **“Colocar TADs”** en el panel de acciones.
+  - Colocación de TADs **en espacios interdentales** (no sobre dientes).
+  - Uso del asset SVG clínico:
+    - `assets/images/odontogram/tad.svg`
+  - Representación independiente del diente (modelo clínico correcto).
+
+- Implementación de **zonas interproximales interactivas**:
+  - Zonas invisibles renderizadas entre dientes adyacentes.
+  - Activación solo cuando el modo TAD está habilitado.
+  - Highlight visual y cursor de acción en modo colocación.
+  - Hit-box ampliado para mejor precisión clínica.
+
+- Integración de **modo exclusivo de acción clínica**:
+  - Exclusividad entre:
+    - Colocación de Brackets
+    - Colocación de TADs
+  - Prevención de conflictos de interacción.
+
+- Nuevo botón global **“Limpiar odontograma”**:
+  - Disponible siempre en el ActionPanel.
+  - Confirmación mediante componente existente:
+    - `components/feedback/ConfirmDialog.jsx`
+  - Restablece completamente el odontograma a su estado inicial:
+    - Elimina TADs.
+    - Elimina brackets.
+    - Limpia oclusales.
+    - Restablece todos los dientes a su estado base.
+    - Reinicia contadores y estados derivados.
+
+- Mejora visual en el módulo de **Extracciones**:
+  - Sustitución de la “X” genérica por **SVGs clínicos específicos por diente**.
+  - Uso de assets dedicados:
+    - `assets/images/odontogram/extraction/*`
+  - Correspondencia correcta por número y orientación dental.
+
+---
+
+### Changed
+- Refinamiento visual del render de TADs:
+  - Ajuste de tamaño relativo basado en el espacio interdental.
+  - Escalado visual sin modificar el layout ni el spacing dental.
+  - Centrado preciso en la zona gingival:
+    - Maxilar: ligeramente superior al centro.
+    - Mandíbula: ligeramente inferior al centro.
+
+- Mejora del layout vertical en el **Odontograma de Elásticos**:
+  - Separación clara entre maxilar y mandíbula mediante offsets verticales.
+  - Eliminación de solapamientos visuales.
+  - Mayor legibilidad en contexto de instrucciones clínicas.
+
+- Refinamiento visual del ActionPanel:
+  - Rediseño de checkboxes clínicos:
+    - Estilo personalizado.
+    - Apariencia moderna y profesional.
+    - Integración visual con el tema oscuro.
+  - Se evita explícitamente el uso de switches.
+
+---
+
+### Fixed
+- Corrección de limitaciones visuales al escalar elementos clínicos:
+  - Eliminación de intentos de escalado por `width/height` en espacios constreñidos.
+  - Uso correcto de escalado visual (`transform`) cuando aplica.
+
+- Corrección de alineaciones verticales inconsistentes:
+  - TADs ahora centrados correctamente en la encía.
+  - Mejor balance visual entre dientes, brackets y microimplantes.
+
+- Eliminación de interacciones conflictivas entre modos clínicos:
+  - Clicks en dientes deshabilitados correctamente durante colocación de TADs.
+
+---
+
+### Notes
+- Este release consolida el **modelo clínico avanzado del odontograma**:
+  - Brackets → pertenecen al diente.
+  - TADs → pertenecen al espacio interdental.
+- El odontograma queda preparado para futuras extensiones:
+  - Movimiento / reposicionamiento de TADs.
+  - Tipos de microimplantes.
+  - Persistencia backend de estados clínicos.
+  - Undo clínico global.
+- No se incluye aún persistencia backend para TADs o extracciones.
+
+---
+
 # [0.28.0] - 2026-01-13
 
 ### Added

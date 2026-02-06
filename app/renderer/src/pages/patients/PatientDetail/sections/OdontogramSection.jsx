@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import bracketImg from '@/assets/images/odontogram/bracket.svg';
+import tadImg from '@/assets/images/odontogram/tad.svg';
 import SingleTooth from '@/components/ExtractionOrders/SingleTooth';
+import ConfirmDialog from '@/components/feedback/ConfirmDialog';
 
 // 1. Asset Loading
 // Load all tooth SVGs from all subfolders (original, root-canal, etc.)
@@ -111,7 +113,7 @@ function Tooth({ id, type, hasBracket, isBracketMode, onToothClick, currentClini
     // Dynamic Positioning based on arch
     // Upper teeth: Root is UP, Crown is DOWN. We need to push bracket DOWN > top-[38%]
     // Lower teeth: Root is DOWN, Crown is UP. Bracket stays near TOP > top-[22%]
-    const bracketPositionClass = isMaxillary ? 'top-[70%]' : 'top-[15%]';
+    const bracketPositionClass = isMaxillary ? 'top-[75%]' : 'top-[15%]';
 
     if (!src) {
         return (
@@ -137,7 +139,7 @@ function Tooth({ id, type, hasBracket, isBracketMode, onToothClick, currentClini
             onClick={() => !isInvalidDeciduous && onToothClick(id)}
         >
             {/* Tooth Image Container */}
-            <div className={`relative w-11 h-16 md:w-14 md:h-20 transition-transform duration-300 ${!isInvalidDeciduous && (isBracketMode ? 'hover:scale-105' : 'hover:scale-110')} z-10 ${shouldScale ? 'scale-y-[0.85] origin-bottom' : ''}`}>
+            <div className={`relative w-11 h-16 md:w-13 md:h-30 transition-transform duration-300 ${!isInvalidDeciduous && (isBracketMode ? 'hover:scale-105' : 'hover:scale-110')} z-10 ${shouldScale ? 'scale-y-[0.85] origin-bottom' : ''}`}>
                 <img
                     src={src}
                     alt={`Tooth ${id}`}
@@ -171,21 +173,98 @@ function Tooth({ id, type, hasBracket, isBracketMode, onToothClick, currentClini
     );
 }
 
-// Quadrant Helper (Frontal)
-function Quadrant({ teeth, toothStates, brackets, isBracketMode, onToothClick, currentClinicalAction }) {
+// Interproximal Zone Component (for TADs)
+function InterproximalZone({ t1, t2, hasTad, isTadMode, onClick }) {
+    // Determine order for consistent ID
+    // Visual order in quadrant determines position, but logic should be consistent
+    // We pass t1 and t2 based on render order.
+
+    // TAD Position Logic:
+    // Upper Arch (1x, 2x): Roots are UP. Gum is TOP. TAD goes Top.
+    // Lower Arch (3x, 4x): Roots are DOWN. Gum is BOTTOM. TAD goes Bottom.
+    // We treat id < 30 as Upper.
+    const isUpper = t1 < 30;
+
     return (
-        <div className="flex gap-px md:gap-1">
-            {teeth.map(id => (
-                <Tooth
-                    key={id}
-                    id={id}
-                    type={toothStates[id]}
-                    hasBracket={!!brackets[id]}
-                    isBracketMode={isBracketMode}
-                    currentClinicalAction={currentClinicalAction}
-                    onToothClick={onToothClick}
-                />
-            ))}
+        <div className={`relative flex flex-col justify-end w-px md:w-1 shrink-0 z-30`}>
+            {/* Hit box - wider than the visible gap */}
+            <div
+                className={`absolute inset-y-0 -left-1.5 -right-1.5 z-40 transition-colors duration-200 
+                ${isTadMode
+                        ? 'cursor-pointer hover:bg-blue-400/30'
+                        : 'pointer-events-none'
+                    }
+                `}
+                onClick={() => isTadMode && onClick(t1, t2)}
+                title={isTadMode ? `Colocar TAD entre ${t1} y ${t2}` : ''}
+            />
+
+            {/* TAD Visualization */}
+            <AnimatePresence>
+                {hasTad && (
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0 }}
+                        className={`
+    absolute left-1/2 -translate-x-1/2 -translate-y-1/2
+    pointer-events-none flex items-center justify-center
+    w-3 md:w-2.5
+    ${isUpper ? 'top-[50%]' : 'bottom-[50%]'}
+  `}
+                    >
+
+                        <img
+                            src={tadImg}
+                            alt="TAD"
+                            className={`w-full h-auto drop-shadow-md opacity-90 ${!isUpper ? 'rotate-180' : ''}`}
+                        />
+
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </div>
+    );
+}
+
+// Quadrant Helper (Frontal)
+function Quadrant({ teeth, toothStates, brackets, tads, isBracketMode, isTadMode, onToothClick, onTadClick, currentClinicalAction }) {
+    return (
+        <div className="flex">
+            {teeth.map((id, index) => {
+                const isLast = index === teeth.length - 1;
+                const nextId = teeth[index + 1];
+
+                // Check for TAD between this tooth and the next
+                // Key convention: smaller-larger
+                const pairId = [id, nextId].sort((a, b) => a - b).join('-');
+                const hasTad = !!tads[pairId];
+
+                return (
+                    <React.Fragment key={id}>
+                        <Tooth
+                            id={id}
+                            type={toothStates[id]}
+                            hasBracket={!!brackets[id]}
+                            isBracketMode={isBracketMode}
+                            // If TAD mode is active, disable tooth click unless we want to allow mixed interactions (req says no)
+                            onToothClick={isTadMode ? () => { } : onToothClick}
+                            currentClinicalAction={currentClinicalAction}
+                        // Visual feedback: dim teeth slightly in TAD mode to emphasize gaps? Optional.
+                        // keeping standard for now.
+                        />
+                        {!isLast && (
+                            <InterproximalZone
+                                t1={id}
+                                t2={nextId}
+                                hasTad={hasTad}
+                                isTadMode={isTadMode}
+                                onClick={onTadClick}
+                            />
+                        )}
+                    </React.Fragment>
+                );
+            })}
         </div>
     );
 }
@@ -193,7 +272,7 @@ function Quadrant({ teeth, toothStates, brackets, isBracketMode, onToothClick, c
 // Occlusal Quadrant Helper
 function OcclusalQuadrant({ teeth, surfaceStates, toothStates, onSurfaceClick }) {
     return (
-        <div className="flex gap-1 md:gap-1.5 justify-center">
+        <div className="flex gap-1 md:gap-0 justify-center">
             {teeth.map(id => {
                 const isExtracted = toothStates[id] === 'extraction';
                 // If extracted, pass { extraction: true } to override colors
@@ -278,17 +357,60 @@ function DentalSummary({ toothStates }) {
     );
 }
 
-function ActionPanel({ isBracketMode, setBracketMode, onApplyAll, selectedToothType, setSelectedToothType }) {
+// Custom Premium Switch/Checkbox Component
+function ModeCheckbox({ checked, onChange, label, color = 'blue' }) {
+    const isBlue = color === 'blue';
+    const activeColor = isBlue ? 'bg-blue-500 border-blue-500 shadow-blue-500/25' : 'bg-sky-500 border-sky-500 shadow-sky-500/25';
+    const activeRing = isBlue ? 'peer-focus:ring-blue-500/30' : 'peer-focus:ring-sky-500/30';
+
+    return (
+        <label className="group flex items-center gap-3 cursor-pointer select-none relative px-3 py-2 rounded-xl transition-all duration-300 hover:bg-slate-50 dark:hover:bg-slate-800/50">
+            <input
+                type="checkbox"
+                className="peer sr-only"
+                checked={checked}
+                onChange={onChange}
+            />
+            {/* Custom Checkbox Box */}
+            <div className={`
+                w-5 h-5 md:w-6 md:h-6 rounded-[6px] border-[2px] flex items-center justify-center transition-all duration-300 ease-out shadow-sm
+                ${checked
+                    ? `${activeColor} scale-100`
+                    : 'bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600 group-hover:border-slate-400 dark:group-hover:border-slate-500'
+                }
+            `}>
+                <svg
+                    className={`w-3.5 h-3.5 md:w-4 md:h-4 text-white transform transition-all duration-300 ease-spring ${checked ? 'scale-100 opacity-100 rotate-0' : 'scale-50 opacity-0 -rotate-90'}`}
+                    fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3.5} strokeLinecap="round" strokeLinejoin="round"
+                >
+                    <path d="M5 13l4 4L19 7" />
+                </svg>
+            </div>
+
+            {/* Label Text */}
+            <span className={`text-sm font-semibold transition-colors duration-200 ${checked ? 'text-slate-800 dark:text-slate-100' : 'text-slate-600 dark:text-slate-400 group-hover:text-slate-800 dark:group-hover:text-slate-300'}`}>
+                {label}
+            </span>
+
+            {/* Subtle Active Background Glow */}
+            {checked && (
+                <div className={`absolute inset-0 rounded-xl opacity-10 pointer-events-none ${isBlue ? 'bg-blue-500' : 'bg-sky-500'}`} />
+            )}
+        </label>
+    );
+}
+
+function ActionPanel({ isBracketMode, setBracketMode, isTadMode, setTadMode, onApplyAll, selectedToothType, setSelectedToothType, onReset }) {
     return (
         <div className="bg-white dark:bg-[var(--color-secondary)] p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm mt-6 flex flex-col md:flex-row items-center justify-between gap-4">
             {/* General Actions */}
-            <div className="flex items-center gap-4 w-full md:w-auto">
+            <div className="flex items-center gap-4 w-full md:w-auto overflow-x-auto pb-1 md:pb-0">
                 <label className="text-sm font-medium text-slate-600 dark:text-slate-300 whitespace-nowrap hidden md:block">
                     Acción Clínica:
                 </label>
                 <select
                     className="input input-sm md:input-md w-full md:w-48 border-slate-300 dark:border-slate-600"
-                    disabled={isBracketMode}
+                    disabled={isBracketMode || isTadMode}
                     value={selectedToothType}
                     onChange={(e) => setSelectedToothType(e.target.value)}
                 >
@@ -296,36 +418,54 @@ function ActionPanel({ isBracketMode, setBracketMode, onApplyAll, selectedToothT
                         <option key={t.id} value={t.id}>{t.label}</option>
                     ))}
                 </select>
-                <button className="btn btn-primary btn-sm md:btn-md shadow-sm" disabled={isBracketMode}>
+                <button className="btn btn-primary btn-sm md:btn-md shadow-sm" disabled={isBracketMode || isTadMode}>
                     Aplicar
+                </button>
+                {/* Reset Button */}
+                <button
+                    onClick={onReset}
+                    className="btn btn-sm md:btn-md bg-white dark:bg-slate-700 hover:bg-red-50 dark:hover:bg-red-900/20 text-red-500 hover:text-red-600 border border-slate-200 dark:border-slate-600 shadow-sm transition-colors whitespace-nowrap"
+                    title="Limpiar todo el odontograma"
+                >
+                    Limpiar odontograma
                 </button>
             </div>
 
             {/* Divider */}
             <div className="hidden md:block w-px h-8 bg-slate-200 dark:bg-slate-700 mx-1"></div>
 
-            {/* Bracket Controls */}
-            <div className="flex items-center gap-4 w-full md:w-auto justify-between md:justify-end">
-                <label className="flex items-center gap-2 cursor-pointer select-none ring-offset-2 ring-primary/20 rounded hover:bg-slate-50 dark:hover:bg-slate-800/50 p-2 transition-colors">
-                    <input
-                        type="checkbox"
-                        className="checkbox checkbox-primary checkbox-sm"
-                        checked={isBracketMode}
-                        onChange={(e) => setBracketMode(e.target.checked)}
-                    />
-                    <span className="text-sm font-medium text-slate-700 dark:text-slate-200">
-                        Colocar brackets
-                    </span>
-                </label>
+            {/* Ortho Controls */}
+            <div className="flex items-center gap-2 md:gap-4 w-full md:w-auto justify-between md:justify-end flex-wrap md:flex-nowrap">
+                {/* TADs Checkbox */}
+                <ModeCheckbox
+                    label="Colocar TADs"
+                    checked={isTadMode}
+                    onChange={(e) => setTadMode(e.target.checked)}
+                    color="sky"
+                />
 
-                {isBracketMode && (
-                    <button
-                        onClick={onApplyAll}
-                        className="btn btn-sm btn-secondary animate-fade-in shadow-sm"
-                    >
-                        Aplicar a todos
-                    </button>
-                )}
+                {/* Brackets Checkbox */}
+                <ModeCheckbox
+                    label="Colocar Brackets"
+                    checked={isBracketMode}
+                    onChange={(e) => setBracketMode(e.target.checked)}
+                    color="blue"
+                />
+
+                {/* Confirm Action Button (Only for Bracket Mode) */}
+                <AnimatePresence>
+                    {isBracketMode && (
+                        <motion.button
+                            initial={{ opacity: 0, scale: 0.9, width: 0 }}
+                            animate={{ opacity: 1, scale: 1, width: 'auto' }}
+                            exit={{ opacity: 0, scale: 0.9, width: 0 }}
+                            onClick={onApplyAll}
+                            className="btn btn-sm btn-secondary shadow-sm ml-2 overflow-hidden whitespace-nowrap"
+                        >
+                            Aplicar a todos
+                        </motion.button>
+                    )}
+                </AnimatePresence>
             </div>
         </div>
     );
@@ -343,7 +483,23 @@ export default function OdontogramSection() {
     });
 
     const [brackets, setBrackets] = useState({}); // { 18: true, ... }
-    const [isBracketMode, setBracketMode] = useState(false);
+    const [tads, setTads] = useState({}); // { "11-12": true, ... }
+
+    // Modes (Mutually Exclusive)
+    const [isBracketMode, setIsBracketMode] = useState(false);
+    const [isTadMode, setIsTadMode] = useState(false);
+
+    // Handler helpers to ensure exclusivity
+    const setBracketMode = (val) => {
+        setIsBracketMode(val);
+        if (val) setIsTadMode(false);
+    };
+
+    const setTadMode = (val) => {
+        setIsTadMode(val);
+        if (val) setIsBracketMode(false);
+    };
+
     const [selectedToothType, setSelectedToothType] = useState('original');
 
     // New: Surface States for Occlusal Views
@@ -352,6 +508,9 @@ export default function OdontogramSection() {
 
     // New: Modal Selection State
     const [selectedSurface, setSelectedSurface] = useState(null);
+
+    // Reset Confirmation State
+    const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
 
     // Unified click handler (Frontal)
     const handleToothClick = (id) => {
@@ -406,6 +565,15 @@ export default function OdontogramSection() {
         setSelectedSurface(null);
     };
 
+    // TAD Click Handler
+    const handleTadClick = (t1, t2) => {
+        const pairId = [t1, t2].sort((a, b) => a - b).join('-');
+        setTads(prev => ({
+            ...prev,
+            [pairId]: !prev[pairId] // Toggle
+        }));
+    };
+
     const handleApplyAllBrackets = () => {
         const newBrackets = { ...brackets };
         const allTeeth = Object.values(QUADRANTS).flat();
@@ -418,6 +586,29 @@ export default function OdontogramSection() {
         setBrackets(newBrackets);
     };
 
+    // Reset Handler: Clears everything to initial state
+    const handleResetOdontogram = () => {
+        // 1. Reset Tooth States to 'original'
+        const initialStates = {};
+        Object.values(QUADRANTS).flat().forEach(id => {
+            initialStates[id] = 'original';
+        });
+        setToothStates(initialStates);
+
+        // 2. Clear Add-ons
+        setBrackets({});
+        setTads({});
+        setSurfaceStates({});
+
+        // 3. Reset UI Modes
+        setIsBracketMode(false);
+        setIsTadMode(false);
+        setSelectedToothType('original');
+
+        // 4. Close Dialog
+        setIsResetDialogOpen(false);
+    };
+
     return (
         <motion.div
             initial={{ opacity: 0, y: 10 }}
@@ -428,7 +619,10 @@ export default function OdontogramSection() {
             <DentalSummary toothStates={toothStates} />
 
             {/* 2. Odontogram Visualization */}
-            <div className={`bg-white dark:bg-[var(--color-secondary)] border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm p-4 flex flex-col items-center relative overflow-hidden transition-colors ${isBracketMode ? 'ring-2 ring-blue-500/20 border-blue-200 dark:border-blue-900/30' : ''}`}>
+            <div className={`bg-white dark:bg-[var(--color-secondary)] border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm p-4 flex flex-col items-center relative overflow-hidden transition-colors 
+                ${isBracketMode ? 'ring-2 ring-blue-500/20 border-blue-200 dark:border-blue-900/30' : ''}
+                ${isTadMode ? 'ring-2 ring-sky-500/20 border-sky-200 dark:border-sky-900/30' : ''}
+            `}>
 
                 {/* Header / Title */}
                 <div className="w-full mb-4 flex items-center justify-between z-10 relative">
@@ -437,7 +631,12 @@ export default function OdontogramSection() {
                             Odontograma Actual
                             {isBracketMode && (
                                 <span className="badge badge-sm badge-info gap-1 font-normal">
-                                    Modo Ortodoncia
+                                    Modo Ortodoncia (Brackets)
+                                </span>
+                            )}
+                            {isTadMode && (
+                                <span className="badge badge-sm badge-info gap-1 font-normal">
+                                    Modo Ortodoncia (TADs)
                                 </span>
                             )}
                         </h2>
@@ -454,7 +653,7 @@ export default function OdontogramSection() {
                 <div className="relative z-0 scale-100 xl:scale-110 transition-transform origin-top mt-4 mb-4">
 
                     {/* Labels */}
-                    <div className="text-center mb-2 text-[10px] font-bold tracking-[0.2em] text-slate-300 dark:text-slate-600 uppercase select-none">
+                    <div className="text-center mb-2 text-[15px] font-bold tracking-[0.2em] text-slate-300 dark:text-slate-600 uppercase select-none">
                         Superior (Maxilar)
                     </div>
 
@@ -469,16 +668,22 @@ export default function OdontogramSection() {
                                 teeth={QUADRANTS.q1}
                                 toothStates={toothStates}
                                 brackets={brackets}
+                                tads={tads}
                                 isBracketMode={isBracketMode}
+                                isTadMode={isTadMode}
                                 onToothClick={handleToothClick}
+                                onTadClick={handleTadClick}
                                 currentClinicalAction={selectedToothType}
                             />
                             <Quadrant
                                 teeth={QUADRANTS.q2}
                                 toothStates={toothStates}
                                 brackets={brackets}
+                                tads={tads}
                                 isBracketMode={isBracketMode}
+                                isTadMode={isTadMode}
                                 onToothClick={handleToothClick}
+                                onTadClick={handleTadClick}
                                 currentClinicalAction={selectedToothType}
                             />
                         </div>
@@ -527,16 +732,22 @@ export default function OdontogramSection() {
                                 teeth={QUADRANTS.q4}
                                 toothStates={toothStates}
                                 brackets={brackets}
+                                tads={tads}
                                 isBracketMode={isBracketMode}
+                                isTadMode={isTadMode}
                                 onToothClick={handleToothClick}
+                                onTadClick={handleTadClick}
                                 currentClinicalAction={selectedToothType}
                             />
                             <Quadrant
                                 teeth={QUADRANTS.q3}
                                 toothStates={toothStates}
                                 brackets={brackets}
+                                tads={tads}
                                 isBracketMode={isBracketMode}
+                                isTadMode={isTadMode}
                                 onToothClick={handleToothClick}
+                                onTadClick={handleTadClick}
                                 currentClinicalAction={selectedToothType}
                             />
                         </div>
@@ -544,15 +755,15 @@ export default function OdontogramSection() {
 
 
                     {/* Labels */}
-                    <div className="text-center mt-6 mb-6 text-[10px] font-bold tracking-[0.2em] text-slate-300 dark:text-slate-600 uppercase select-none">
+                    <div className="text-center mt-2 mb-15 text-[15px] font-bold tracking-[0.2em] text-slate-300 dark:text-slate-600 uppercase select-none">
                         Inferior (Mandíbula)
                     </div>
 
                     {/* ... side labels ... */}
-                    <div className="absolute top-1/2 -left-12 -translate-y-8 -rotate-90 text-[10px] font-bold tracking-[0.2em] text-slate-200 dark:text-slate-700 select-none hidden lg:block">
+                    <div className="absolute top-1/2 -left-18 -translate-y-8 -rotate-90 text-[15px] font-bold tracking-[0.2em] text-slate-200 dark:text-slate-700 select-none hidden lg:block">
                         DERECHO
                     </div>
-                    <div className="absolute top-1/2 -right-13 -translate-y-7 rotate-90 text-[10px] font-bold tracking-[0.2em] text-slate-200 dark:text-slate-700 select-none hidden lg:block">
+                    <div className="absolute top-1/2 -right-20 -translate-y-7 rotate-90 text-[15px] font-bold tracking-[0.2em] text-slate-200 dark:text-slate-700 select-none hidden lg:block">
                         IZQUIERDO
                     </div>
                 </div>
@@ -562,9 +773,12 @@ export default function OdontogramSection() {
             <ActionPanel
                 isBracketMode={isBracketMode}
                 setBracketMode={setBracketMode}
+                isTadMode={isTadMode}
+                setTadMode={setTadMode}
                 onApplyAll={handleApplyAllBrackets}
                 selectedToothType={selectedToothType}
                 setSelectedToothType={setSelectedToothType}
+                onReset={() => setIsResetDialogOpen(true)}
             />
 
             {/* 4. Clinical Action Modal */}
@@ -572,6 +786,18 @@ export default function OdontogramSection() {
                 isOpen={!!selectedSurface}
                 onClose={() => setSelectedSurface(null)}
                 onSelect={handleClinicalAction}
+            />
+
+            {/* 5. Reset Confirmation Dialog */}
+            <ConfirmDialog
+                open={isResetDialogOpen}
+                title="Limpiar Odontograma"
+                message="¿Estás seguro de qe deseas reiniciar el odontograma? Esta acción eliminará todos los brackets, TADs y marcaciones realizadas. No se puede deshacer."
+                confirmLabel="Sí, limpiar todo"
+                cancelLabel="Cancelar"
+                confirmVariant="error"
+                onConfirm={handleResetOdontogram}
+                onCancel={() => setIsResetDialogOpen(false)}
             />
 
         </motion.div>

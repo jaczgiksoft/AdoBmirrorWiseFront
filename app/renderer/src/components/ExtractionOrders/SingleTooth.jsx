@@ -21,10 +21,10 @@ const SingleTooth = ({ id, status, onClick, selectedMode, showLabels = true, str
         if (state === 'restoration') return 'fill-emerald-500 hover:fill-emerald-600 dark:fill-emerald-600 dark:hover:fill-emerald-500';
 
         // Default interactive hover
-        if (selectedMode === 'extraction') return 'fill-white dark:fill-slate-800 hover:fill-red-50 dark:hover:fill-red-900/30';
-        if (selectedMode === 'treatment') return 'fill-white dark:fill-slate-800 hover:fill-emerald-50 dark:hover:fill-emerald-900/30';
+        if (selectedMode === 'extraction') return 'fill-slate-100 dark:fill-slate-700 hover:fill-red-100 dark:hover:fill-red-900/50';
+        if (selectedMode === 'treatment') return 'fill-stone-100 dark:fill-stone-100/90 hover:fill-sky-300/70 dark:hover:fill-sky-300';
 
-        return 'fill-white dark:fill-slate-800';
+        return 'fill-slate-100 dark:fill-slate-700';
     };
 
     const handleClick = (area) => {
@@ -50,7 +50,7 @@ const SingleTooth = ({ id, status, onClick, selectedMode, showLabels = true, str
     // Common props for paths
     const commonProps = {
         className: `transition-colors duration-200 cursor-pointer ${strokeColor || 'stroke-slate-500 dark:stroke-slate-600'}`,
-        strokeWidth: "10",
+        strokeWidth: "50",
         strokeMiterlimit: "22.9256"
     };
 
