@@ -10,6 +10,23 @@ Este proyecto sigue [Semantic Versioning](https://semver.org/lang/es/).
 
 ---
 
+# [0.29.1] - 2026-02-06
+
+### Changed
+- Ajuste visual en el **visor avanzado de imágenes** para comparación clínica:
+  - Eliminación del espacio entre imágenes comparativas (1, 2 o 3 imágenes).
+  - Renderizado de imágenes **edge-to-edge** para mejorar la evaluación facial.
+  - Conservación de proporciones y lógica de comparación existente.
+
+---
+
+### Notes
+- Este ajuste mejora la precisión visual en la comparación de fotografías clínicas.
+- No se realizaron cambios en la lógica de selección ni en el manejo de imágenes.
+- Cambio puramente visual y no disruptivo.
+
+---
+
 # [0.29.0] - 2026-02-06
 
 ### Added

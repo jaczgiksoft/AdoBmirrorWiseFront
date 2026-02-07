@@ -41,7 +41,7 @@ export default function AdvancedImageViewer({ images = [], onClose, onRemoveImag
             </div>
 
             {/* --- MAIN GRID --- */}
-            <div className={`flex-1 p-4 grid gap-4 ${gridCols} overflow-hidden`}>
+            <div className={`flex-1 p-4 grid gap-0 ${gridCols} overflow-hidden`}>
                 {images.map((imgUrl, index) => (
                     <div
                         key={`${imgUrl}-${index}`}
