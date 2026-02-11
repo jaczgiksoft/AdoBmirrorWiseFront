@@ -50,7 +50,7 @@ const SingleTooth = ({ id, status, onClick, selectedMode, showLabels = true, str
     // Common props for paths
     const commonProps = {
         className: `transition-colors duration-200 cursor-pointer ${strokeColor || 'stroke-slate-500 dark:stroke-slate-600'}`,
-        strokeWidth: "50",
+        strokeWidth: "100",
         strokeMiterlimit: "22.9256"
     };
 
@@ -70,7 +70,7 @@ const SingleTooth = ({ id, status, onClick, selectedMode, showLabels = true, str
 
             <svg
                 viewBox="0 0 2458 2458"
-                className="w-10 h-10 md:w-12 md:h-12 drop-shadow-sm transform hover:scale-105 transition-transform"
+                className="w-10 h-10 md:w-11.5 md:h-11.5 drop-shadow-sm transform hover:scale-105 transition-transform"
             >
                 <g id="area_center" onClick={() => handleClick('center')}>
                     <circle

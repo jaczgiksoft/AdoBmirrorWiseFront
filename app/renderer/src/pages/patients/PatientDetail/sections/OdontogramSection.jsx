@@ -123,12 +123,12 @@ function Tooth({ id, type, hasBracket, isBracketMode, onToothClick, currentClini
         );
     }
 
-    const wrapperClasses = `flex flex-col items-center gap-0.5 group relative -mx-[2px] md:-mx-[4px] transition-all 
+    const wrapperClasses = `flex flex-col items-center gap-2 group relative -mx-[2px] transition-all 
         ${isInvalidDeciduous
             ? 'opacity-20 grayscale cursor-not-allowed'
             : `hover:z-20 ${isBracketMode ? 'cursor-pointer' : 'cursor-pointer'}`}`;
 
-    const labelClasses = `text-[10px] md:text-xs font-bold transition-colors ${isInvalidDeciduous
+    const labelClasses = `text-[10px] md:text-xs font-bold transition-colors${isInvalidDeciduous
         ? 'text-slate-200 dark:text-slate-700'
         : (hasBracket ? 'text-blue-600 dark:text-blue-400' : 'text-slate-300 group-hover:text-slate-600 dark:group-hover:text-slate-200')
         }`;
@@ -139,12 +139,22 @@ function Tooth({ id, type, hasBracket, isBracketMode, onToothClick, currentClini
             onClick={() => !isInvalidDeciduous && onToothClick(id)}
         >
             {/* Tooth Image Container */}
-            <div className={`relative w-11 h-16 md:w-13 md:h-30 transition-transform duration-300 ${!isInvalidDeciduous && (isBracketMode ? 'hover:scale-105' : 'hover:scale-110')} z-10 ${shouldScale ? 'scale-y-[0.85] origin-bottom' : ''}`}>
+            <div className={`
+                    relative h-40
+                    flex items-end
+                    transition-transform duration-300
+                    ${!isInvalidDeciduous && (isBracketMode ? 'hover:scale-105' : 'hover:scale-105')}
+                    z-10
+                `}>
                 <img
                     src={src}
                     alt={`Tooth ${id}`}
-                    className="w-full h-full object-contain drop-shadow-sm filter hover:drop-shadow-md transition-all"
                     draggable={false}
+                    className={`
+    w-full h-full object-contain
+    drop-shadow-sm transition-transform
+    ${shouldScale ? 'scale-x-95' : ''}
+  `}
                 />
 
                 {/* Bracket Overlay */}
