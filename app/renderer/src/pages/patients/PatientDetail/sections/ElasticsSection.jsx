@@ -15,11 +15,22 @@ const getToothSrc = (id) => {
     return entry ? entry[1] : null;
 };
 
-// 2. Constants & Helper Data - FINAL SCALE ADJUSTMENT
-const TOOTH_WIDTH = 60;   // Increased from 55 (+27%)
-const TOOTH_HEIGHT = 180; // Increased from 80 (+25%)
-const GAP = 20;            // Increased from 6
-const MIDLINE_GAP = 20;   // Increased from 40
+// 2. Constants & Helper Data - DYNAMIC LAYOUT CONFIG
+const TOOTH_CONFIG = {
+    // Standard tooth dimensions
+    base: { width: 70, height: 250 },
+    // Molar dimensions (~15% larger)
+    molar: { width: 90, height: 240 },
+    gap: 1,            // Very tight spacing
+    midlineGap: 40     // Gap between quadrants
+};
+
+// Molar IDs
+const MOLARS = [18, 17, 16, 26, 27, 28, 48, 47, 46, 36, 37, 38];
+
+const getToothDimensions = (id) => {
+    return MOLARS.includes(id) ? TOOTH_CONFIG.molar : TOOTH_CONFIG.base;
+};
 
 const ELASTIC_TYPES = [
     { id: 'standard', label: 'Estándar (Azul)', color: '#3b82f6', strokeWidth: '4' },
@@ -70,40 +81,62 @@ export default function ElasticsSection() {
     const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
     const [pendingLoopSequence, setPendingLoopSequence] = useState(null);
 
-    // Calculate Teeth Coordinates
+    // Calculate Teeth Coordinates - FLOW LAYOUT
     const teethData = useMemo(() => {
         const teeth = [];
+        const SVG_WIDTH = 1400;
 
-        // Horizontal centering calculations
-        // 8 teeth * 70 + 7 * 8 = 560 + 56 = 616 px per quadrant
-        // Total teeth width = 616 * 2 + 60 (midline) = 1292 px
-        // SVG ViewBox Width = 1400 px
-        const startX_Left = (1400 - 1292) / 2; // ~54px margin
+        // Helper: Calculate total width of a list of teeth
+        const calculateSegmentWidth = (ids) => {
+            return ids.reduce((total, id) => {
+                const dim = getToothDimensions(id);
+                return total + dim.width + TOOTH_CONFIG.gap;
+            }, 0) - TOOTH_CONFIG.gap; // Remove last gap
+        };
 
-        // Helper to add a quadrant
-        const addQuadrant = (ids, startX, y, isUpper) => {
-            ids.forEach((id, index) => {
+        // 1. Calculate Total Widths per Arch to Center them
+        const upperRightWidth = calculateSegmentWidth(UPPER_RIGHT);
+        const upperLeftWidth = calculateSegmentWidth(UPPER_LEFT);
+        const totalUpperWidth = upperRightWidth + TOOTH_CONFIG.midlineGap + upperLeftWidth;
+
+        const lowerRightWidth = calculateSegmentWidth(LOWER_RIGHT);
+        const lowerLeftWidth = calculateSegmentWidth(LOWER_LEFT);
+        const totalLowerWidth = lowerRightWidth + TOOTH_CONFIG.midlineGap + lowerLeftWidth;
+
+        // 2. Determine Start X for centering
+        const upperStartX = (SVG_WIDTH - totalUpperWidth) / 2;
+        const lowerStartX = (SVG_WIDTH - totalLowerWidth) / 2;
+
+        const UPPER_Y = 10;
+        const LOWER_Y = 320; // 50(top) + ~250(height) + gap
+
+        // Helper to position a segment
+        const positionSegment = (ids, startX, startY, isUpper) => {
+            let currentX = startX;
+            ids.forEach(id => {
+                const dim = getToothDimensions(id);
                 teeth.push({
                     id,
-                    x: startX + (index * (TOOTH_WIDTH + GAP)),
-                    y: y,
+                    x: currentX,
+                    y: startY,
+                    width: dim.width,
+                    height: dim.height,
                     isUpper,
                     src: getToothSrc(id)
                 });
+                currentX += dim.width + TOOTH_CONFIG.gap;
             });
+            return currentX; // Return next X
         };
 
-        // Upper Arch (Y=50) - Moved up to reduce top space
-        addQuadrant(UPPER_RIGHT, startX_Left, 50, true);
-        addQuadrant(UPPER_LEFT, startX_Left + (8 * (TOOTH_WIDTH + GAP)) + MIDLINE_GAP, 50, true);
+        // 3. Generate Coordinates
+        // Upper Arch
+        let nextX = positionSegment(UPPER_RIGHT, upperStartX, UPPER_Y, true);
+        positionSegment(UPPER_LEFT, nextX + TOOTH_CONFIG.midlineGap, UPPER_Y, true);
 
-        const LOWER_ARCH_OFFSET_Y = 20; // Vertical separation between arches
-
-        // Lower Arch (Y=230) - Moved up to close gap and reduce bottom space
-        // 50 (top) + 150 (tooth) + 30 (gap) = 230
-        const lowerBaseY = 230 + LOWER_ARCH_OFFSET_Y;
-        addQuadrant(LOWER_RIGHT, startX_Left, lowerBaseY, false);
-        addQuadrant(LOWER_LEFT, startX_Left + (8 * (TOOTH_WIDTH + GAP)) + MIDLINE_GAP, lowerBaseY, false);
+        // Lower Arch
+        nextX = positionSegment(LOWER_RIGHT, lowerStartX, LOWER_Y, false);
+        positionSegment(LOWER_LEFT, nextX + TOOTH_CONFIG.midlineGap, LOWER_Y, false);
 
         return teeth;
     }, []);
@@ -119,9 +152,11 @@ export default function ElasticsSection() {
         const tooth = toothMap[id];
         if (!tooth) return { x: 0, y: 0 };
 
-        // Constants from render loop
-        const bracketYOffset = tooth.isUpper ? (TOOTH_HEIGHT * 0.75) : (TOOTH_HEIGHT * 0.15);
-        const bracketXOffset = (TOOTH_WIDTH - 20) / 2; // = 25
+        // Dynamic Calculation based on THIS tooth's dimensions
+        const bracketYOffset = tooth.isUpper ? (tooth.height * 0.75) : (tooth.height * 0.15);
+
+        // Center horizontally in the tooth's specific width
+        const bracketXOffset = (tooth.width - 20) / 2;
 
         // Center of the 20x20 bracket is +10
         return {
@@ -428,19 +463,19 @@ export default function ElasticsSection() {
                                     {/* SVG Container - Compact ViewBox */}
                                     <svg
                                         width="1400"
-                                        height="440"
-                                        viewBox="0 0 1400 440"
+                                        height="500"
+                                        viewBox="0 0 1400 500"
                                         className="max-w-full select-none"
                                     >
-                                        <rect width="1400" height="440" fill="transparent" />
+                                        <rect width="1400" height="500" fill="transparent" />
 
                                         {/* BACKGROUND LAYER: Labels & Grid */}
                                         <g id="background-layer" className="pointer-events-none select-none">
                                             {/* Labels */}
-                                            <text x="700" y="0" textAnchor="middle" className="fill-slate-500 dark:fill-slate-400 text-xl font-bold tracking-[0.2em] uppercase">
+                                            <text x="700" y="-50" textAnchor="middle" className="fill-slate-500 dark:fill-slate-400 text-xl font-bold tracking-[0.2em] uppercase">
                                                 Superior (Maxilar)
                                             </text>
-                                            <text x="700" y="490" textAnchor="middle" className="fill-slate-500 dark:fill-slate-400 text-xl font-bold tracking-[0.2em] uppercase">
+                                            <text x="700" y="640" textAnchor="middle" className="fill-slate-500 dark:fill-slate-400 text-xl font-bold tracking-[0.2em] uppercase">
                                                 Inferior (Mandíbula)
                                             </text>
                                             <text x="20" y="220" textAnchor="middle" transform="rotate(-90, 20, 220)" className="fill-slate-500 dark:fill-slate-400 text-xl font-bold tracking-[0.2em] uppercase">
@@ -460,11 +495,21 @@ export default function ElasticsSection() {
                                             {teethData.map((tooth) => (
                                                 <g key={`tooth-${tooth.id}`} transform={`translate(${tooth.x}, ${tooth.y})`}>
                                                     {tooth.src ? (
-                                                        <image href={tooth.src} width={TOOTH_WIDTH} height={TOOTH_HEIGHT} className="opacity-90 transition-opacity" />
+                                                        <image
+                                                            href={tooth.src}
+                                                            width={tooth.width}
+                                                            height={tooth.height}
+                                                            className="transition-opacity"
+                                                        />
                                                     ) : (
-                                                        <rect width={TOOTH_WIDTH} height={TOOTH_HEIGHT} fill="#ccc" rx="4" />
+                                                        <rect width={tooth.width} height={tooth.height} fill="#ccc" rx="4" />
                                                     )}
-                                                    <text x={TOOTH_WIDTH / 2} y={tooth.isUpper ? -15 : TOOTH_HEIGHT + 25} textAnchor="middle" className="fill-slate-500 text-xl font-sans font-bold">
+                                                    <text
+                                                        x={tooth.width / 2}
+                                                        y={tooth.isUpper ? -15 : tooth.height + 25}
+                                                        textAnchor="middle"
+                                                        className="fill-slate-500 text-xl font-sans font-bold"
+                                                    >
                                                         {tooth.id}
                                                     </text>
                                                 </g>
@@ -485,8 +530,9 @@ export default function ElasticsSection() {
                                         {/* LAYER 3: Brackets & Interactivity (Top) */}
                                         <g id="bracket-layer">
                                             {teethData.map((tooth) => {
-                                                const bracketYOffset = tooth.isUpper ? (TOOTH_HEIGHT * 0.75) : (TOOTH_HEIGHT * 0.15);
-                                                const bracketXOffset = (TOOTH_WIDTH - 20) / 2;
+                                                // Dynamic positioning relative to tooth size
+                                                const bracketYOffset = tooth.isUpper ? (tooth.height * 0.75) : (tooth.height * 0.15);
+                                                const bracketXOffset = (tooth.width - 20) / 2;
                                                 const activeIndex = activeChain.lastPoint === tooth.id || activeChain.startPoint === tooth.id || activeChain.segments.some(s => s.from === tooth.id || s.to === tooth.id);
                                                 const isActive = activeIndex;
                                                 const isOrigin = activeChain.startPoint === tooth.id;
@@ -509,7 +555,7 @@ export default function ElasticsSection() {
                                         </g>
                                     </svg>
 
-                                    <p className="text-base font-light text-slate-600 dark:text-slate-300 text-center mt-0 max-w-lg">
+                                    <p className="text-base font-light text-slate-600 dark:text-slate-300 text-center mt-5 max-w-lg">
                                         Seleccione un bracket para iniciar o gestionar la instrucción de elásticos.
                                     </p>
                                 </div>
@@ -668,7 +714,8 @@ export default function ElasticsSection() {
                         </div>
                     </div>
                 </div>
-            )}
-        </div>
+            )
+            }
+        </div >
     );
 }

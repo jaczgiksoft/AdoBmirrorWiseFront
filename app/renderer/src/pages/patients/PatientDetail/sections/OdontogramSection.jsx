@@ -169,7 +169,7 @@ function Tooth({ id, type, hasBracket, isBracketMode, onToothClick, currentClini
                             <img
                                 src={bracketImg}
                                 alt="Bracket"
-                                className="w-2.5 h-2.5 md:w-3 md:h-3 object-contain opacity-90 drop-shadow-sm"
+                                className="w-2.5 h-2.5 md:w-4 md:h-4 object-contain opacity-90 drop-shadow-sm"
                             />
                         </motion.div>
                     )}
@@ -220,7 +220,7 @@ function InterproximalZone({ t1, t2, hasTad, isTadMode, onClick }) {
     absolute left-1/2 -translate-x-1/2 -translate-y-1/2
     pointer-events-none flex items-center justify-center
     w-3 md:w-2.5
-    ${isUpper ? 'top-[50%]' : 'bottom-[50%]'}
+    ${isUpper ? 'top-[35%]' : 'bottom-[50%]'}
   `}
                     >
 
@@ -296,7 +296,7 @@ function OcclusalQuadrant({ teeth, surfaceStates, toothStates, onSurfaceClick })
                             selectedMode="treatment" // Always show hover as generic treatment
                             onClick={(toothId, area) => onSurfaceClick(toothId, area)}
                             showLabels={false}
-                            strokeColor="stroke-slate-300/80 dark:stroke-slate-600/80"
+                            strokeColor="stroke-black"
                         />
                         {/* Extra Visual Overlay for Extraction */}
                         {isExtracted && (
@@ -663,7 +663,7 @@ export default function OdontogramSection() {
                 <div className="relative z-0 scale-100 xl:scale-110 transition-transform origin-top mt-4 mb-4">
 
                     {/* Labels */}
-                    <div className="text-center mb-2 text-[15px] font-bold tracking-[0.2em] text-slate-300 dark:text-slate-600 uppercase select-none">
+                    <div className="text-center mb-2 text-[15px] font-bold tracking-[0.2em] text-slate-300 dark:text-white uppercase select-none">
                         Superior (Maxilar)
                     </div>
 
@@ -673,7 +673,7 @@ export default function OdontogramSection() {
                         <div className="absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-px bg-slate-200 dark:bg-slate-700"></div>
 
                         {/* === ROW 1: UPPER FRONTAL (Anatomical) === */}
-                        <div className="flex items-end justify-center gap-8 lg:gap-12 pb-4  dark:border-slate-700/50 w-full z-10">
+                        <div className="flex items-end justify-center gap-8 lg:gap-3 pb-4  dark:border-slate-700/50 w-full z-10">
                             <Quadrant
                                 teeth={QUADRANTS.q1}
                                 toothStates={toothStates}
@@ -699,7 +699,7 @@ export default function OdontogramSection() {
                         </div>
 
                         {/* === ROW 2: UPPER OCCLUSAL (Surface) === */}
-                        <div className="flex justify-center gap-8 lg:gap-12 pb-8 border-b border-slate-100 dark:border-slate-700/50 w-full z-10">
+                        <div className="flex justify-center gap-8 lg:gap-3 pb-8 border-b border-slate-100 dark:border-slate-700/50 w-full z-10">
                             <OcclusalQuadrant
                                 teeth={QUADRANTS.q1}
                                 surfaceStates={surfaceStates}
@@ -721,7 +721,7 @@ export default function OdontogramSection() {
                         <div className="absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-px bg-slate-200 dark:bg-slate-700"></div>
 
                         {/* === ROW 3: LOWER OCCLUSAL (Surface) === */}
-                        <div className="flex justify-center gap-8 lg:gap-12  pt-8 w-full z-10">
+                        <div className="flex justify-center gap-8 lg:gap-0 pt-8 w-full z-10">
                             <OcclusalQuadrant
                                 teeth={QUADRANTS.q4}
                                 surfaceStates={surfaceStates}
@@ -737,7 +737,7 @@ export default function OdontogramSection() {
                         </div>
 
                         {/* === ROW 4: LOWER FRONTAL (Anatomical) === */}
-                        <div className="flex items-start justify-center gap-8 lg:gap-12 pt-4 w-full z-10">
+                        <div className="flex items-start justify-center gap-8 lg:gap-3 pt-4 w-full z-10">
                             <Quadrant
                                 teeth={QUADRANTS.q4}
                                 toothStates={toothStates}
@@ -765,15 +765,15 @@ export default function OdontogramSection() {
 
 
                     {/* Labels */}
-                    <div className="text-center mt-2 mb-15 text-[15px] font-bold tracking-[0.2em] text-slate-300 dark:text-slate-600 uppercase select-none">
+                    <div className="text-center mt-2 mb-15 text-[15px] font-bold tracking-[0.2em] text-slate-300 dark:text-white uppercase select-none">
                         Inferior (Mandíbula)
                     </div>
 
                     {/* ... side labels ... */}
-                    <div className="absolute top-1/2 -left-18 -translate-y-8 -rotate-90 text-[15px] font-bold tracking-[0.2em] text-slate-200 dark:text-slate-700 select-none hidden lg:block">
+                    <div className="absolute top-1/2 -left-18 -translate-y-8 -rotate-90 text-[15px] font-bold tracking-[0.2em] text-slate-200 dark:text-white select-none hidden lg:block">
                         DERECHO
                     </div>
-                    <div className="absolute top-1/2 -right-20 -translate-y-7 rotate-90 text-[15px] font-bold tracking-[0.2em] text-slate-200 dark:text-slate-700 select-none hidden lg:block">
+                    <div className="absolute top-1/2 -right-20 -translate-y-7 rotate-90 text-[15px] font-bold tracking-[0.2em] text-slate-200 dark:text-white select-none hidden lg:block">
                         IZQUIERDO
                     </div>
                 </div>

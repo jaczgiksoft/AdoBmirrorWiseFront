@@ -50,14 +50,13 @@ function FrontalTooth({ id, isExtracted, onClick, isUpper }) {
     return (
         <div
             onClick={() => onClick(id)}
-            className="flex flex-col items-center cursor-pointer group relative -mx-[1px] md:-mx-[2px] transition-all hover:z-20"
+            className="flex flex-col items-center cursor-pointer group relative mx-0 transition-all hover:z-20"
         >
             {/* Number ABOVE for Upper Arch */}
             {isUpper && NumberLabel}
 
-            <div className={`relative w-10 h-14 md:w-12 md:h-28 transition-all duration-200 
-                ${isExtracted ? '' : 'hover:scale-110 drop-shadow-lg'} 
-                ${shouldScale ? 'scale-y-[0.85] origin-bottom' : ''}`}
+            <div className={`relative h-14 md:h-38 transition-all duration-200 
+                ${isExtracted ? '' : 'hover:scale-110 drop-shadow-lg'}`}
             >
                 <img
                     src={src}
