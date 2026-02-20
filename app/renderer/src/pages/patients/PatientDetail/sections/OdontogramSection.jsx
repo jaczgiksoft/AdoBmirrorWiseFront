@@ -169,7 +169,7 @@ function Tooth({ id, type, hasBracket, isBracketMode, onToothClick, currentClini
                             <img
                                 src={bracketImg}
                                 alt="Bracket"
-                                className="w-2.5 h-2.5 md:w-4 md:h-4 object-contain opacity-90 drop-shadow-sm"
+                                className="w-2.5 h-2.5 md:w-5 md:h-5 object-contain opacity-90 drop-shadow-sm"
                             />
                         </motion.div>
                     )}
@@ -442,7 +442,7 @@ function ActionPanel({ isBracketMode, setBracketMode, isTadMode, setTadMode, onA
             </div>
 
             {/* Divider */}
-            <div className="hidden md:block w-px h-8 bg-slate-200 dark:bg-slate-700 mx-1"></div>
+            <div className="hidden md:block w-px h-8 bg-slate-400 dark:bg-slate-700 mx-1"></div>
 
             {/* Ortho Controls */}
             <div className="flex items-center gap-2 md:gap-4 w-full md:w-auto justify-between md:justify-end flex-wrap md:flex-nowrap">
@@ -663,17 +663,17 @@ export default function OdontogramSection() {
                 <div className="relative z-0 scale-100 xl:scale-110 transition-transform origin-top mt-4 mb-4">
 
                     {/* Labels */}
-                    <div className="text-center mb-2 text-[15px] font-bold tracking-[0.2em] text-slate-300 dark:text-white uppercase select-none">
+                    <div className="text-center mb-2 text-[15px] font-bold tracking-[0.2em] text-slate-600 dark:text-white uppercase select-none">
                         Superior (Maxilar)
                     </div>
 
                     {/* === UPPER ARCH WRAPPER === */}
                     <div className="relative flex flex-col w-full">
                         {/* ABSOLUTE CENTER DIVIDER */}
-                        <div className="absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-px bg-slate-200 dark:bg-slate-700"></div>
+                        <div className="absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-px bg-slate-400 dark:bg-slate-700"></div>
 
                         {/* === ROW 1: UPPER FRONTAL (Anatomical) === */}
-                        <div className="flex items-end justify-center gap-8 lg:gap-3 pb-4  dark:border-slate-700/50 w-full z-10">
+                        <div className="flex items-end justify-center gap-8 lg:gap-3 pb-4 dark:border-slate-700/50 w-full z-10">
                             <Quadrant
                                 teeth={QUADRANTS.q1}
                                 toothStates={toothStates}
@@ -699,7 +699,7 @@ export default function OdontogramSection() {
                         </div>
 
                         {/* === ROW 2: UPPER OCCLUSAL (Surface) === */}
-                        <div className="flex justify-center gap-8 lg:gap-3 pb-8 border-b border-slate-100 dark:border-slate-700/50 w-full z-10">
+                        <div className="flex justify-center gap-8 lg:gap-3 pb-8 border-b border-slate-400 dark:border-slate-700/50 w-full z-10">
                             <OcclusalQuadrant
                                 teeth={QUADRANTS.q1}
                                 surfaceStates={surfaceStates}
@@ -718,7 +718,7 @@ export default function OdontogramSection() {
                     {/* === LOWER ARCH WRAPPER === */}
                     <div className="relative flex flex-col w-full">
                         {/* ABSOLUTE CENTER DIVIDER */}
-                        <div className="absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-px bg-slate-200 dark:bg-slate-700"></div>
+                        <div className="absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-px bg-slate-400 dark:bg-slate-700"></div>
 
                         {/* === ROW 3: LOWER OCCLUSAL (Surface) === */}
                         <div className="flex justify-center gap-8 lg:gap-0 pt-8 w-full z-10">
@@ -765,15 +765,15 @@ export default function OdontogramSection() {
 
 
                     {/* Labels */}
-                    <div className="text-center mt-2 mb-15 text-[15px] font-bold tracking-[0.2em] text-slate-300 dark:text-white uppercase select-none">
+                    <div className="text-center mt-2 mb-15 text-[15px] font-bold tracking-[0.2em] text-slate-600 dark:text-white uppercase select-none">
                         Inferior (Mandíbula)
                     </div>
 
                     {/* ... side labels ... */}
-                    <div className="absolute top-1/2 -left-18 -translate-y-8 -rotate-90 text-[15px] font-bold tracking-[0.2em] text-slate-200 dark:text-white select-none hidden lg:block">
+                    <div className="absolute top-1/2 -left-18 -translate-y-11 -rotate-90 text-[15px] font-bold tracking-[0.2em] text-slate-600 dark:text-white select-none hidden lg:block">
                         DERECHO
                     </div>
-                    <div className="absolute top-1/2 -right-20 -translate-y-7 rotate-90 text-[15px] font-bold tracking-[0.2em] text-slate-200 dark:text-white select-none hidden lg:block">
+                    <div className="absolute top-1/2 -right-20 -translate-y-10 rotate-90 text-[15px] font-bold tracking-[0.2em] text-slate-600 dark:text-white select-none hidden lg:block">
                         IZQUIERDO
                     </div>
                 </div>

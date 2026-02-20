@@ -544,8 +544,8 @@ export default function ElasticsSection() {
                                                             <rect x="-6" y="-6" width="32" height="32" fill="transparent" />
                                                             <image
                                                                 href={bracketImg}
-                                                                width={20}
-                                                                height={20}
+                                                                width={28}
+                                                                height={28}
                                                                 className={`transition-all duration-200 ${isOrigin ? 'drop-shadow-[0_0_8px_rgba(34,197,94,0.9)] brightness-125 scale-125' : isActive ? 'drop-shadow-[0_0_5px_rgba(59,130,246,0.9)] brightness-125 scale-110' : isCompleted ? 'opacity-100 drop-shadow-sm brightness-90' : 'opacity-80 hover:opacity-100 hover:scale-105'}`}
                                                             />
                                                         </g>
