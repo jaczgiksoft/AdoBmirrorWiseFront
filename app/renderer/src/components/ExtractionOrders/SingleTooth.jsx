@@ -1,7 +1,8 @@
 import React from 'react';
 
-const SingleTooth = ({ id, status, onClick, selectedMode, showLabels = true, strokeColor, size, pediatricId, colorScheme = 'blue' }) => {
+const SingleTooth = ({ id, status, onClick, selectedMode, showLabels = true, strokeColor, size, pediatricId, colorScheme = 'blue', paintMode = 'simple' }) => {
     // Defines safe fallback if status is null/undefined
+    // paintMode: 'simple' | 'clinical'
     const safeStatus = status || { extraction: false };
     const [hoveredArea, setHoveredArea] = React.useState(null);
 
@@ -12,7 +13,22 @@ const SingleTooth = ({ id, status, onClick, selectedMode, showLabels = true, str
         base: "#FFFFFF",
         blue: { selected: "#60a5fa" }, // blue-400
         emerald: { selected: "#10b981", hover: "#6ee7b7" }, // emerald-500, emerald-300
-        neutral: { default: "#FFFFFF", stroke: "#111827", selected: "#3b82f6", hover: "#3b82f6" } // white, gray-900, blue-500
+        neutral: { default: "#FFFFFF", stroke: "#111827", selected: "#3b82f6", hover: "#3b82f6" }, // white, gray-900, blue-500
+
+        yellow: {
+            selected: "#facc15",
+            hover: "#fde047"
+        },
+
+        brown: {
+            selected: "#92400e",
+            hover: "#b45309"
+        },
+
+        green: {
+            selected: "#16a34a",
+            hover: "#22c55e"
+        }
     };
 
     const commonProps = {
@@ -22,13 +38,32 @@ const SingleTooth = ({ id, status, onClick, selectedMode, showLabels = true, str
     };
 
     const getColor = (area) => {
+        // Clinical Mode (Odontogram)
+        if (paintMode === 'clinical') {
+            if (!status) return COLORS.base;
+
+            const condition = status?.[area];
+
+            if (condition) {
+                if (condition === 'caries') return COLORS.yellow.selected;
+                if (condition === 'restoration') return COLORS.brown.selected;
+                if (condition === 'fracture') return COLORS.green.selected;
+            }
+
+            // Hover is BLUE in clinical mode (as requested)
+            if (hoveredArea === area) {
+                return "#3b82f6"; // standard blue hover
+            }
+
+            return COLORS.base;
+        }
+
+        // Simple Mode (Extraction Orders / Default)
+        // Uses colorScheme to determine active color
         if (!status) return colorScheme === 'neutral' ? COLORS.neutral.default : COLORS.base;
 
         // Base restoration removal logic (if applicable in context)
         if (selectedMode === "Diente Base") {
-            // In base mode, we might want to show hover effect or just white?
-            // usually this clears. Let's keep existing logic: white.
-            // If neutral, return default.
             return colorScheme === 'neutral' ? COLORS.neutral.default : COLORS.base;
         }
 
