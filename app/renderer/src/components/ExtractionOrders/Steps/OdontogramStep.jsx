@@ -67,6 +67,7 @@ const OdontogramStep = ({ teethStatus, onStatusChange, onResetRequest, clinicalM
                         status={teethStatus[id] || EMPTY_TOOTH_STATE}
                         selectedMode="treatment" // Always treatment in this mode
                         onClick={handleRestorativeClick}
+                        colorScheme="emerald"
                     />
                     {/* Overlay for Extracted Teeth in Restorative Mode */}
                     {teethStatus[id]?.extraction && (
