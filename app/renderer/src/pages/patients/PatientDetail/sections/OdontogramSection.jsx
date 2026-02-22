@@ -111,13 +111,13 @@ const OCCLUSAL_TYPES = [
  */
 const TOOTH_COORDINATES = {
     // Upper Right (Q1) - Compact Clinical Spacing (Touching)
-    11: -25, 12: -64, 13: -105, 14: -147, 15: -189, 16: -239, 17: -295, 18: -350,
+    11: -30, 12: -70, 13: -110, 14: -153, 15: -195, 16: -245, 17: -300, 18: -358,
     // Upper Left (Q2)
-    21: 25, 22: 64, 23: 105, 24: 147, 25: 189, 26: 239, 27: 295, 28: 350,
+    21: 30, 22: 70, 23: 110, 24: 153, 25: 195, 26: 245, 27: 300, 28: 358,
     // Lower Left (Q3)
-    31: 19, 32: 63, 33: 105, 34: 148, 35: 191, 36: 242, 37: 293, 38: 344,
+    31: 23, 32: 68, 33: 108, 34: 151, 35: 195, 36: 246, 37: 297, 38: 349,
     // Lower Right (Q4)
-    41: -19, 42: -63, 43: -105, 44: -148, 45: -191, 46: -242, 47: -293, 48: -344,
+    41: -23, 42: -68, 43: -108, 44: -151, 45: -195, 46: -246, 47: -297, 48: -349,
     // Note: Adjusted for visual contact. Anteriors ~42px, Premolars ~43px, Molars ~51px spacing.
 };
 
@@ -195,7 +195,7 @@ function Tooth({ id, type, hasBracket, isBracketMode, onToothClick, currentClini
     }
 
     const isMaxillary = id < 30;
-    const bracketPositionClass = isMaxillary ? 'top-[75%]' : 'top-[15%]';
+    const bracketPositionClass = isMaxillary ? 'top-[75%]' : 'top-[12%]';
 
     if (!src) {
         return (
@@ -499,7 +499,10 @@ function OcclusalArchRow({ teethIds, surfaceStates, toothStates, onSurfaceClick,
                 // Calculate Dynamic Size based on Frontal Width
                 // Use default if not yet measured (e.g. 45px)
                 const BASE_PERMANENT_WIDTH = 45;
-                const occlusalSize = BASE_PERMANENT_WIDTH * 0.65;
+                const occlusalSize = BASE_PERMANENT_WIDTH * 0.78;
+
+                //const frontalWidth = toothWidths[id] || 45;
+                //const occlusalSize = frontalWidth;
 
                 return (
                     <div
