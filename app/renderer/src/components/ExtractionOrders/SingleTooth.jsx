@@ -38,10 +38,13 @@ const SingleTooth = ({ id, status, onClick, selectedMode, showLabels = true, str
                 ? COLORS.neutral.stroke
                 : (strokeColor || "#1f2937")),
         strokeWidth: 120,
-        className: "cursor-pointer transition-colors"
+        className: status?.extraction
+            ? "cursor-not-allowed transition-colors"
+            : "cursor-pointer transition-colors"
     };
 
     const getColor = (area) => {
+        if (status?.extraction) return COLORS.base;
         // Clinical Mode (Odontogram)
         if (paintMode === 'clinical') {
             if (!status) return COLORS.base;
@@ -55,7 +58,7 @@ const SingleTooth = ({ id, status, onClick, selectedMode, showLabels = true, str
             }
 
             // Hover remains blue
-            if (hoveredArea === area) {
+            if (hoveredArea === area && !status?.extraction) {
                 return "#3b82f6";
             }
 

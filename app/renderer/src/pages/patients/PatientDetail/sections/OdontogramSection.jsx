@@ -4,6 +4,7 @@ import bracketImg from '@/assets/images/odontogram/bracket.svg';
 import tadImg from '@/assets/images/odontogram/tad.svg';
 import SingleTooth from '@/components/ExtractionOrders/SingleTooth';
 import ConfirmDialog from '@/components/feedback/ConfirmDialog';
+import RadialMenu from '@/components/odontogram/RadialMenu';
 
 // ==========================================
 // 1. Asset Loading & Helpers
@@ -80,7 +81,7 @@ const TEETH_TO_SCALE = [
     36, 37, 38,
     46, 47, 48
 ];
-
+const INACTIVE_TYPES = ['extraction', 'missing', 'unerupted'];
 const DENTAL_TYPES = [
     { id: 'original', label: 'Diente Base', color: 'text-emerald-700 bg-emerald-50 dark:bg-emerald-900/20 dark:text-emerald-400' },
     { id: 'root-canal', label: 'Tratamiento de Endodoncia', color: 'text-pink-700 bg-pink-50 dark:bg-pink-900/20 dark:text-pink-400' },
@@ -244,7 +245,7 @@ const buildInitialToothStates = () => {
 // ==========================================
 
 // Individual Tooth Component (Frontal) - Unchanged visuals
-function Tooth({ id, type, hasBracket, isBracketMode, onToothClick, currentClinicalAction, onResize }) {
+function Tooth({ id, type, hasBracket, isBracketMode, onToothClick, onToothRightClick, currentClinicalAction, onResize }) {
     const src = getToothSrc(id, type || 'original');
     const containerRef = useRef(null);
 
@@ -294,6 +295,14 @@ function Tooth({ id, type, hasBracket, isBracketMode, onToothClick, currentClini
         <div
             className={wrapperClasses}
             onClick={() => !isInvalidDeciduous && onToothClick(id)}
+            onContextMenu={(e) => {
+                e.preventDefault();
+                if (isInvalidDeciduous || !onToothRightClick) return;
+                const rect = e.currentTarget.getBoundingClientRect();
+                const x = rect.left + rect.width / 2;
+                const y = rect.top + rect.height / 2;
+                onToothRightClick(id, x, y);
+            }}
         >
             {/* Tooth Image Container - Reverted to auto width for natural aspect ratio centering */}
             <div
@@ -458,7 +467,7 @@ const getDynamicOffset = (
     return base;
 };
 
-function ArchRow({ teethIds, toothStates, brackets, tads, isBracketMode, isTadMode, onToothClick, onTadClick, currentClinicalAction, onToothResize, toothWidths, baseToothWidths, isUpper }) {
+function ArchRow({ teethIds, toothStates, brackets, tads, isBracketMode, isTadMode, onToothClick, onToothRightClick, onTadClick, currentClinicalAction, onToothResize, toothWidths, baseToothWidths, isUpper }) {
     // Generate TAD slots based on teeth list
     // Iterate through pairable teeth (e.g. 18-17, 17-16...)
     // Since teethIds includes both Left and Right, we need to be careful not to create a TAD across the midline (11-21) if not desired.
@@ -574,6 +583,7 @@ function ArchRow({ teethIds, toothStates, brackets, tads, isBracketMode, isTadMo
                             hasBracket={!!brackets[id]}
                             isBracketMode={isBracketMode}
                             onToothClick={isTadMode ? () => { } : onToothClick}
+                            onToothRightClick={isTadMode ? undefined : onToothRightClick}
                             currentClinicalAction={currentClinicalAction}
                             onResize={onToothResize}
                         />
@@ -609,9 +619,9 @@ function OcclusalArchRow({
 
                 if (xPos === undefined) return null;
 
-                const isExtracted = toothStates[id] === 'extraction';
-                const status = isExtracted
-                    ? { extraction: true }
+                const isInactiveTooth = INACTIVE_TYPES.includes(toothStates[id]);
+                const status = isInactiveTooth
+                    ? null
                     : (surfaceStates[id] || {});
 
                 let colorScheme = 'neutral';
@@ -638,21 +648,33 @@ function OcclusalArchRow({
                             bottom: isUpper ? 'auto' : '10px'
                         }}
                     >
-                        <SingleTooth
-                            id={id}
-                            pediatricId={getPediatricId(id)}
-                            status={status}
-                            selectedMode="treatment"
-                            onClick={(toothId, area) => {
-                                if (toothStates[id] === 'extraction') return;
-                                onSurfaceClick(toothId, area);
-                            }}
-                            showLabels={false}
-                            strokeColor="stroke-black"
-                            size={occlusalSize}
-                            colorScheme={colorScheme}
-                            paintMode="clinical"
-                        />
+                        <div className={`relative ${isInactiveTooth ? 'pointer-events-none opacity-90' : ''}`}>
+                            <SingleTooth
+                                id={id}
+                                pediatricId={getPediatricId(id)}
+                                status={status}
+                                selectedMode="treatment"
+                                onClick={(toothId, area) => {
+                                    if (isInactiveTooth) return;
+                                    onSurfaceClick(toothId, area);
+                                }}
+                                showLabels={false}
+                                strokeColor="#000000"
+                                size={occlusalSize}
+                                colorScheme={colorScheme}
+                                paintMode="clinical"
+                            />
+
+                            {isInactiveTooth && (
+                                <div className="absolute inset-0 flex items-center justify-center bg-slate-500/80 dark:bg-slate-900/80 rounded-full z-20 select-none">
+                                    <span className="text-[10px] font-bold text-red-500 uppercase tracking-wide rotate-[-30deg]">
+                                        {toothStates[id] === 'extraction' && 'EXT'}
+                                        {toothStates[id] === 'missing' && 'MISS'}
+                                        {toothStates[id] === 'unerupted' && 'UNER'}
+                                    </span>
+                                </div>
+                            )}
+                        </div>
                     </div>
                 );
             })}
@@ -846,6 +868,7 @@ function ActionPanel({ isBracketMode, setBracketMode, isTadMode, setTadMode, onA
 export default function OdontogramSection() {
     // Initial State: All teeth are 'original'
     const [toothStates, setToothStates] = useState(buildInitialToothStates);
+    const [radialState, setRadialState] = useState(null);
 
     const [brackets, setBrackets] = useState({});
     const [tads, setTads] = useState({});
@@ -888,6 +911,11 @@ export default function OdontogramSection() {
             return prev;
         });
     }, [toothStates]);
+
+    const handleToothRightClick = (id, x, y) => {
+        if (isBracketMode || isTadMode) return;
+        setRadialState({ toothId: id, x, y });
+    };
 
     const handleToothClick = (id) => {
         if (isBracketMode) {
@@ -995,6 +1023,7 @@ export default function OdontogramSection() {
                                 isBracketMode={isBracketMode}
                                 isTadMode={isTadMode}
                                 onToothClick={handleToothClick}
+                                onToothRightClick={handleToothRightClick}
                                 onTadClick={handleTadClick}
                                 currentClinicalAction={selectedToothType}
                                 onToothResize={handleToothResize}
@@ -1044,6 +1073,7 @@ export default function OdontogramSection() {
                                 isBracketMode={isBracketMode}
                                 isTadMode={isTadMode}
                                 onToothClick={handleToothClick}
+                                onToothRightClick={handleToothRightClick}
                                 onTadClick={handleTadClick}
                                 currentClinicalAction={selectedToothType}
                                 onToothResize={handleToothResize}
@@ -1102,6 +1132,25 @@ export default function OdontogramSection() {
                 onCancel={() => setIsResetDialogOpen(false)}
                 variant="danger"
             />
+
+            <AnimatePresence>
+                {radialState && (
+                    <RadialMenu
+                        x={radialState.x}
+                        y={radialState.y}
+                        options={[
+                            { id: 'crown', label: 'Crown', color: 'bg-amber-500 text-white border-amber-600' },
+                            { id: 'implant', label: 'Implant', color: 'bg-blue-500 text-white border-blue-600' },
+                            { id: 'root-canal', label: 'Endodontics', color: 'bg-pink-500 text-white border-pink-600' },
+                            { id: 'extraction', label: 'Extraction', color: 'bg-slate-700 text-white border-slate-800' }
+                        ]}
+                        onSelect={(option) => {
+                            setToothStates(prev => ({ ...prev, [radialState.toothId]: option.id }));
+                        }}
+                        onClose={() => setRadialState(null)}
+                    />
+                )}
+            </AnimatePresence>
         </motion.div>
     );
 }
