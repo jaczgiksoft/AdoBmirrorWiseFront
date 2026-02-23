@@ -97,10 +97,28 @@ const DENTAL_TYPES = [
 ];
 
 const OCCLUSAL_TYPES = [
-    { id: 'normal', label: 'Limpiar / Normal', color: 'bg-slate-100 border-slate-300' },
-    { id: 'caries', label: 'Carie', color: 'bg-yellow-100 border-yellow-300 text-yellow-700' },
-    { id: 'restoration', label: 'Restauración', color: 'bg-amber-100 border-amber-300 text-amber-800' },
-    { id: 'fracture', label: 'Fractura', color: 'bg-green-100 border-green-300 text-green-700' }
+    { id: 'normal', label: 'Limpiar / Normal', color: 'bg-slate-100' },
+
+    // Caries → café
+    {
+        id: 'caries',
+        label: 'Carie',
+        color: 'bg-amber-100 border-amber-300 text-amber-800'
+    },
+
+    // Restauración → verde
+    {
+        id: 'restoration',
+        label: 'Restauración',
+        color: 'bg-green-100 border-green-300 text-green-700'
+    },
+
+    // Fractura → amarillo
+    {
+        id: 'fracture',
+        label: 'Fractura',
+        color: 'bg-yellow-100 border-yellow-300 text-yellow-700'
+    }
 ];
 
 /**
@@ -126,21 +144,78 @@ const TOOTH_COORDINATES = {
  * Additive pixel offsets to fine-tune specific tooth positions.
  * Used to create slightly more natural separation or tightness where needed without breaking the base grid.
  */
-const MICRO_ADJUSTMENTS = {
+const MICRO_ADJUSTMENTS_PERMANENT = {
     // UPPER ARCH
-    // Increase separation 11-12 (Move 12...18 Left/Out)
-    12: -3, 13: -3, 14: -3, 15: -3, 16: -3, 17: -6, 18: -6, // 17,18 extra lateral
-    // Increase separation 21-22 (Move 22...28 Right/Out)
-    22: 3, 23: 3, 24: 3, 25: 3, 26: 3, 27: 6, 28: 6, // 27,28 extra lateral
+    12: -3, 13: -3, 14: -3, 15: -5, 16: -3, 17: -6, 18: -6,
+    22: 3, 23: 3, 24: 3, 25: 5, 26: 3, 27: 6, 28: 6,
 
     // LOWER ARCH
-    // Decrease separation 41-42 (Move 42...48 Right/In)
-    // Base 42 is -63. Target closer to 41 (-21). Move right (+)
-    42: 9, 43: 10, 44: 10, 45: 9, 46: 6, 47: -3, 48: -8, // 47,48 slight lateral output relative to the shift
+    42: 9, 43: 10, 44: 10, 45: 9, 46: 6, 47: -3, 48: -8,
+    32: -9, 33: -10, 34: -10, 35: -9, 36: -6, 37: 3, 38: 8
+};
 
-    // Decrease separation 31-32 (Move 32...38 Left/In)
-    // Base 32 is 63. Target closer to 31 (21). Move left (-)
-    32: -9, 33: -10, 34: -10, 35: -9, 36: -6, 37: 3, 38: 8 // 37,38 slight lateral output relative to the shift
+const MICRO_ADJUSTMENTS_DECIDUOUS = {
+    // UPPER RIGHT (Q1)
+    11: -0,
+    12: -3,
+    13: -4,
+    14: -12,
+    15: -16,
+
+    // UPPER LEFT (Q2)
+    21: 0,
+    22: 3,
+    23: 4,
+    24: 12,
+    25: 16,
+
+    // LOWER LEFT (Q3)
+    31: -3,
+    32: -10,
+    33: -12,
+    34: -0,
+    35: 5,
+
+    // LOWER RIGHT (Q4)
+    41: 3,
+    42: 10,
+    43: 12,
+    44: 0,
+    45: -5,
+};
+
+const TAD_MICRO_ADJUSTMENTS = {
+    // UPPER RIGHT (Q1)
+    "16-17": -2,
+    "15-16": 6,
+    "14-15": -2,
+    "13-14": -2,
+    "12-13": 2,
+    "11-12": -1,
+
+    // UPPER LEFT (Q2)
+    "21-22": 0,
+    "22-23": -2,
+    "23-24": 1,
+    "24-25": 2,
+    "25-26": -6,
+    "26-27": 2,
+
+    // LOWER RIGHT (Q4)
+    "46-47": -5,
+    "45-46": 4.5,
+    "44-45": -1,
+    "43-44": -1,
+    "42-43": 2,
+    "41-42": 0,
+
+    // LOWER LEFT (Q3)
+    "31-32": -1,
+    "32-33": -2,
+    "33-34": 1,
+    "34-35": 0,
+    "35-36": -5,
+    "36-37": 3.5,
 };
 
 // Define quadrants purely for iteration purposes (rendering order doesn't matter for layout now, but good for data)
@@ -324,46 +399,66 @@ function InterproximalZone({ t1, t2, hasTad, isTadMode, onClick, xPos, isUpper }
 // 4. Layout Components (New Coordinate System)
 // ==========================================
 
-function ArchRow({ teethIds, toothStates, brackets, tads, isBracketMode, isTadMode, onToothClick, onTadClick, currentClinicalAction, onToothResize, toothWidths, isUpper }) {
-    const getDynamicOffset = (id) => {
-        if (TOOTH_COORDINATES[id] === undefined) return undefined;
-        let base = TOOTH_COORDINATES[id] + (MICRO_ADJUSTMENTS[id] || 0);
+const getDynamicOffset = (
+    id,
+    toothStates,
+    toothWidths,
+    baseToothWidths
+) => {
+    if (TOOTH_COORDINATES[id] === undefined) return undefined;
 
-        const quadrant = parseInt(String(id)[0]);
-        const position = parseInt(String(id)[1]);
+    const type = toothStates[id];
 
-        const BASE_PERMANENT_WIDTH = 45;
-        let accumulatedDelta = 0;
+    const adjustmentMap =
+        type === 'deciduous' || type === 'pulpotomy'
+            ? MICRO_ADJUSTMENTS_DECIDUOUS
+            : MICRO_ADJUSTMENTS_PERMANENT;
 
-        // Iterate through all inner teeth (positions < current position) in the same quadrant
-        for (let innerPos = 1; innerPos < position; innerPos++) {
-            const innerId = parseInt(`${quadrant}${innerPos}`);
-            const isDeciduous =
-                toothStates[innerId] === 'deciduous' ||
-                toothStates[innerId] === 'pulpotomy';
+    let base = TOOTH_COORDINATES[id] + (adjustmentMap[id] || 0);
 
-            if (isDeciduous) {
-                const actualWidth = toothWidths[innerId] || BASE_PERMANENT_WIDTH;
-                const delta = actualWidth - BASE_PERMANENT_WIDTH;
+    const quadrant = parseInt(String(id)[0], 10);
+    const targetCoord = TOOTH_COORDINATES[id];
 
-                if (delta > 0) {
-                    accumulatedDelta += delta;
-                }
-            }
+    let accumulatedDelta = 0;
+
+    for (let i = 1; i <= 8; i++) {
+        const currentId = parseInt(`${quadrant}${i}`, 10);
+        const currentType = toothStates[currentId];
+
+        if (currentType !== 'deciduous' && currentType !== 'pulpotomy') continue;
+
+        const permanentWidth = baseToothWidths[currentId];
+        const deciduousWidth = toothWidths[currentId];
+
+        if (!permanentWidth || !deciduousWidth) continue;
+
+        const delta = deciduousWidth - permanentWidth;
+        if (delta <= 0) continue;
+
+        const currentCoord = TOOTH_COORDINATES[currentId];
+
+        const isMesial =
+            (quadrant === 1 || quadrant === 4)
+                ? currentCoord > targetCoord
+                : currentCoord < targetCoord;
+
+        if (isMesial) {
+            accumulatedDelta += delta;
         }
+    }
 
-        // Shift outward based on the sum of extra widths of inner deciduous teeth
-        if (accumulatedDelta > 0) {
-            if (quadrant === 1 || quadrant === 4) {
-                base -= accumulatedDelta; // Shift further left
-            } else {
-                base += accumulatedDelta; // Shift further right
-            }
+    if (accumulatedDelta !== 0) {
+        if (quadrant === 1 || quadrant === 4) {
+            base -= accumulatedDelta;
+        } else {
+            base += accumulatedDelta;
         }
+    }
 
-        return base;
-    };
+    return base;
+};
 
+function ArchRow({ teethIds, toothStates, brackets, tads, isBracketMode, isTadMode, onToothClick, onTadClick, currentClinicalAction, onToothResize, toothWidths, baseToothWidths, isUpper }) {
     // Generate TAD slots based on teeth list
     // Iterate through pairable teeth (e.g. 18-17, 17-16...)
     // Since teethIds includes both Left and Right, we need to be careful not to create a TAD across the midline (11-21) if not desired.
@@ -373,28 +468,65 @@ function ArchRow({ teethIds, toothStates, brackets, tads, isBracketMode, isTadMo
 
     const renderTads = () => {
         const tadElements = [];
-        // We iterate and look at current + next
-        // Use tooth index to find neighbors in the list
-        // Note: the list is [18, 17... 11, 21 ... 28] for upper
+
         for (let i = 0; i < teethIds.length - 1; i++) {
             const t1 = teethIds[i];
             const t2 = teethIds[i + 1];
 
-            // Gap check: Midline (11-21) or (41-31)
-            // If we want to allow midline TADs, we keep this.
-            // If not, we skip. Let's allow valid pairs.
-            // Key convention: smaller-larger
+            const quadrant1 = parseInt(String(t1)[0]);
+            const quadrant2 = parseInt(String(t2)[0]);
+
+            const pos1 = parseInt(String(t1)[1]);
+            const pos2 = parseInt(String(t2)[1]);
+
+            // -----------------------------
+            // 1️⃣ Deben ser del mismo cuadrante
+            // -----------------------------
+            if (quadrant1 !== quadrant2) continue;
+
+            // -----------------------------
+            // 2️⃣ No permitir línea media
+            // (11-21 y 31-41)
+            // -----------------------------
+            const pairKey = `${t1}-${t2}`;
+            if (pairKey === "11-21" || pairKey === "21-11" ||
+                pairKey === "31-41" || pairKey === "41-31") {
+                continue;
+            }
+
+            // -----------------------------
+            // 3️⃣ Ambos deben ser permanentes
+            // -----------------------------
+            if (
+                toothStates[t1] === 'deciduous' ||
+                toothStates[t1] === 'pulpotomy' ||
+                toothStates[t2] === 'deciduous' ||
+                toothStates[t2] === 'pulpotomy'
+            ) continue;
+
+            // -----------------------------
+            // 4️⃣ No después del tercer molar
+            // (si alguno es posición 8)
+            // -----------------------------
+            if (pos1 === 8 || pos2 === 8) continue;
+
+            // -----------------------------
+            // Si pasó todas las reglas → permitido
+            // -----------------------------
+
             const pairId = [t1, t2].sort((a, b) => a - b).join('-');
             const hasTad = !!tads[pairId];
 
-            // Calculate Position with Dynamic Offset
-            let x1 = getDynamicOffset(t1);
-            let x2 = getDynamicOffset(t2);
+            const x1 = getDynamicOffset(t1, toothStates, toothWidths, baseToothWidths);
+            const x2 = getDynamicOffset(t2, toothStates, toothWidths, baseToothWidths);
 
-            // If coordinates missing, skip
             if (x1 === undefined || x2 === undefined) continue;
 
-            const midX = (x1 + x2) / 2;
+            const baseMidX = (x1 + x2) / 2;
+
+            const adjustment = TAD_MICRO_ADJUSTMENTS[pairId] || 0;
+
+            const midX = baseMidX + adjustment;
 
             tadElements.push(
                 <InterproximalZone
@@ -409,6 +541,7 @@ function ArchRow({ teethIds, toothStates, brackets, tads, isBracketMode, isTadMo
                 />
             );
         }
+
         return tadElements;
     };
 
@@ -416,7 +549,12 @@ function ArchRow({ teethIds, toothStates, brackets, tads, isBracketMode, isTadMo
         <div className={`relative w-full ${isUpper ? 'h-48 flex items-end' : 'h-48 flex items-start'} mb-1`}>
             {/* Render Tooth Slots */}
             {teethIds.map(id => {
-                let xPos = getDynamicOffset(id);
+                let xPos = getDynamicOffset(
+                    id,
+                    toothStates,
+                    toothWidths,
+                    baseToothWidths
+                );
                 if (xPos === undefined) return null; // Should not happen
 
                 return (
@@ -449,60 +587,45 @@ function ArchRow({ teethIds, toothStates, brackets, tads, isBracketMode, isTadMo
     );
 }
 
-function OcclusalArchRow({ teethIds, surfaceStates, toothStates, onSurfaceClick, toothWidths, isUpper }) {
+function OcclusalArchRow({
+    teethIds,
+    surfaceStates,
+    toothStates,
+    onSurfaceClick,
+    toothWidths,
+    baseToothWidths,
+    isUpper
+}) {
     return (
         <div className="relative w-full h-12 mb-0">
             {teethIds.map(id => {
-                let xPos = TOOTH_COORDINATES[id];
+
+                const xPos = getDynamicOffset(
+                    id,
+                    toothStates,
+                    toothWidths,
+                    baseToothWidths
+                );
+
                 if (xPos === undefined) return null;
 
-                // Apply Micro-Adjustment
-                xPos += (MICRO_ADJUSTMENTS[id] || 0);
-
                 const isExtracted = toothStates[id] === 'extraction';
-                const status = isExtracted ? { extraction: true } : (surfaceStates[id] || {});
+                const status = isExtracted
+                    ? { extraction: true }
+                    : (surfaceStates[id] || {});
 
-                // Determine color scheme based on condition
-                // Map: caries -> yellow, restoration -> brown, fracture -> green
-                // Default: neutral
                 let colorScheme = 'neutral';
                 const currentStatus = surfaceStates[id];
+
                 if (currentStatus) {
-                    // Check if any area has a specific condition to set base tone?
-                    // Actually SingleTooth handles mixed states if we pass the object.
-                    // But we need to pass a "colorScheme" prop usually for the whole tooth tone or specific area mapping.
-                    // Wait, SingleTooth takes "status" object where keys are areas and values are conditions.
-                    // And it likely maps conditions to colors internally OR we pass a scheme.
-                    // The user request says: "Use colorScheme string mapping compatible with SingleTooth."
-                    // "caries → yellow", "restoration → brown", "fracture → green"
-                    // If a tooth has mixed states, this might be tricky if SingleTooth expects one global scheme.
-                    // However, let's assume valid conditions for SingleTooth are 'caries', 'restoration', 'fracture'.
-                    // If so, we just pass the status object.
-
-                    // BUT SingleTooth might expect us to translate 'caries' to 'yellow' in the status object??
-                    // User said: "Pass colorScheme={colorScheme}"
-                    // This implies the whole tooth takes one scheme? 
-                    // Or maybe we map the values inside 'status'.
-
-                    // User said: "normal -> neutral, caries -> yellow, restoration -> brown, fracture -> green"
-                    // Let's look at how SingleTooth uses colorScheme. It probably styles the active areas.
-                    // If we have mixed caries and restoration, which scheme wins?
-                    // Let's try to map per-area if possible, but SingleTooth likely takes one scheme prop.
-                    // Let's prioritize: Fracture > Caries > Restoration > Neutral.
-
                     const states = Object.values(currentStatus);
-                    if (states.includes('fracture')) colorScheme = 'green';
-                    else if (states.includes('caries')) colorScheme = 'yellow';
-                    else if (states.includes('restoration')) colorScheme = 'brown';
+                    if (states.includes('restoration')) colorScheme = 'green';
+                    else if (states.includes('caries')) colorScheme = 'brown';
+                    else if (states.includes('fracture')) colorScheme = 'yellow';
                 }
 
-                // Calculate Dynamic Size based on Frontal Width
-                // Use default if not yet measured (e.g. 45px)
-                const BASE_PERMANENT_WIDTH = 45;
-                const occlusalSize = BASE_PERMANENT_WIDTH * 0.78;
-
-                //const frontalWidth = toothWidths[id] || 45;
-                //const occlusalSize = frontalWidth;
+                const OCCLUSAL_FIXED_SIZE = 35; // Ajusta visualmente si quieres
+                const occlusalSize = OCCLUSAL_FIXED_SIZE;
 
                 return (
                     <div
@@ -510,42 +633,32 @@ function OcclusalArchRow({ teethIds, surfaceStates, toothStates, onSurfaceClick,
                         className="absolute origin-center"
                         style={{
                             left: `calc(50% + ${xPos}px)`,
-                            transform: 'translateX(-50%)', // Removed scale(0.85) to rely on explicit size
+                            transform: 'translateX(-50%)',
                             top: isUpper ? '10px' : 'auto',
                             bottom: isUpper ? 'auto' : '10px'
                         }}
                     >
-                        <div className="relative group -my-1">
-                            <SingleTooth
-                                id={id}
-                                pediatricId={getPediatricId(id)}
-                                status={status}
-                                selectedMode="treatment"
-                                onClick={(toothId, area) => {
-                                    if (toothStates[id] === 'extraction') return;
-                                    onSurfaceClick(toothId, area);
-                                }}
-                                showLabels={false}
-                                strokeColor="stroke-black"
-                                size={occlusalSize}
-                                colorScheme={colorScheme}
-                                paintMode="clinical"
-                            />
-                            {isExtracted && (
-                                <div className="absolute inset-0 bg-slate-100/80 dark:bg-slate-800/80 flex items-center justify-center rounded cursor-not-allowed z-10 backdrop-grayscale pointer-events-none">
-                                    <span className="text-[8px] font-bold text-red-500 uppercase -rotate-45 border border-red-500 px-0.5 rounded">
-                                        Extr.
-                                    </span>
-                                </div>
-                            )}
-                        </div>
+                        <SingleTooth
+                            id={id}
+                            pediatricId={getPediatricId(id)}
+                            status={status}
+                            selectedMode="treatment"
+                            onClick={(toothId, area) => {
+                                if (toothStates[id] === 'extraction') return;
+                                onSurfaceClick(toothId, area);
+                            }}
+                            showLabels={false}
+                            strokeColor="stroke-black"
+                            size={occlusalSize}
+                            colorScheme={colorScheme}
+                            paintMode="clinical"
+                        />
                     </div>
                 );
             })}
         </div>
     );
 }
-
 
 // ==========================================
 // 5. Support Components (Summary, Actions, Modal)
@@ -608,7 +721,7 @@ function DentalSummary({ toothStates }) {
     return (
         <div className="bg-white dark:bg-[var(--color-secondary)] rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden transition-all duration-300">
             <div className="p-4 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
-                <AnimatePresence initial={false} mode='wait'>
+                <AnimatePresence initial={false}>
                     {visibleStats.map(stat => (
                         <motion.div
                             key={stat.id}
@@ -760,13 +873,21 @@ export default function OdontogramSection() {
 
     // Store measured widths of frontal teeth
     const [toothWidths, setToothWidths] = useState({});
-
+    const [baseToothWidths, setBaseToothWidths] = useState({});
     const handleToothResize = useCallback((id, width) => {
         setToothWidths(prev => {
-            if (prev[id] === width) return prev; // No change
+            if (prev[id] === width) return prev;
             return { ...prev, [id]: width };
         });
-    }, []);
+
+        // Guardar ancho base SOLO si el diente es original
+        setBaseToothWidths(prev => {
+            if (toothStates[id] === 'original' && !prev[id]) {
+                return { ...prev, [id]: width };
+            }
+            return prev;
+        });
+    }, [toothStates]);
 
     const handleToothClick = (id) => {
         if (isBracketMode) {
@@ -816,13 +937,13 @@ export default function OdontogramSection() {
         setBrackets({});
         setTads({});
         setSurfaceStates({});
+        setToothWidths({});
 
         // 3. Reset UI Modes
         setIsBracketMode(false);
         setIsTadMode(false);
         setSelectedToothType('original');
         setSelectedSurface(null); // Ensure no surface is selected
-
         // 4. Close Dialog
         setIsResetDialogOpen(false);
     };
@@ -853,7 +974,7 @@ export default function OdontogramSection() {
                 {/* COORDINATE BASED LAYOUT CONTAINER */}
                 {/* We use min-w-[950px] to ensure the fixed coordinates fit without wrapping, adding x-scroll if needed on small screens */}
                 <div className="relative z-0 scale-100 xl:scale-110 transition-transform origin-top mt-4 mb-4 overflow-x-auto w-full flex justify-center">
-                    <div className="relative min-w-[1000px] pb-4 isolate">
+                    <div className="relative min-w-[1000px] pb-4 isolate select-none">
 
                         {/* Labels */}
                         <div className="text-center mb-2 text-[15px] font-bold tracking-[0.2em] text-slate-600 dark:text-white uppercase select-none">
@@ -878,6 +999,7 @@ export default function OdontogramSection() {
                                 currentClinicalAction={selectedToothType}
                                 onToothResize={handleToothResize}
                                 toothWidths={toothWidths}
+                                baseToothWidths={baseToothWidths}
                                 isUpper={true}
                             />
 
@@ -889,6 +1011,7 @@ export default function OdontogramSection() {
                                     toothStates={toothStates}
                                     onSurfaceClick={handleSurfaceClick}
                                     toothWidths={toothWidths}
+                                    baseToothWidths={baseToothWidths}
                                     isUpper={true}
                                 />
                             </div>
@@ -907,6 +1030,7 @@ export default function OdontogramSection() {
                                     toothStates={toothStates}
                                     onSurfaceClick={handleSurfaceClick}
                                     toothWidths={toothWidths}
+                                    baseToothWidths={baseToothWidths}
                                     isUpper={false}
                                 />
                             </div>
@@ -924,6 +1048,7 @@ export default function OdontogramSection() {
                                 currentClinicalAction={selectedToothType}
                                 onToothResize={handleToothResize}
                                 toothWidths={toothWidths}
+                                baseToothWidths={baseToothWidths}
                                 isUpper={false}
                             />
                         </div>

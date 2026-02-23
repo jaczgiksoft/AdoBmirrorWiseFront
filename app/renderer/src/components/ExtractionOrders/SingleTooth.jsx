@@ -32,7 +32,11 @@ const SingleTooth = ({ id, status, onClick, selectedMode, showLabels = true, str
     };
 
     const commonProps = {
-        stroke: colorScheme === 'neutral' ? COLORS.neutral.stroke : (strokeColor || "#1f2937"),
+        stroke: paintMode === 'clinical'
+            ? "#111827"   // negro fijo en odontograma
+            : (colorScheme === 'neutral'
+                ? COLORS.neutral.stroke
+                : (strokeColor || "#1f2937")),
         strokeWidth: 120,
         className: "cursor-pointer transition-colors"
     };
@@ -45,14 +49,14 @@ const SingleTooth = ({ id, status, onClick, selectedMode, showLabels = true, str
             const condition = status?.[area];
 
             if (condition) {
-                if (condition === 'caries') return COLORS.yellow.selected;
-                if (condition === 'restoration') return COLORS.brown.selected;
-                if (condition === 'fracture') return COLORS.green.selected;
+                if (condition === 'caries') return COLORS.brown.selected;
+                if (condition === 'restoration') return COLORS.green.selected;
+                if (condition === 'fracture') return COLORS.yellow.selected;
             }
 
-            // Hover is BLUE in clinical mode (as requested)
+            // Hover remains blue
             if (hoveredArea === area) {
-                return "#3b82f6"; // standard blue hover
+                return "#3b82f6";
             }
 
             return COLORS.base;
