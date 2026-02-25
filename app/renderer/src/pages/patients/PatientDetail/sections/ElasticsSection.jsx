@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { Layers, Plus, X, Calendar, Clock, Smile } from 'lucide-react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import { Layers, Plus, X, Calendar, Clock, Undo2, Redo2, Trash2 } from 'lucide-react';
 import bracketImg from '@/assets/images/odontogram/bracket.svg';
 
 // 1. Asset Loading (Copied from OdontogramSection)
@@ -76,6 +76,10 @@ export default function ElasticsSection() {
     // completedChains: Array<{ typeId: string, segments: Array<{from, to, config}> }>
     const [completedChains, setCompletedChains] = useState([]);
     const [selectedElasticTypeId, setSelectedElasticTypeId] = useState(ELASTIC_TYPES[0].id);
+
+    // History System for Undo/Redo
+    const [history, setHistory] = useState([{ activeChain: { segments: [], lastPoint: null, startPoint: null }, completedChains: [] }]);
+    const [historyIndex, setHistoryIndex] = useState(0);
 
     // Routing Configuration State (Replaces Modal)
     const [elasticRouting, setElasticRouting] = useState('external');
@@ -199,50 +203,111 @@ export default function ElasticsSection() {
         );
     };
 
-    const handleBracketClick = (id) => {
-        setActiveChain((prev) => {
-            // 1. Start new chain if empty
-            if (prev.segments.length === 0 && !prev.lastPoint) {
-                return {
-                    typeId: selectedElasticTypeId,
-                    segments: [],
-                    lastPoint: id,
-                    startPoint: id
-                };
-            }
-
-            const last = prev.lastPoint;
-
-            // 2. Prevent immediate backtrack/double-click on same bracket
-            if (id === last) {
-                return prev;
-            }
-
-            // 3. Create New Segment directly using current routing selection
-            const newSegment = {
-                from: last,
-                to: id,
-                config: elasticRouting
-            };
-
-            const updatedChain = {
-                ...prev,
-                lastPoint: id,
-                segments: [...prev.segments, newSegment]
-            };
-
-            // 4. Check if this segment closes the loop
-            if (id === prev.startPoint) {
-                // If it closes, commit to completed chains
-                setCompletedChains(chains => [...chains, updatedChain]);
-                // Reset active chain
-                return { segments: [], lastPoint: null, startPoint: null };
-            }
-
-            // 5. Otherwise, just update active chain
-            return updatedChain;
+    // Helper to log state changes
+    const pushToHistory = (newActiveChain, newCompletedChains) => {
+        setHistory(prev => {
+            const newHistory = prev.slice(0, historyIndex + 1);
+            newHistory.push({ activeChain: newActiveChain, completedChains: newCompletedChains });
+            return newHistory;
         });
+        setHistoryIndex(prev => prev + 1);
     };
+
+    const handleBracketClick = (id) => {
+        // 1. Start new chain if empty
+        if (activeChain.segments.length === 0 && !activeChain.lastPoint) {
+            const newActive = {
+                typeId: selectedElasticTypeId,
+                segments: [],
+                lastPoint: id,
+                startPoint: id
+            };
+            setActiveChain(newActive);
+            pushToHistory(newActive, completedChains);
+            return;
+        }
+
+        const last = activeChain.lastPoint;
+
+        // 2. Prevent immediate backtrack/double-click on same bracket
+        if (id === last) {
+            return;
+        }
+
+        // 3. Create New Segment directly using current routing selection
+        const newSegment = {
+            from: last,
+            to: id,
+            config: elasticRouting
+        };
+
+        const updatedChain = {
+            ...activeChain,
+            lastPoint: id,
+            segments: [...activeChain.segments, newSegment]
+        };
+
+        // 4. Check if this segment closes the loop
+        if (id === activeChain.startPoint) {
+            // If it closes, commit to completed chains
+            const newCompleted = [...completedChains, updatedChain];
+            const newActive = { segments: [], lastPoint: null, startPoint: null };
+            setCompletedChains(newCompleted);
+            setActiveChain(newActive);
+            pushToHistory(newActive, newCompleted);
+        } else {
+            // 5. Otherwise, update active chain
+            setActiveChain(updatedChain);
+            pushToHistory(updatedChain, completedChains);
+        }
+    };
+
+    const handleUndo = useCallback(() => {
+        if (historyIndex > 0) {
+            const newIndex = historyIndex - 1;
+            setHistoryIndex(newIndex);
+            setActiveChain(history[newIndex].activeChain);
+            setCompletedChains(history[newIndex].completedChains);
+        }
+    }, [history, historyIndex]);
+
+    const handleRedo = useCallback(() => {
+        if (historyIndex < history.length - 1) {
+            const newIndex = historyIndex + 1;
+            setHistoryIndex(newIndex);
+            setActiveChain(history[newIndex].activeChain);
+            setCompletedChains(history[newIndex].completedChains);
+        }
+    }, [history, historyIndex]);
+
+    const handleClear = useCallback(() => {
+        if (activeChain.segments.length > 0 || completedChains.length > 0) {
+            const newActive = { segments: [], lastPoint: null, startPoint: null };
+            const newCompleted = [];
+            setActiveChain(newActive);
+            setCompletedChains(newCompleted);
+            pushToHistory(newActive, newCompleted);
+        }
+    }, [activeChain, completedChains, historyIndex]);
+
+    // Keyboard Shortcuts (CTRL+Z, CTRL+Y)
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+                e.preventDefault();
+                handleUndo();
+            }
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
+                e.preventDefault();
+                handleRedo();
+            }
+        };
+
+        if (isModalOpen) {
+            window.addEventListener('keydown', handleKeyDown);
+        }
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [handleUndo, handleRedo, isModalOpen]);
 
     const handleRightClickRouting = (e) => {
         e.preventDefault();
@@ -372,9 +437,40 @@ export default function ElasticsSection() {
 
                             {/* 1. Odontogram Base */}
                             <div className="space-y-3">
-                                <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">
-                                    Odontograma de Elásticos
-                                </label>
+                                <div className="flex items-center justify-between">
+                                    <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                                        Odontograma de Elásticos
+                                    </label>
+
+                                    {/* History Toolbar */}
+                                    <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800/50 p-1 rounded-lg border border-slate-200 dark:border-slate-700/50">
+                                        <button
+                                            onClick={handleUndo}
+                                            disabled={historyIndex === 0}
+                                            title="Deshacer (Ctrl+Z)"
+                                            className="p-1.5 rounded-md text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-slate-100 hover:shadow-sm disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:shadow-none transition-all active:scale-95 disabled:active:scale-100"
+                                        >
+                                            <Undo2 size={16} />
+                                        </button>
+                                        <button
+                                            onClick={handleRedo}
+                                            disabled={historyIndex === history.length - 1}
+                                            title="Rehacer (Ctrl+Y)"
+                                            className="p-1.5 rounded-md text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-slate-100 hover:shadow-sm disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:shadow-none transition-all active:scale-95 disabled:active:scale-100"
+                                        >
+                                            <Redo2 size={16} />
+                                        </button>
+                                        <div className="w-[1px] h-4 bg-slate-300 dark:bg-slate-600 mx-1"></div>
+                                        <button
+                                            onClick={handleClear}
+                                            disabled={activeChain.segments.length === 0 && completedChains.length === 0}
+                                            title="Limpiar todos los elásticos"
+                                            className="p-1.5 rounded-md text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-700 hover:text-red-600 dark:hover:text-red-400 hover:shadow-sm disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:shadow-none transition-all active:scale-95 disabled:active:scale-100"
+                                        >
+                                            <Trash2 size={16} />
+                                        </button>
+                                    </div>
+                                </div>
 
                                 <div
                                     className="
