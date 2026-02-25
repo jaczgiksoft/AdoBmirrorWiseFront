@@ -12,7 +12,7 @@ const SingleTooth = ({ id, status, onClick, selectedMode, showLabels = true, str
     const COLORS = {
         base: "#FFFFFF",
         blue: { selected: "#60a5fa" }, // blue-400
-        emerald: { selected: "#10b981", hover: "#6ee7b7" }, // emerald-500, emerald-300
+        emerald: { selected: "#059669", hover: "#6ee7b7" }, // emerald-600, emerald-300
         neutral: { default: "#FFFFFF", stroke: "#111827", selected: "#3b82f6", hover: "#3b82f6" }, // white, gray-900, blue-500
 
         yellow: {
@@ -101,6 +101,17 @@ const SingleTooth = ({ id, status, onClick, selectedMode, showLabels = true, str
     const handleMouseEnter = (area) => setHoveredArea(area);
     const handleMouseLeave = () => setHoveredArea(null);
 
+    const getAreaTitle = (areaId) => {
+        const titles = {
+            center: 'Central',
+            north: 'Superior',
+            south: 'Inferior',
+            east: 'Derecho',
+            west: 'Izquierdo'
+        };
+        return titles[areaId] || areaId;
+    };
+
     const renderArea = (id, d, cx, cy, r) => (
         <g
             id={`area_${id}`}
@@ -108,6 +119,7 @@ const SingleTooth = ({ id, status, onClick, selectedMode, showLabels = true, str
             onMouseEnter={() => handleMouseEnter(id)}
             onMouseLeave={handleMouseLeave}
         >
+            <title>{getAreaTitle(id)}</title>
             {d ? (
                 <path
                     {...commonProps}
