@@ -84,6 +84,9 @@ export default function ElasticsSection() {
     // Routing Configuration State (Replaces Modal)
     const [elasticRouting, setElasticRouting] = useState('external');
 
+    // Preview state for hovering
+    const [previewBracket, setPreviewBracket] = useState(null);
+
     // Calculate Teeth Coordinates - FLOW LAYOUT
     const teethData = useMemo(() => {
         const teeth = [];
@@ -169,21 +172,21 @@ export default function ElasticsSection() {
     };
 
     // Updated Renderer for Chains of Segments
-    const renderElasticChain = (chain, isCompleted = false) => {
+    const renderElasticChain = (chain, isCompleted = false, isPreview = false) => {
         if (!chain || !chain.segments || chain.segments.length === 0) return null;
 
         const type = ELASTIC_TYPES.find(t => t.id === chain.typeId) || ELASTIC_TYPES.find(t => t.id === selectedElasticTypeId);
         const color = type?.color || "#3b82f6";
         const strokeWidth = type?.strokeWidth || "3";
-        const opacity = isCompleted ? 0.8 : 1;
+        const opacity = isPreview ? 0.4 : (isCompleted ? 0.8 : 1);
 
         return (
             <g>
                 {chain.segments.map((segment, idx) => {
                     const start = getBracketCenter(segment.from);
                     const end = getBracketCenter(segment.to);
-                    // Internal = dashed, External = solid
-                    const strokeDasharray = segment.config === 'internal' ? "6, 8" : "none";
+                    // Internal = dashed, External = solid. Preview is explicitly dashed
+                    const strokeDasharray = isPreview ? "4, 4" : (segment.config === 'internal' ? "6, 8" : "none");
 
                     return (
                         <line
@@ -195,7 +198,7 @@ export default function ElasticsSection() {
                             strokeLinecap="round"
                             strokeDasharray={strokeDasharray}
                             opacity={opacity}
-                            className="transition-all duration-300 drop-shadow-md"
+                            className={`transition-all duration-300 ${isPreview ? 'animate-pulse' : 'drop-shadow-md'}`}
                         />
                     );
                 })}
@@ -548,6 +551,18 @@ export default function ElasticsSection() {
                                             ))}
                                             {/* Render Active Chain */}
                                             {renderElasticChain(activeChain, false)}
+
+                                            {/* Render Preview Segment */}
+                                            {activeChain.lastPoint && previewBracket && activeChain.lastPoint !== previewBracket && (
+                                                renderElasticChain({
+                                                    typeId: selectedElasticTypeId,
+                                                    segments: [{
+                                                        from: activeChain.lastPoint,
+                                                        to: previewBracket,
+                                                        config: elasticRouting
+                                                    }]
+                                                }, false, true)
+                                            )}
                                         </g>
 
                                         {/* LAYER 3: Brackets & Interactivity (Top) */}
@@ -563,7 +578,13 @@ export default function ElasticsSection() {
 
                                                 return (
                                                     <g key={`bracket-${tooth.id}`} transform={`translate(${tooth.x}, ${tooth.y})`}>
-                                                        <g transform={`translate(${bracketXOffset}, ${bracketYOffset})`} className="cursor-pointer" onClick={() => handleBracketClick(tooth.id)}>
+                                                        <g
+                                                            transform={`translate(${bracketXOffset}, ${bracketYOffset})`}
+                                                            className="cursor-pointer"
+                                                            onClick={() => handleBracketClick(tooth.id)}
+                                                            onMouseEnter={() => setPreviewBracket(tooth.id)}
+                                                            onMouseLeave={() => setPreviewBracket(null)}
+                                                        >
                                                             <rect x="-6" y="-6" width="32" height="32" fill="transparent" />
                                                             <image
                                                                 href={bracketImg}
