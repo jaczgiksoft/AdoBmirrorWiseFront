@@ -1126,8 +1126,12 @@ export default function OdontogramSection() {
                 open={isResetDialogOpen}
                 title="Limpiar Odontograma"
                 message="¿Estás seguro de que deseas limpiar todo el odontograma? Esta acción no se puede deshacer."
-                confirmText="Sí, limpiar todo"
-                cancelText="Cancelar"
+                confirmLabel="Sí, limpiar todo"
+                cancelLabel="Cancelar"
+                requiresDoubleConfirm={true}
+                secondTitle="Confirmar limpieza"
+                secondMessage="¿Estás completamente seguro de que deseas limpiar todo el odontograma? Esta acción no se puede deshacer."
+                secondConfirmLabel="Sí, confirmo"
                 onConfirm={handleResetOdontogram}
                 onCancel={() => setIsResetDialogOpen(false)}
                 variant="danger"
