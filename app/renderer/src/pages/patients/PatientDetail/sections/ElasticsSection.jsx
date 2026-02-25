@@ -244,6 +244,11 @@ export default function ElasticsSection() {
         });
     };
 
+    const handleRightClickRouting = (e) => {
+        e.preventDefault();
+        setElasticRouting(prev => prev === 'external' ? 'internal' : 'external');
+    };
+
     return (
         <div className="space-y-6 text-slate-800 dark:text-slate-100">
             {/* Main Section Container */}
@@ -371,12 +376,15 @@ export default function ElasticsSection() {
                                     Odontograma de Elásticos
                                 </label>
 
-                                <div className="
-                                    w-full overflow-x-auto
-                                    bg-slate-50 dark:bg-slate-800/30
-                                    rounded-xl border border-slate-200 dark:border-slate-600
-                                    px-2 py-0 flex flex-col items-center relative
-                                ">
+                                <div
+                                    className="
+                                        w-full overflow-x-auto
+                                        bg-slate-50 dark:bg-slate-800/30
+                                        rounded-xl border border-slate-200 dark:border-slate-600
+                                        px-2 py-0 flex flex-col items-center relative
+                                    "
+                                    onContextMenu={handleRightClickRouting}
+                                >
 
 
                                     {/* SVG Container - Compact ViewBox */}
