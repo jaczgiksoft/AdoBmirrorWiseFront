@@ -77,9 +77,8 @@ export default function ElasticsSection() {
     const [completedChains, setCompletedChains] = useState([]);
     const [selectedElasticTypeId, setSelectedElasticTypeId] = useState(ELASTIC_TYPES[0].id);
 
-    // Config Modal State
-    const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
-    const [pendingLoopSequence, setPendingLoopSequence] = useState(null);
+    // Routing Configuration State (Replaces Modal)
+    const [elasticRouting, setElasticRouting] = useState('external');
 
     // Calculate Teeth Coordinates - FLOW LAYOUT
     const teethData = useMemo(() => {
@@ -212,7 +211,6 @@ export default function ElasticsSection() {
                 };
             }
 
-            const origin = prev.startPoint;
             const last = prev.lastPoint;
 
             // 2. Prevent immediate backtrack/double-click on same bracket
@@ -220,56 +218,30 @@ export default function ElasticsSection() {
                 return prev;
             }
 
-            // 3. Create New Segment (Valid for both intermediate and closing segments)
-            // Trigger Dialog for ALL segments including the one closing the loop
-            setPendingLoopSequence({ from: last, to: id });
-            setIsConfigModalOpen(true);
-
-            // Return prev state as-is, waiting for confirmation
-            return prev;
-        });
-    };
-
-    const confirmElasticConfig = (configType) => {
-        if (!pendingLoopSequence) return;
-
-        setActiveChain(prev => {
-            // 1. Create the new segment with chosen config
+            // 3. Create New Segment directly using current routing selection
             const newSegment = {
-                from: pendingLoopSequence.from,
-                to: pendingLoopSequence.to,
-                config: configType
+                from: last,
+                to: id,
+                config: elasticRouting
             };
 
             const updatedChain = {
                 ...prev,
-                lastPoint: pendingLoopSequence.to,
+                lastPoint: id,
                 segments: [...prev.segments, newSegment]
             };
 
-            // 2. Check if this segment closes the loop
-            // It closes if the 'to' point connects back to the startPoint
-            if (pendingLoopSequence.to === prev.startPoint) {
+            // 4. Check if this segment closes the loop
+            if (id === prev.startPoint) {
                 // If it closes, commit to completed chains
                 setCompletedChains(chains => [...chains, updatedChain]);
-
                 // Reset active chain
                 return { segments: [], lastPoint: null, startPoint: null };
             }
 
-            // 3. Otherwise, just update active chain
+            // 5. Otherwise, just update active chain
             return updatedChain;
         });
-
-        // Cleanup
-        setPendingLoopSequence(null);
-        setIsConfigModalOpen(false);
-    };
-
-    const cancelElasticConfig = () => {
-        setPendingLoopSequence(null);
-        setIsConfigModalOpen(false);
-        // Abort this segment, stay at previous lastPoint
     };
 
     return (
@@ -405,60 +377,7 @@ export default function ElasticsSection() {
                                     rounded-xl border border-slate-200 dark:border-slate-600
                                     px-2 py-0 flex flex-col items-center relative
                                 ">
-                                    {/* Config Dialog Overlay */}
-                                    {isConfigModalOpen && (
-                                        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/10 backdrop-blur-[2px] rounded-xl">
-                                            <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-600 animate-in zoom-in-95 duration-200 max-w-sm w-full mx-4">
-                                                <h4 className="text-lg font-bold text-slate-800 dark:text-white mb-2 text-center">
-                                                    Configuración de Elástico
-                                                </h4>
-                                                <p className="text-sm text-slate-500 dark:text-slate-400 text-center mb-6">
-                                                    ¿El elástico es interno o externo?
-                                                </p>
 
-                                                <div className="grid grid-cols-2 gap-3">
-                                                    <button
-                                                        onClick={() => confirmElasticConfig('external')}
-                                                        className="
-                                                            flex flex-col items-center justify-center gap-2 p-3
-                                                            rounded-xl border-2 border-slate-100 dark:border-slate-700
-                                                            hover:border-primary/50 hover:bg-primary/5
-                                                            active:scale-95 transition-all
-                                                            group
-                                                        "
-                                                    >
-                                                        <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-colors">
-                                                            <div className="w-4 h-[2px] bg-current rounded-full" />
-                                                        </div>
-                                                        <span className="text-sm font-semibold text-slate-600 dark:text-slate-300 group-hover:text-primary">Externo</span>
-                                                    </button>
-
-                                                    <button
-                                                        onClick={() => confirmElasticConfig('internal')}
-                                                        className="
-                                                            flex flex-col items-center justify-center gap-2 p-3
-                                                            rounded-xl border-2 border-slate-100 dark:border-slate-700
-                                                            hover:border-primary/50 hover:bg-primary/5
-                                                            active:scale-95 transition-all
-                                                            group
-                                                        "
-                                                    >
-                                                        <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-colors">
-                                                            <div className="w-4 h-[2px] bg-transparent border-t-2 border-dotted border-current w-4" />
-                                                        </div>
-                                                        <span className="text-sm font-semibold text-slate-600 dark:text-slate-300 group-hover:text-primary">Interno</span>
-                                                    </button>
-                                                </div>
-
-                                                <button
-                                                    onClick={cancelElasticConfig}
-                                                    className="w-full mt-4 text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 underline"
-                                                >
-                                                    Cancelar
-                                                </button>
-                                            </div>
-                                        </div>
-                                    )}
 
                                     {/* SVG Container - Compact ViewBox */}
                                     <svg
@@ -566,7 +485,7 @@ export default function ElasticsSection() {
                                 <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">
                                     Acción a realizar
                                 </label>
-                                <div className="flex flex-wrap gap-4">
+                                <div className="flex flex-wrap items-center gap-4">
                                     <label className="flex items-center gap-2 cursor-pointer">
                                         <input type="radio" name="actionType" value="bracket" className="w-4 h-4 text-primary focus:ring-primary" />
                                         <span className="text-sm text-slate-700 dark:text-slate-300">Colocar Bracket</span>
@@ -575,10 +494,47 @@ export default function ElasticsSection() {
                                         <input type="radio" name="actionType" value="tad" disabled className="w-4 h-4 text-primary focus:ring-primary" />
                                         <span className="text-sm text-slate-700 dark:text-slate-300">Colocar Microimplant</span>
                                     </label>
-                                    <label className="flex items-center gap-2 cursor-pointer">
+                                    <label className="flex items-center gap-2 cursor-pointer pr-4 border-r border-slate-200 dark:border-slate-700">
                                         <input type="radio" name="actionType" value="elastics" defaultChecked className="w-4 h-4 text-primary focus:ring-primary" />
                                         <span className="text-sm text-slate-700 dark:text-slate-300">Colocar Elásticos</span>
                                     </label>
+
+                                    {/* Configuración de Ruta (Interno/Externo) */}
+                                    <div className="flex items-center gap-3">
+                                        <button
+                                            onClick={() => setElasticRouting('external')}
+                                            className={`
+                                                relative flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-semibold transition-all duration-300
+                                                ${elasticRouting === 'external'
+                                                    ? 'bg-primary text-white shadow-[0_0_12px_rgba(59,130,246,0.6)] scale-[1.02] border-transparent'
+                                                    : 'bg-slate-50 dark:bg-slate-800 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 border border-slate-200 dark:border-slate-700'
+                                                }
+                                            `}
+                                        >
+                                            <div className={`w-4 h-[2px] ${elasticRouting === 'external' ? 'bg-white' : 'bg-slate-400 dark:bg-slate-500'}`} />
+                                            Externo
+                                            {elasticRouting === 'external' && (
+                                                <span className="absolute inset-0 rounded-lg ring-2 ring-primary dark:ring-primary animate-pulse opacity-20 pointer-events-none" />
+                                            )}
+                                        </button>
+
+                                        <button
+                                            onClick={() => setElasticRouting('internal')}
+                                            className={`
+                                                relative flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-semibold transition-all duration-300
+                                                ${elasticRouting === 'internal'
+                                                    ? 'bg-primary text-white shadow-[0_0_12px_rgba(59,130,246,0.6)] scale-[1.02] border-transparent'
+                                                    : 'bg-slate-50 dark:bg-slate-800 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 border border-slate-200 dark:border-slate-700'
+                                                }
+                                            `}
+                                        >
+                                            <div className={`w-4 h-[2px] border-t-2 border-dotted ${elasticRouting === 'internal' ? 'border-white' : 'border-slate-400 dark:border-slate-500'}`} />
+                                            Interno
+                                            {elasticRouting === 'internal' && (
+                                                <span className="absolute inset-0 rounded-lg ring-2 ring-primary dark:ring-primary animate-pulse opacity-20 pointer-events-none" />
+                                            )}
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
 
