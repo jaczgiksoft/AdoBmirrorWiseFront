@@ -216,7 +216,7 @@ export default function ElasticsSection() {
         setHistoryIndex(prev => prev + 1);
     };
 
-    const handleBracketClick = (id) => {
+    const handleBracketClick = (id, overrideRouting = null) => {
         // 1. Start new chain if empty
         if (activeChain.segments.length === 0 && !activeChain.lastPoint) {
             const newActive = {
@@ -238,10 +238,12 @@ export default function ElasticsSection() {
         }
 
         // 3. Create New Segment directly using current routing selection
+        const routingToUse = overrideRouting || elasticRouting;
+
         const newSegment = {
             from: last,
             to: id,
-            config: elasticRouting
+            config: routingToUse
         };
 
         const updatedChain = {
@@ -263,6 +265,12 @@ export default function ElasticsSection() {
             setActiveChain(updatedChain);
             pushToHistory(updatedChain, completedChains);
         }
+    };
+
+    const handleRightClickElastic = (e, id) => {
+        e.preventDefault();
+        const oppositeRouting = elasticRouting === 'external' ? 'internal' : 'external';
+        handleBracketClick(id, oppositeRouting);
     };
 
     const handleUndo = useCallback(() => {
@@ -311,11 +319,6 @@ export default function ElasticsSection() {
         }
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [handleUndo, handleRedo, isModalOpen]);
-
-    const handleRightClickRouting = (e) => {
-        e.preventDefault();
-        setElasticRouting(prev => prev === 'external' ? 'internal' : 'external');
-    };
 
     return (
         <div className="space-y-6 text-slate-800 dark:text-slate-100">
@@ -482,7 +485,6 @@ export default function ElasticsSection() {
                                         rounded-xl border border-slate-200 dark:border-slate-600
                                         px-2 py-0 flex flex-col items-center relative
                                     "
-                                    onContextMenu={handleRightClickRouting}
                                 >
 
 
@@ -582,6 +584,7 @@ export default function ElasticsSection() {
                                                             transform={`translate(${bracketXOffset}, ${bracketYOffset})`}
                                                             className="cursor-pointer"
                                                             onClick={() => handleBracketClick(tooth.id)}
+                                                            onContextMenu={(e) => handleRightClickElastic(e, tooth.id)}
                                                             onMouseEnter={() => setPreviewBracket(tooth.id)}
                                                             onMouseLeave={() => setPreviewBracket(null)}
                                                         >

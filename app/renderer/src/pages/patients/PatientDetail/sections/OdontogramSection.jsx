@@ -115,11 +115,11 @@ const OCCLUSAL_TYPES = [
     },
 
     // Fractura → amarillo
-    {
-        id: 'fracture',
-        label: 'Fractura',
-        color: 'bg-yellow-100 border-yellow-300 text-yellow-700'
-    }
+    // {
+    //     id: 'fracture',
+    //     label: 'Fractura',
+    //     color: 'bg-yellow-100 border-yellow-300 text-yellow-700'
+    // }
 ];
 
 /**
@@ -636,6 +636,7 @@ function OcclusalArchRow({
 
                 const OCCLUSAL_FIXED_SIZE = 35; // Ajusta visualmente si quieres
                 const occlusalSize = OCCLUSAL_FIXED_SIZE;
+                const isCrown = toothStates[id] === 'crown';
 
                 return (
                     <div
@@ -655,7 +656,7 @@ function OcclusalArchRow({
                                 status={status}
                                 selectedMode="treatment"
                                 onClick={(toothId, area) => {
-                                    if (isInactiveTooth) return;
+                                    if (isInactiveTooth || isCrown) return;
                                     onSurfaceClick(toothId, area);
                                 }}
                                 showLabels={false}
@@ -663,6 +664,7 @@ function OcclusalArchRow({
                                 size={occlusalSize}
                                 colorScheme={colorScheme}
                                 paintMode="clinical"
+                                isCrown={isCrown}
                             />
 
                             {isInactiveTooth && (

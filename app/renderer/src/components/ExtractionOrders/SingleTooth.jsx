@@ -1,6 +1,6 @@
 import React from 'react';
 
-const SingleTooth = ({ id, status, onClick, selectedMode, showLabels = true, strokeColor, size, pediatricId, colorScheme = 'blue', paintMode = 'simple' }) => {
+const SingleTooth = ({ id, status, onClick, selectedMode, showLabels = true, strokeColor, size, pediatricId, colorScheme = 'blue', paintMode = 'simple', isCrown = false }) => {
     // Defines safe fallback if status is null/undefined
     // paintMode: 'simple' | 'clinical'
     const safeStatus = status || { extraction: false };
@@ -38,12 +38,13 @@ const SingleTooth = ({ id, status, onClick, selectedMode, showLabels = true, str
                 ? COLORS.neutral.stroke
                 : (strokeColor || "#1f2937")),
         strokeWidth: 120,
-        className: status?.extraction
+        className: (status?.extraction || isCrown)
             ? "cursor-not-allowed transition-colors"
             : "cursor-pointer transition-colors"
     };
 
     const getColor = (area) => {
+        if (isCrown) return COLORS.yellow.selected;
         if (status?.extraction) return COLORS.base;
         // Clinical Mode (Odontogram)
         if (paintMode === 'clinical') {
@@ -95,11 +96,19 @@ const SingleTooth = ({ id, status, onClick, selectedMode, showLabels = true, str
     };
 
     const handleClick = (area) => {
+        if (isCrown) return;
         if (onClick) onClick(id, area);
     };
 
-    const handleMouseEnter = (area) => setHoveredArea(area);
-    const handleMouseLeave = () => setHoveredArea(null);
+    const handleMouseEnter = (area) => {
+        if (isCrown) return;
+        setHoveredArea(area);
+    };
+
+    const handleMouseLeave = () => {
+        if (isCrown) return;
+        setHoveredArea(null);
+    };
 
     const getAreaTitle = (areaId) => {
         const titles = {
