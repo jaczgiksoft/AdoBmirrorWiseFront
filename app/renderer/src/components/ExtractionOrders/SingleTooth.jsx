@@ -25,6 +25,13 @@ const SingleTooth = ({ id, status, onClick, selectedMode, showLabels = true, str
             hover: "#b45309"
         },
 
+        sky: {
+            selected: "#79afd1",
+            hover: "#94c9f0"
+        },
+
+
+
         green: {
             selected: "#16a34a",
             hover: "#22c55e"
@@ -54,13 +61,13 @@ const SingleTooth = ({ id, status, onClick, selectedMode, showLabels = true, str
 
             if (condition) {
                 if (condition === 'caries') return COLORS.brown.selected;
-                if (condition === 'restoration') return COLORS.green.selected;
+                if (condition === 'restoration') return COLORS.sky.selected;
                 if (condition === 'fracture') return COLORS.yellow.selected;
             }
 
             // Hover remains blue
             if (hoveredArea === area && !status?.extraction) {
-                return "#3b82f6";
+                return "#21a750ff";
             }
 
             return COLORS.base;

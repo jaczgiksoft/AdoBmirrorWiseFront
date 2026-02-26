@@ -98,7 +98,7 @@ const DENTAL_TYPES = [
 ];
 
 const OCCLUSAL_TYPES = [
-    { id: 'normal', label: 'Limpiar / Normal', color: 'bg-slate-100' },
+    { id: 'normal', label: 'Limpiar / Normal', color: 'bg-white' },
 
     // Caries → café
     {
@@ -107,11 +107,11 @@ const OCCLUSAL_TYPES = [
         color: 'bg-amber-100 border-amber-300 text-amber-800'
     },
 
-    // Restauración → verde
+    // Restauración → azul
     {
         id: 'restoration',
         label: 'Restauración',
-        color: 'bg-green-100 border-green-300 text-green-700'
+        color: 'bg-slate-100 border-sky-300 text-sky-700'
     },
 
     // Fractura → amarillo
@@ -389,7 +389,7 @@ function InterproximalZone({ t1, t2, hasTad, isTadMode, onClick, xPos, isUpper }
                             absolute left-1/2 -translate-x-1/2 -translate-y-1/2
                             pointer-events-none flex items-center justify-center
                             w-3 md:w-2.5
-                            ${isUpper ? 'top-[35%]' : 'bottom-[50%]'}
+                            ${isUpper ? 'top-[35%]' : 'bottom-[45%]'}
                         `}
                     >
                         <img
@@ -437,9 +437,9 @@ const getDynamicOffset = (
         if (currentType !== 'deciduous' && currentType !== 'pulpotomy') continue;
 
         const permanentWidth = baseToothWidths[currentId];
-        const deciduousWidth = toothWidths[currentId];
+        const deciduousWidth = toothWidths[currentId] || permanentWidth;
 
-        if (!permanentWidth || !deciduousWidth) continue;
+        if (!permanentWidth) continue;
 
         const delta = deciduousWidth - permanentWidth;
         if (delta <= 0) continue;
