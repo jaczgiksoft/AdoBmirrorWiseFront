@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { Layers, Plus, X, Calendar, Clock, Smile } from 'lucide-react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import { Layers, Plus, X, Calendar, Clock, Undo2, Redo2, Trash2, Loader2 } from 'lucide-react';
 import bracketImg from '@/assets/images/odontogram/bracket.svg';
 
 // 1. Asset Loading (Copied from OdontogramSection)
@@ -67,6 +67,7 @@ const MOCK_INSTRUCTIONS = [
 
 export default function ElasticsSection() {
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
 
     // Sequential Selection State
     // Segment-based State
@@ -77,9 +78,15 @@ export default function ElasticsSection() {
     const [completedChains, setCompletedChains] = useState([]);
     const [selectedElasticTypeId, setSelectedElasticTypeId] = useState(ELASTIC_TYPES[0].id);
 
-    // Config Modal State
-    const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
-    const [pendingLoopSequence, setPendingLoopSequence] = useState(null);
+    // History System for Undo/Redo
+    const [history, setHistory] = useState([{ activeChain: { segments: [], lastPoint: null, startPoint: null }, completedChains: [] }]);
+    const [historyIndex, setHistoryIndex] = useState(0);
+
+    // Routing Configuration State (Replaces Modal)
+    const [elasticRouting, setElasticRouting] = useState('external');
+
+    // Preview state for hovering
+    const [previewBracket, setPreviewBracket] = useState(null);
 
     // Calculate Teeth Coordinates - FLOW LAYOUT
     const teethData = useMemo(() => {
@@ -141,6 +148,46 @@ export default function ElasticsSection() {
         return teeth;
     }, []);
 
+    // Efecto para precargar las imágenes SVG y manejar el estado de carga
+    useEffect(() => {
+        let isMounted = true;
+
+        const preloadImages = async () => {
+            if (!teethData || teethData.length === 0) {
+                if (isMounted) setIsLoading(false);
+                return;
+            }
+
+            try {
+                const imagePromises = teethData
+                    .filter(tooth => tooth.src)
+                    .map(tooth => {
+                        return new Promise((resolve) => {
+                            const img = new Image();
+                            img.src = tooth.src;
+                            img.onload = resolve;
+                            img.onerror = resolve; // Continuar, para no quedar en loading infinito
+                        });
+                    });
+
+                await Promise.all(imagePromises);
+            } catch (error) {
+                console.error("Error al cargar las imágenes de los dientes:", error);
+            } finally {
+                if (isMounted) {
+                    setIsLoading(false);
+                }
+            }
+        };
+
+        setIsLoading(true);
+        preloadImages();
+
+        return () => {
+            isMounted = false;
+        };
+    }, [teethData]);
+
     // Map for fast coordinate lookup
     const toothMap = useMemo(() => {
         const map = {};
@@ -166,21 +213,21 @@ export default function ElasticsSection() {
     };
 
     // Updated Renderer for Chains of Segments
-    const renderElasticChain = (chain, isCompleted = false) => {
+    const renderElasticChain = (chain, isCompleted = false, isPreview = false) => {
         if (!chain || !chain.segments || chain.segments.length === 0) return null;
 
         const type = ELASTIC_TYPES.find(t => t.id === chain.typeId) || ELASTIC_TYPES.find(t => t.id === selectedElasticTypeId);
         const color = type?.color || "#3b82f6";
         const strokeWidth = type?.strokeWidth || "3";
-        const opacity = isCompleted ? 0.8 : 1;
+        const opacity = isPreview ? 0.4 : (isCompleted ? 0.8 : 1);
 
         return (
             <g>
                 {chain.segments.map((segment, idx) => {
                     const start = getBracketCenter(segment.from);
                     const end = getBracketCenter(segment.to);
-                    // Internal = dashed, External = solid
-                    const strokeDasharray = segment.config === 'internal' ? "6, 8" : "none";
+                    // Internal = dashed, External = solid. Preview is explicitly dashed
+                    const strokeDasharray = isPreview ? "4, 4" : (segment.config === 'internal' ? "6, 8" : "none");
 
                     return (
                         <line
@@ -192,7 +239,7 @@ export default function ElasticsSection() {
                             strokeLinecap="round"
                             strokeDasharray={strokeDasharray}
                             opacity={opacity}
-                            className="transition-all duration-300 drop-shadow-md"
+                            className={`transition-all duration-300 ${isPreview ? 'animate-pulse' : 'drop-shadow-md'}`}
                         />
                     );
                 })}
@@ -200,77 +247,119 @@ export default function ElasticsSection() {
         );
     };
 
-    const handleBracketClick = (id) => {
-        setActiveChain((prev) => {
-            // 1. Start new chain if empty
-            if (prev.segments.length === 0 && !prev.lastPoint) {
-                return {
-                    typeId: selectedElasticTypeId,
-                    segments: [],
-                    lastPoint: id,
-                    startPoint: id
-                };
-            }
-
-            const origin = prev.startPoint;
-            const last = prev.lastPoint;
-
-            // 2. Prevent immediate backtrack/double-click on same bracket
-            if (id === last) {
-                return prev;
-            }
-
-            // 3. Create New Segment (Valid for both intermediate and closing segments)
-            // Trigger Dialog for ALL segments including the one closing the loop
-            setPendingLoopSequence({ from: last, to: id });
-            setIsConfigModalOpen(true);
-
-            // Return prev state as-is, waiting for confirmation
-            return prev;
+    // Helper to log state changes
+    const pushToHistory = (newActiveChain, newCompletedChains) => {
+        setHistory(prev => {
+            const newHistory = prev.slice(0, historyIndex + 1);
+            newHistory.push({ activeChain: newActiveChain, completedChains: newCompletedChains });
+            return newHistory;
         });
+        setHistoryIndex(prev => prev + 1);
     };
 
-    const confirmElasticConfig = (configType) => {
-        if (!pendingLoopSequence) return;
-
-        setActiveChain(prev => {
-            // 1. Create the new segment with chosen config
-            const newSegment = {
-                from: pendingLoopSequence.from,
-                to: pendingLoopSequence.to,
-                config: configType
+    const handleBracketClick = (id, overrideRouting = null) => {
+        // 1. Start new chain if empty
+        if (activeChain.segments.length === 0 && !activeChain.lastPoint) {
+            const newActive = {
+                typeId: selectedElasticTypeId,
+                segments: [],
+                lastPoint: id,
+                startPoint: id
             };
+            setActiveChain(newActive);
+            pushToHistory(newActive, completedChains);
+            return;
+        }
 
-            const updatedChain = {
-                ...prev,
-                lastPoint: pendingLoopSequence.to,
-                segments: [...prev.segments, newSegment]
-            };
+        const last = activeChain.lastPoint;
 
-            // 2. Check if this segment closes the loop
-            // It closes if the 'to' point connects back to the startPoint
-            if (pendingLoopSequence.to === prev.startPoint) {
-                // If it closes, commit to completed chains
-                setCompletedChains(chains => [...chains, updatedChain]);
+        // 2. Prevent immediate backtrack/double-click on same bracket
+        if (id === last) {
+            return;
+        }
 
-                // Reset active chain
-                return { segments: [], lastPoint: null, startPoint: null };
+        // 3. Create New Segment directly using current routing selection
+        const routingToUse = overrideRouting || elasticRouting;
+
+        const newSegment = {
+            from: last,
+            to: id,
+            config: routingToUse
+        };
+
+        const updatedChain = {
+            ...activeChain,
+            lastPoint: id,
+            segments: [...activeChain.segments, newSegment]
+        };
+
+        // 4. Check if this segment closes the loop
+        if (id === activeChain.startPoint) {
+            // If it closes, commit to completed chains
+            const newCompleted = [...completedChains, updatedChain];
+            const newActive = { segments: [], lastPoint: null, startPoint: null };
+            setCompletedChains(newCompleted);
+            setActiveChain(newActive);
+            pushToHistory(newActive, newCompleted);
+        } else {
+            // 5. Otherwise, update active chain
+            setActiveChain(updatedChain);
+            pushToHistory(updatedChain, completedChains);
+        }
+    };
+
+    const handleRightClickElastic = (e, id) => {
+        e.preventDefault();
+        const oppositeRouting = elasticRouting === 'external' ? 'internal' : 'external';
+        handleBracketClick(id, oppositeRouting);
+    };
+
+    const handleUndo = useCallback(() => {
+        if (historyIndex > 0) {
+            const newIndex = historyIndex - 1;
+            setHistoryIndex(newIndex);
+            setActiveChain(history[newIndex].activeChain);
+            setCompletedChains(history[newIndex].completedChains);
+        }
+    }, [history, historyIndex]);
+
+    const handleRedo = useCallback(() => {
+        if (historyIndex < history.length - 1) {
+            const newIndex = historyIndex + 1;
+            setHistoryIndex(newIndex);
+            setActiveChain(history[newIndex].activeChain);
+            setCompletedChains(history[newIndex].completedChains);
+        }
+    }, [history, historyIndex]);
+
+    const handleClear = useCallback(() => {
+        if (activeChain.segments.length > 0 || completedChains.length > 0) {
+            const newActive = { segments: [], lastPoint: null, startPoint: null };
+            const newCompleted = [];
+            setActiveChain(newActive);
+            setCompletedChains(newCompleted);
+            pushToHistory(newActive, newCompleted);
+        }
+    }, [activeChain, completedChains, historyIndex]);
+
+    // Keyboard Shortcuts (CTRL+Z, CTRL+Y)
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+                e.preventDefault();
+                handleUndo();
             }
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
+                e.preventDefault();
+                handleRedo();
+            }
+        };
 
-            // 3. Otherwise, just update active chain
-            return updatedChain;
-        });
-
-        // Cleanup
-        setPendingLoopSequence(null);
-        setIsConfigModalOpen(false);
-    };
-
-    const cancelElasticConfig = () => {
-        setPendingLoopSequence(null);
-        setIsConfigModalOpen(false);
-        // Abort this segment, stay at previous lastPoint
-    };
+        if (isModalOpen) {
+            window.addEventListener('keydown', handleKeyDown);
+        }
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [handleUndo, handleRedo, isModalOpen]);
 
     return (
         <div className="space-y-6 text-slate-800 dark:text-slate-100">
@@ -395,169 +484,179 @@ export default function ElasticsSection() {
 
                             {/* 1. Odontogram Base */}
                             <div className="space-y-3">
-                                <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">
-                                    Odontograma de Elásticos
-                                </label>
+                                <div className="flex items-center justify-between">
+                                    <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                                        Odontograma de Elásticos
+                                    </label>
 
-                                <div className="
-                                    w-full overflow-x-auto
-                                    bg-slate-50 dark:bg-slate-800/30
-                                    rounded-xl border border-slate-200 dark:border-slate-600
-                                    px-2 py-0 flex flex-col items-center relative
-                                ">
-                                    {/* Config Dialog Overlay */}
-                                    {isConfigModalOpen && (
-                                        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/10 backdrop-blur-[2px] rounded-xl">
-                                            <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-600 animate-in zoom-in-95 duration-200 max-w-sm w-full mx-4">
-                                                <h4 className="text-lg font-bold text-slate-800 dark:text-white mb-2 text-center">
-                                                    Configuración de Elástico
-                                                </h4>
-                                                <p className="text-sm text-slate-500 dark:text-slate-400 text-center mb-6">
-                                                    ¿El elástico es interno o externo?
-                                                </p>
+                                    {/* History Toolbar */}
+                                    <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800/50 p-1 rounded-lg border border-slate-200 dark:border-slate-700/50">
+                                        <button
+                                            onClick={handleUndo}
+                                            disabled={historyIndex === 0}
+                                            title="Deshacer (Ctrl+Z)"
+                                            className="p-1.5 rounded-md text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-slate-100 hover:shadow-sm disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:shadow-none transition-all active:scale-95 disabled:active:scale-100"
+                                        >
+                                            <Undo2 size={16} />
+                                        </button>
+                                        <button
+                                            onClick={handleRedo}
+                                            disabled={historyIndex === history.length - 1}
+                                            title="Rehacer (Ctrl+Y)"
+                                            className="p-1.5 rounded-md text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-slate-100 hover:shadow-sm disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:shadow-none transition-all active:scale-95 disabled:active:scale-100"
+                                        >
+                                            <Redo2 size={16} />
+                                        </button>
+                                        <div className="w-[1px] h-4 bg-slate-300 dark:bg-slate-600 mx-1"></div>
+                                        <button
+                                            onClick={handleClear}
+                                            disabled={activeChain.segments.length === 0 && completedChains.length === 0}
+                                            title="Limpiar todos los elásticos"
+                                            className="p-1.5 rounded-md text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-700 hover:text-red-600 dark:hover:text-red-400 hover:shadow-sm disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:shadow-none transition-all active:scale-95 disabled:active:scale-100"
+                                        >
+                                            <Trash2 size={16} />
+                                        </button>
+                                    </div>
+                                </div>
 
-                                                <div className="grid grid-cols-2 gap-3">
-                                                    <button
-                                                        onClick={() => confirmElasticConfig('external')}
-                                                        className="
-                                                            flex flex-col items-center justify-center gap-2 p-3
-                                                            rounded-xl border-2 border-slate-100 dark:border-slate-700
-                                                            hover:border-primary/50 hover:bg-primary/5
-                                                            active:scale-95 transition-all
-                                                            group
-                                                        "
-                                                    >
-                                                        <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-colors">
-                                                            <div className="w-4 h-[2px] bg-current rounded-full" />
-                                                        </div>
-                                                        <span className="text-sm font-semibold text-slate-600 dark:text-slate-300 group-hover:text-primary">Externo</span>
-                                                    </button>
+                                <div
+                                    className="
+                                        w-full overflow-x-auto
+                                        bg-slate-50 dark:bg-slate-800/30
+                                        rounded-xl border border-slate-200 dark:border-slate-600
+                                        px-2 py-4 flex flex-col items-center relative
+                                        min-h-[550px] justify-center
+                                    "
+                                >
 
-                                                    <button
-                                                        onClick={() => confirmElasticConfig('internal')}
-                                                        className="
-                                                            flex flex-col items-center justify-center gap-2 p-3
-                                                            rounded-xl border-2 border-slate-100 dark:border-slate-700
-                                                            hover:border-primary/50 hover:bg-primary/5
-                                                            active:scale-95 transition-all
-                                                            group
-                                                        "
-                                                    >
-                                                        <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-colors">
-                                                            <div className="w-4 h-[2px] bg-transparent border-t-2 border-dotted border-current w-4" />
-                                                        </div>
-                                                        <span className="text-sm font-semibold text-slate-600 dark:text-slate-300 group-hover:text-primary">Interno</span>
-                                                    </button>
-                                                </div>
-
-                                                <button
-                                                    onClick={cancelElasticConfig}
-                                                    className="w-full mt-4 text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 underline"
-                                                >
-                                                    Cancelar
-                                                </button>
-                                            </div>
+                                    {isLoading ? (
+                                        <div className="flex flex-col items-center justify-center absolute inset-0 animate-in fade-in duration-300">
+                                            <Loader2 className="w-8 h-8 text-primary animate-spin mb-3" />
+                                            <span className="text-sm font-medium text-slate-500 dark:text-slate-400">
+                                                Cargando odontograma...
+                                            </span>
                                         </div>
-                                    )}
+                                    ) : (
+                                        <>
+                                            {/* SVG Container - Compact ViewBox */}
+                                            <svg
+                                                width="1400"
+                                                height="500"
+                                                viewBox="0 0 1400 500"
+                                                className="max-w-full select-none animate-in fade-in duration-500"
+                                            >
+                                                <rect width="1400" height="500" fill="transparent" />
 
-                                    {/* SVG Container - Compact ViewBox */}
-                                    <svg
-                                        width="1400"
-                                        height="500"
-                                        viewBox="0 0 1400 500"
-                                        className="max-w-full select-none"
-                                    >
-                                        <rect width="1400" height="500" fill="transparent" />
-
-                                        {/* BACKGROUND LAYER: Labels & Grid */}
-                                        <g id="background-layer" className="pointer-events-none select-none">
-                                            {/* Labels */}
-                                            <text x="700" y="-50" textAnchor="middle" className="fill-slate-500 dark:fill-slate-400 text-xl font-bold tracking-[0.2em] uppercase">
-                                                Superior (Maxilar)
-                                            </text>
-                                            <text x="700" y="640" textAnchor="middle" className="fill-slate-500 dark:fill-slate-400 text-xl font-bold tracking-[0.2em] uppercase">
-                                                Inferior (Mandíbula)
-                                            </text>
-                                            <text x="20" y="220" textAnchor="middle" transform="rotate(-90, 20, 220)" className="fill-slate-500 dark:fill-slate-400 text-xl font-bold tracking-[0.2em] uppercase">
-                                                Derecho
-                                            </text>
-                                            <text x="1380" y="220" textAnchor="middle" transform="rotate(90, 1380, 220)" className="fill-slate-500 dark:fill-slate-400 text-xl font-bold tracking-[0.2em] uppercase">
-                                                Izquierdo
-                                            </text>
-
-                                            {/* Midline / Center Lines */}
-                                            <line x1="700" y1="50" x2="700" y2="200" stroke="currentColor" strokeOpacity="0.1" strokeDasharray="4" className="text-slate-400" />
-                                            <line x1="700" y1="230" x2="700" y2="380" stroke="currentColor" strokeOpacity="0.1" strokeDasharray="4" className="text-slate-400" />
-                                        </g>
-
-                                        {/* LAYER 1: Teeth (Base) */}
-                                        <g id="teeth-layer">
-                                            {teethData.map((tooth) => (
-                                                <g key={`tooth-${tooth.id}`} transform={`translate(${tooth.x}, ${tooth.y})`}>
-                                                    {tooth.src ? (
-                                                        <image
-                                                            href={tooth.src}
-                                                            width={tooth.width}
-                                                            height={tooth.height}
-                                                            className="transition-opacity"
-                                                        />
-                                                    ) : (
-                                                        <rect width={tooth.width} height={tooth.height} fill="#ccc" rx="4" />
-                                                    )}
-                                                    <text
-                                                        x={tooth.width / 2}
-                                                        y={tooth.isUpper ? -15 : tooth.height + 25}
-                                                        textAnchor="middle"
-                                                        className="fill-slate-500 text-xl font-sans font-bold"
-                                                    >
-                                                        {tooth.id}
+                                                {/* BACKGROUND LAYER: Labels & Grid */}
+                                                <g id="background-layer" className="pointer-events-none select-none">
+                                                    {/* Labels */}
+                                                    <text x="700" y="-50" textAnchor="middle" className="fill-slate-500 dark:fill-slate-400 text-xl font-bold tracking-[0.2em] uppercase">
+                                                        Superior (Maxilar)
                                                     </text>
+                                                    <text x="700" y="640" textAnchor="middle" className="fill-slate-500 dark:fill-slate-400 text-xl font-bold tracking-[0.2em] uppercase">
+                                                        Inferior (Mandíbula)
+                                                    </text>
+                                                    <text x="20" y="220" textAnchor="middle" transform="rotate(-90, 20, 220)" className="fill-slate-500 dark:fill-slate-400 text-xl font-bold tracking-[0.2em] uppercase">
+                                                        Derecho
+                                                    </text>
+                                                    <text x="1380" y="220" textAnchor="middle" transform="rotate(90, 1380, 220)" className="fill-slate-500 dark:fill-slate-400 text-xl font-bold tracking-[0.2em] uppercase">
+                                                        Izquierdo
+                                                    </text>
+
+                                                    {/* Midline / Center Lines */}
+                                                    <line x1="700" y1="50" x2="700" y2="200" stroke="currentColor" strokeOpacity="0.1" strokeDasharray="4" className="text-slate-400" />
+                                                    <line x1="700" y1="230" x2="700" y2="380" stroke="currentColor" strokeOpacity="0.1" strokeDasharray="4" className="text-slate-400" />
                                                 </g>
-                                            ))}
-                                        </g>
 
-                                        {/* LAYER 2: Elastics (Middle) */}
-                                        <g id="elastic-layer" className="pointer-events-none">
-                                            {completedChains.map((chain, idx) => (
-                                                <g key={`completed-chain-${idx}`}>
-                                                    {renderElasticChain(chain, true)}
-                                                </g>
-                                            ))}
-                                            {/* Render Active Chain */}
-                                            {renderElasticChain(activeChain, false)}
-                                        </g>
-
-                                        {/* LAYER 3: Brackets & Interactivity (Top) */}
-                                        <g id="bracket-layer">
-                                            {teethData.map((tooth) => {
-                                                // Dynamic positioning relative to tooth size
-                                                const bracketYOffset = tooth.isUpper ? (tooth.height * 0.75) : (tooth.height * 0.15);
-                                                const bracketXOffset = (tooth.width - 20) / 2;
-                                                const activeIndex = activeChain.lastPoint === tooth.id || activeChain.startPoint === tooth.id || activeChain.segments.some(s => s.from === tooth.id || s.to === tooth.id);
-                                                const isActive = activeIndex;
-                                                const isOrigin = activeChain.startPoint === tooth.id;
-                                                const isCompleted = completedChains.some(chain => chain.segments.some(s => s.from === tooth.id || s.to === tooth.id));
-
-                                                return (
-                                                    <g key={`bracket-${tooth.id}`} transform={`translate(${tooth.x}, ${tooth.y})`}>
-                                                        <g transform={`translate(${bracketXOffset}, ${bracketYOffset})`} className="cursor-pointer" onClick={() => handleBracketClick(tooth.id)}>
-                                                            <rect x="-6" y="-6" width="32" height="32" fill="transparent" />
-                                                            <image
-                                                                href={bracketImg}
-                                                                width={28}
-                                                                height={28}
-                                                                className={`transition-all duration-200 ${isOrigin ? 'drop-shadow-[0_0_8px_rgba(34,197,94,0.9)] brightness-125 scale-125' : isActive ? 'drop-shadow-[0_0_5px_rgba(59,130,246,0.9)] brightness-125 scale-110' : isCompleted ? 'opacity-100 drop-shadow-sm brightness-90' : 'opacity-80 hover:opacity-100 hover:scale-105'}`}
-                                                            />
+                                                {/* LAYER 1: Teeth (Base) */}
+                                                <g id="teeth-layer">
+                                                    {teethData.map((tooth) => (
+                                                        <g key={`tooth-${tooth.id}`} transform={`translate(${tooth.x}, ${tooth.y})`}>
+                                                            {tooth.src ? (
+                                                                <image
+                                                                    href={tooth.src}
+                                                                    width={tooth.width}
+                                                                    height={tooth.height}
+                                                                    className="transition-opacity"
+                                                                />
+                                                            ) : (
+                                                                <rect width={tooth.width} height={tooth.height} fill="#ccc" rx="4" />
+                                                            )}
+                                                            <text
+                                                                x={tooth.width / 2}
+                                                                y={tooth.isUpper ? -15 : tooth.height + 25}
+                                                                textAnchor="middle"
+                                                                className="fill-slate-500 text-xl font-sans font-bold"
+                                                            >
+                                                                {tooth.id}
+                                                            </text>
                                                         </g>
-                                                    </g>
-                                                );
-                                            })}
-                                        </g>
-                                    </svg>
+                                                    ))}
+                                                </g>
 
-                                    <p className="text-base font-light text-slate-600 dark:text-slate-300 text-center mt-5 max-w-lg">
-                                        Seleccione un bracket para iniciar o gestionar la instrucción de elásticos.
-                                    </p>
+                                                {/* LAYER 2: Elastics (Middle) */}
+                                                <g id="elastic-layer" className="pointer-events-none">
+                                                    {completedChains.map((chain, idx) => (
+                                                        <g key={`completed-chain-${idx}`}>
+                                                            {renderElasticChain(chain, true)}
+                                                        </g>
+                                                    ))}
+                                                    {/* Render Active Chain */}
+                                                    {renderElasticChain(activeChain, false)}
+
+                                                    {/* Render Preview Segment */}
+                                                    {activeChain.lastPoint && previewBracket && activeChain.lastPoint !== previewBracket && (
+                                                        renderElasticChain({
+                                                            typeId: selectedElasticTypeId,
+                                                            segments: [{
+                                                                from: activeChain.lastPoint,
+                                                                to: previewBracket,
+                                                                config: elasticRouting
+                                                            }]
+                                                        }, false, true)
+                                                    )}
+                                                </g>
+
+                                                {/* LAYER 3: Brackets & Interactivity (Top) */}
+                                                <g id="bracket-layer">
+                                                    {teethData.map((tooth) => {
+                                                        // Dynamic positioning relative to tooth size
+                                                        const bracketYOffset = tooth.isUpper ? (tooth.height * 0.75) : (tooth.height * 0.15);
+                                                        const bracketXOffset = (tooth.width - 20) / 2;
+                                                        const activeIndex = activeChain.lastPoint === tooth.id || activeChain.startPoint === tooth.id || activeChain.segments.some(s => s.from === tooth.id || s.to === tooth.id);
+                                                        const isActive = activeIndex;
+                                                        const isOrigin = activeChain.startPoint === tooth.id;
+                                                        const isCompleted = completedChains.some(chain => chain.segments.some(s => s.from === tooth.id || s.to === tooth.id));
+
+                                                        return (
+                                                            <g key={`bracket-${tooth.id}`} transform={`translate(${tooth.x}, ${tooth.y})`}>
+                                                                <g
+                                                                    transform={`translate(${bracketXOffset}, ${bracketYOffset})`}
+                                                                    className="cursor-pointer"
+                                                                    onClick={() => handleBracketClick(tooth.id)}
+                                                                    onContextMenu={(e) => handleRightClickElastic(e, tooth.id)}
+                                                                    onMouseEnter={() => setPreviewBracket(tooth.id)}
+                                                                    onMouseLeave={() => setPreviewBracket(null)}
+                                                                >
+                                                                    <rect x="-6" y="-6" width="32" height="32" fill="transparent" />
+                                                                    <image
+                                                                        href={bracketImg}
+                                                                        width={28}
+                                                                        height={28}
+                                                                        className={`transition-all duration-200 ${isOrigin ? 'drop-shadow-[0_0_8px_rgba(34,197,94,0.9)] brightness-125 scale-125' : isActive ? 'drop-shadow-[0_0_5px_rgba(59,130,246,0.9)] brightness-125 scale-110' : isCompleted ? 'opacity-100 drop-shadow-sm brightness-90' : 'opacity-80 hover:opacity-100 hover:scale-105'}`}
+                                                                    />
+                                                                </g>
+                                                            </g>
+                                                        );
+                                                    })}
+                                                </g>
+                                            </svg>
+
+                                            <p className="text-base font-light text-slate-600 dark:text-slate-300 text-center mt-5 max-w-lg mb-2">
+                                                Seleccione un bracket para iniciar o gestionar la instrucción de elásticos.
+                                            </p>
+                                        </>
+                                    )}
                                 </div>
                             </div>
 
@@ -566,7 +665,7 @@ export default function ElasticsSection() {
                                 <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">
                                     Acción a realizar
                                 </label>
-                                <div className="flex flex-wrap gap-4">
+                                <div className="flex flex-wrap items-center gap-4">
                                     <label className="flex items-center gap-2 cursor-pointer">
                                         <input type="radio" name="actionType" value="bracket" className="w-4 h-4 text-primary focus:ring-primary" />
                                         <span className="text-sm text-slate-700 dark:text-slate-300">Colocar Bracket</span>
@@ -575,10 +674,47 @@ export default function ElasticsSection() {
                                         <input type="radio" name="actionType" value="tad" disabled className="w-4 h-4 text-primary focus:ring-primary" />
                                         <span className="text-sm text-slate-700 dark:text-slate-300">Colocar Microimplant</span>
                                     </label>
-                                    <label className="flex items-center gap-2 cursor-pointer">
+                                    <label className="flex items-center gap-2 cursor-pointer pr-4 border-r border-slate-200 dark:border-slate-700">
                                         <input type="radio" name="actionType" value="elastics" defaultChecked className="w-4 h-4 text-primary focus:ring-primary" />
                                         <span className="text-sm text-slate-700 dark:text-slate-300">Colocar Elásticos</span>
                                     </label>
+
+                                    {/* Configuración de Ruta (Interno/Externo) */}
+                                    <div className="flex items-center gap-3">
+                                        <button
+                                            onClick={() => setElasticRouting('external')}
+                                            className={`
+                                                relative flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-semibold transition-all duration-300
+                                                ${elasticRouting === 'external'
+                                                    ? 'bg-primary text-white shadow-[0_0_12px_rgba(59,130,246,0.6)] scale-[1.02] border-transparent'
+                                                    : 'bg-slate-50 dark:bg-slate-800 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 border border-slate-200 dark:border-slate-700'
+                                                }
+                                            `}
+                                        >
+                                            <div className={`w-4 h-[2px] ${elasticRouting === 'external' ? 'bg-white' : 'bg-slate-400 dark:bg-slate-500'}`} />
+                                            Externo
+                                            {elasticRouting === 'external' && (
+                                                <span className="absolute inset-0 rounded-lg ring-2 ring-primary dark:ring-primary animate-pulse opacity-20 pointer-events-none" />
+                                            )}
+                                        </button>
+
+                                        <button
+                                            onClick={() => setElasticRouting('internal')}
+                                            className={`
+                                                relative flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-semibold transition-all duration-300
+                                                ${elasticRouting === 'internal'
+                                                    ? 'bg-primary text-white shadow-[0_0_12px_rgba(59,130,246,0.6)] scale-[1.02] border-transparent'
+                                                    : 'bg-slate-50 dark:bg-slate-800 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 border border-slate-200 dark:border-slate-700'
+                                                }
+                                            `}
+                                        >
+                                            <div className={`w-4 h-[2px] border-t-2 border-dotted ${elasticRouting === 'internal' ? 'border-white' : 'border-slate-400 dark:border-slate-500'}`} />
+                                            Interno
+                                            {elasticRouting === 'internal' && (
+                                                <span className="absolute inset-0 rounded-lg ring-2 ring-primary dark:ring-primary animate-pulse opacity-20 pointer-events-none" />
+                                            )}
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
 
