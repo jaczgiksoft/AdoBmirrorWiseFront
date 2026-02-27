@@ -1,6 +1,6 @@
 import React from 'react';
 
-const SingleTooth = ({ id, status, onClick, selectedMode, showLabels = true, strokeColor, size, pediatricId, colorScheme = 'blue', paintMode = 'simple' }) => {
+const SingleTooth = ({ id, status, onClick, selectedMode, showLabels = true, strokeColor, size, pediatricId, colorScheme = 'blue', paintMode = 'simple', isCrown = false }) => {
     // Defines safe fallback if status is null/undefined
     // paintMode: 'simple' | 'clinical'
     const safeStatus = status || { extraction: false };
@@ -12,7 +12,7 @@ const SingleTooth = ({ id, status, onClick, selectedMode, showLabels = true, str
     const COLORS = {
         base: "#FFFFFF",
         blue: { selected: "#60a5fa" }, // blue-400
-        emerald: { selected: "#10b981", hover: "#6ee7b7" }, // emerald-500, emerald-300
+        emerald: { selected: "#059669", hover: "#6ee7b7" }, // emerald-600, emerald-300
         neutral: { default: "#FFFFFF", stroke: "#111827", selected: "#3b82f6", hover: "#3b82f6" }, // white, gray-900, blue-500
 
         yellow: {
@@ -24,6 +24,13 @@ const SingleTooth = ({ id, status, onClick, selectedMode, showLabels = true, str
             selected: "#92400e",
             hover: "#b45309"
         },
+
+        sky: {
+            selected: "#79afd1",
+            hover: "#94c9f0"
+        },
+
+
 
         green: {
             selected: "#16a34a",
@@ -38,12 +45,13 @@ const SingleTooth = ({ id, status, onClick, selectedMode, showLabels = true, str
                 ? COLORS.neutral.stroke
                 : (strokeColor || "#1f2937")),
         strokeWidth: 120,
-        className: status?.extraction
+        className: (status?.extraction || isCrown)
             ? "cursor-not-allowed transition-colors"
             : "cursor-pointer transition-colors"
     };
 
     const getColor = (area) => {
+        if (isCrown) return COLORS.yellow.selected;
         if (status?.extraction) return COLORS.base;
         // Clinical Mode (Odontogram)
         if (paintMode === 'clinical') {
@@ -53,13 +61,13 @@ const SingleTooth = ({ id, status, onClick, selectedMode, showLabels = true, str
 
             if (condition) {
                 if (condition === 'caries') return COLORS.brown.selected;
-                if (condition === 'restoration') return COLORS.green.selected;
+                if (condition === 'restoration') return COLORS.sky.selected;
                 if (condition === 'fracture') return COLORS.yellow.selected;
             }
 
             // Hover remains blue
             if (hoveredArea === area && !status?.extraction) {
-                return "#3b82f6";
+                return "#21a750ff";
             }
 
             return COLORS.base;
@@ -95,11 +103,30 @@ const SingleTooth = ({ id, status, onClick, selectedMode, showLabels = true, str
     };
 
     const handleClick = (area) => {
+        if (isCrown) return;
         if (onClick) onClick(id, area);
     };
 
-    const handleMouseEnter = (area) => setHoveredArea(area);
-    const handleMouseLeave = () => setHoveredArea(null);
+    const handleMouseEnter = (area) => {
+        if (isCrown) return;
+        setHoveredArea(area);
+    };
+
+    const handleMouseLeave = () => {
+        if (isCrown) return;
+        setHoveredArea(null);
+    };
+
+    const getAreaTitle = (areaId) => {
+        const titles = {
+            center: 'Central',
+            north: 'Superior',
+            south: 'Inferior',
+            east: 'Derecho',
+            west: 'Izquierdo'
+        };
+        return titles[areaId] || areaId;
+    };
 
     const renderArea = (id, d, cx, cy, r) => (
         <g
@@ -108,6 +135,7 @@ const SingleTooth = ({ id, status, onClick, selectedMode, showLabels = true, str
             onMouseEnter={() => handleMouseEnter(id)}
             onMouseLeave={handleMouseLeave}
         >
+            <title>{getAreaTitle(id)}</title>
             {d ? (
                 <path
                     {...commonProps}

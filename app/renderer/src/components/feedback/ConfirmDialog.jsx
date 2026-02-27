@@ -5,33 +5,41 @@ import { useHotkeys } from "@/hooks/useHotkeys";
 import { useSFX } from "@/hooks/useSFX";
 
 export default function ConfirmDialog({
-                                          open,
-                                          title,
-                                          message,
-                                          onConfirm,
-                                          onCancel,
-                                          confirmLabel = "Sí, salir",
-                                          cancelLabel = "Cancelar",
-                                          confirmVariant = "error",
-                                      }) {
+    open,
+    title,
+    message,
+    onConfirm,
+    onCancel,
+    confirmLabel = "Sí, salir",
+    cancelLabel = "Cancelar",
+    confirmVariant = "error",
+    requiresDoubleConfirm = false,
+    secondTitle,
+    secondMessage,
+    secondConfirmLabel,
+}) {
     const { play } = useSFX();
     const [selected, setSelected] = useState("cancel");
+    const [isSecondStep, setIsSecondStep] = useState(false);
     const cancelRef = useRef(null);
 
     useEffect(() => {
         if (open) {
             setSelected("cancel");
+            setIsSecondStep(false);
             setTimeout(() => cancelRef.current?.focus(), 100);
             play("confirmExit");
         }
     }, [open]);
-    useEffect(() => {
-        if (open) {
+
+    const handleConfirmAction = () => {
+        if (requiresDoubleConfirm && !isSecondStep) {
+            setIsSecondStep(true);
             setSelected("cancel");
-            setTimeout(() => cancelRef.current?.focus(), 100);
-            play("confirmExit");
+        } else {
+            onConfirm();
         }
-    }, [open]);
+    };
 
     // 🎹 Flechas ← →
     useEffect(() => {
@@ -65,7 +73,7 @@ export default function ConfirmDialog({
             if (e.key === "Enter") {
                 e.preventDefault();
                 e.stopPropagation();
-                if (selected === "confirm") onConfirm();
+                if (selected === "confirm") handleConfirmAction();
                 else onCancel();
             }
             if (e.key === "Escape") {
@@ -77,12 +85,16 @@ export default function ConfirmDialog({
 
         document.addEventListener("keydown", handleKeys, true); // capture phase
         return () => document.removeEventListener("keydown", handleKeys, true);
-    }, [open, selected]);
+    }, [open, selected, isSecondStep, requiresDoubleConfirm]);
 
     if (!open) return null;
 
     const confirmBase =
         confirmVariant === "error" ? "btn-primary bg-error" : "btn-primary";
+
+    const displayTitle = isSecondStep ? (secondTitle || "¿Estás completamente seguro?") : title;
+    const displayMessage = isSecondStep ? (secondMessage || "Esta acción es irreversible.") : message;
+    const displayConfirmLabel = isSecondStep ? (secondConfirmLabel || "Sí, confirmar definitivamente") : confirmLabel;
 
     return createPortal(
         <AnimatePresence>
@@ -101,8 +113,8 @@ export default function ConfirmDialog({
                         transition={{ duration: 0.25 }}
                         className="bg-secondary/90 rounded-2xl shadow-hard p-6 w-[320px] border border-white/10 text-center"
                     >
-                        <h2 className="text-lg font-semibold text-primary mb-2">{title}</h2>
-                        <p className="text-slate-300 text-sm mb-6">{message}</p>
+                        <h2 className="text-lg font-semibold text-primary mb-2">{displayTitle}</h2>
+                        <p className="text-slate-300 text-sm mb-6">{displayMessage}</p>
 
                         <div className="flex justify-center gap-3">
                             <button
@@ -112,11 +124,10 @@ export default function ConfirmDialog({
                                     e.stopPropagation();
                                     onCancel();
                                 }}
-                                className={`btn w-1/2 text-sm ${
-                                    selected === "cancel"
+                                className={`btn w-1/2 text-sm ${selected === "cancel"
                                         ? "btn-secondary ring-2 ring-primary btn-selected"
                                         : "btn-secondary opacity-80"
-                                }`}
+                                    }`}
                             >
                                 {cancelLabel}
                             </button>
@@ -125,15 +136,14 @@ export default function ConfirmDialog({
                                 onClick={(e) => {
                                     e.preventDefault();
                                     e.stopPropagation();
-                                    onConfirm();
+                                    handleConfirmAction();
                                 }}
-                                className={`btn w-1/2 text-sm ${confirmBase} ${
-                                    selected === "confirm"
+                                className={`btn w-1/2 text-sm ${confirmBase} ${selected === "confirm"
                                         ? "hover:bg-red-500 ring-2 ring-primary"
                                         : "opacity-90"
-                                }`}
+                                    }`}
                             >
-                                {confirmLabel}
+                                {displayConfirmLabel}
                             </button>
                         </div>
                     </motion.div>

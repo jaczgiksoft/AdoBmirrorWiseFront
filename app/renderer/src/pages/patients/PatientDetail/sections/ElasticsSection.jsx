@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { Layers, Plus, X, Calendar, Clock, Smile } from 'lucide-react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import { Layers, Plus, X, Calendar, Clock, Undo2, Redo2, Trash2 } from 'lucide-react';
 import bracketImg from '@/assets/images/odontogram/bracket.svg';
 
 // 1. Asset Loading (Copied from OdontogramSection)
@@ -77,9 +77,15 @@ export default function ElasticsSection() {
     const [completedChains, setCompletedChains] = useState([]);
     const [selectedElasticTypeId, setSelectedElasticTypeId] = useState(ELASTIC_TYPES[0].id);
 
-    // Config Modal State
-    const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
-    const [pendingLoopSequence, setPendingLoopSequence] = useState(null);
+    // History System for Undo/Redo
+    const [history, setHistory] = useState([{ activeChain: { segments: [], lastPoint: null, startPoint: null }, completedChains: [] }]);
+    const [historyIndex, setHistoryIndex] = useState(0);
+
+    // Routing Configuration State (Replaces Modal)
+    const [elasticRouting, setElasticRouting] = useState('external');
+
+    // Preview state for hovering
+    const [previewBracket, setPreviewBracket] = useState(null);
 
     // Calculate Teeth Coordinates - FLOW LAYOUT
     const teethData = useMemo(() => {
@@ -166,21 +172,21 @@ export default function ElasticsSection() {
     };
 
     // Updated Renderer for Chains of Segments
-    const renderElasticChain = (chain, isCompleted = false) => {
+    const renderElasticChain = (chain, isCompleted = false, isPreview = false) => {
         if (!chain || !chain.segments || chain.segments.length === 0) return null;
 
         const type = ELASTIC_TYPES.find(t => t.id === chain.typeId) || ELASTIC_TYPES.find(t => t.id === selectedElasticTypeId);
         const color = type?.color || "#3b82f6";
         const strokeWidth = type?.strokeWidth || "3";
-        const opacity = isCompleted ? 0.8 : 1;
+        const opacity = isPreview ? 0.4 : (isCompleted ? 0.8 : 1);
 
         return (
             <g>
                 {chain.segments.map((segment, idx) => {
                     const start = getBracketCenter(segment.from);
                     const end = getBracketCenter(segment.to);
-                    // Internal = dashed, External = solid
-                    const strokeDasharray = segment.config === 'internal' ? "6, 8" : "none";
+                    // Internal = dashed, External = solid. Preview is explicitly dashed
+                    const strokeDasharray = isPreview ? "4, 4" : (segment.config === 'internal' ? "6, 8" : "none");
 
                     return (
                         <line
@@ -192,7 +198,7 @@ export default function ElasticsSection() {
                             strokeLinecap="round"
                             strokeDasharray={strokeDasharray}
                             opacity={opacity}
-                            className="transition-all duration-300 drop-shadow-md"
+                            className={`transition-all duration-300 ${isPreview ? 'animate-pulse' : 'drop-shadow-md'}`}
                         />
                     );
                 })}
@@ -200,77 +206,119 @@ export default function ElasticsSection() {
         );
     };
 
-    const handleBracketClick = (id) => {
-        setActiveChain((prev) => {
-            // 1. Start new chain if empty
-            if (prev.segments.length === 0 && !prev.lastPoint) {
-                return {
-                    typeId: selectedElasticTypeId,
-                    segments: [],
-                    lastPoint: id,
-                    startPoint: id
-                };
-            }
-
-            const origin = prev.startPoint;
-            const last = prev.lastPoint;
-
-            // 2. Prevent immediate backtrack/double-click on same bracket
-            if (id === last) {
-                return prev;
-            }
-
-            // 3. Create New Segment (Valid for both intermediate and closing segments)
-            // Trigger Dialog for ALL segments including the one closing the loop
-            setPendingLoopSequence({ from: last, to: id });
-            setIsConfigModalOpen(true);
-
-            // Return prev state as-is, waiting for confirmation
-            return prev;
+    // Helper to log state changes
+    const pushToHistory = (newActiveChain, newCompletedChains) => {
+        setHistory(prev => {
+            const newHistory = prev.slice(0, historyIndex + 1);
+            newHistory.push({ activeChain: newActiveChain, completedChains: newCompletedChains });
+            return newHistory;
         });
+        setHistoryIndex(prev => prev + 1);
     };
 
-    const confirmElasticConfig = (configType) => {
-        if (!pendingLoopSequence) return;
-
-        setActiveChain(prev => {
-            // 1. Create the new segment with chosen config
-            const newSegment = {
-                from: pendingLoopSequence.from,
-                to: pendingLoopSequence.to,
-                config: configType
+    const handleBracketClick = (id, overrideRouting = null) => {
+        // 1. Start new chain if empty
+        if (activeChain.segments.length === 0 && !activeChain.lastPoint) {
+            const newActive = {
+                typeId: selectedElasticTypeId,
+                segments: [],
+                lastPoint: id,
+                startPoint: id
             };
+            setActiveChain(newActive);
+            pushToHistory(newActive, completedChains);
+            return;
+        }
 
-            const updatedChain = {
-                ...prev,
-                lastPoint: pendingLoopSequence.to,
-                segments: [...prev.segments, newSegment]
-            };
+        const last = activeChain.lastPoint;
 
-            // 2. Check if this segment closes the loop
-            // It closes if the 'to' point connects back to the startPoint
-            if (pendingLoopSequence.to === prev.startPoint) {
-                // If it closes, commit to completed chains
-                setCompletedChains(chains => [...chains, updatedChain]);
+        // 2. Prevent immediate backtrack/double-click on same bracket
+        if (id === last) {
+            return;
+        }
 
-                // Reset active chain
-                return { segments: [], lastPoint: null, startPoint: null };
+        // 3. Create New Segment directly using current routing selection
+        const routingToUse = overrideRouting || elasticRouting;
+
+        const newSegment = {
+            from: last,
+            to: id,
+            config: routingToUse
+        };
+
+        const updatedChain = {
+            ...activeChain,
+            lastPoint: id,
+            segments: [...activeChain.segments, newSegment]
+        };
+
+        // 4. Check if this segment closes the loop
+        if (id === activeChain.startPoint) {
+            // If it closes, commit to completed chains
+            const newCompleted = [...completedChains, updatedChain];
+            const newActive = { segments: [], lastPoint: null, startPoint: null };
+            setCompletedChains(newCompleted);
+            setActiveChain(newActive);
+            pushToHistory(newActive, newCompleted);
+        } else {
+            // 5. Otherwise, update active chain
+            setActiveChain(updatedChain);
+            pushToHistory(updatedChain, completedChains);
+        }
+    };
+
+    const handleRightClickElastic = (e, id) => {
+        e.preventDefault();
+        const oppositeRouting = elasticRouting === 'external' ? 'internal' : 'external';
+        handleBracketClick(id, oppositeRouting);
+    };
+
+    const handleUndo = useCallback(() => {
+        if (historyIndex > 0) {
+            const newIndex = historyIndex - 1;
+            setHistoryIndex(newIndex);
+            setActiveChain(history[newIndex].activeChain);
+            setCompletedChains(history[newIndex].completedChains);
+        }
+    }, [history, historyIndex]);
+
+    const handleRedo = useCallback(() => {
+        if (historyIndex < history.length - 1) {
+            const newIndex = historyIndex + 1;
+            setHistoryIndex(newIndex);
+            setActiveChain(history[newIndex].activeChain);
+            setCompletedChains(history[newIndex].completedChains);
+        }
+    }, [history, historyIndex]);
+
+    const handleClear = useCallback(() => {
+        if (activeChain.segments.length > 0 || completedChains.length > 0) {
+            const newActive = { segments: [], lastPoint: null, startPoint: null };
+            const newCompleted = [];
+            setActiveChain(newActive);
+            setCompletedChains(newCompleted);
+            pushToHistory(newActive, newCompleted);
+        }
+    }, [activeChain, completedChains, historyIndex]);
+
+    // Keyboard Shortcuts (CTRL+Z, CTRL+Y)
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+                e.preventDefault();
+                handleUndo();
             }
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
+                e.preventDefault();
+                handleRedo();
+            }
+        };
 
-            // 3. Otherwise, just update active chain
-            return updatedChain;
-        });
-
-        // Cleanup
-        setPendingLoopSequence(null);
-        setIsConfigModalOpen(false);
-    };
-
-    const cancelElasticConfig = () => {
-        setPendingLoopSequence(null);
-        setIsConfigModalOpen(false);
-        // Abort this segment, stay at previous lastPoint
-    };
+        if (isModalOpen) {
+            window.addEventListener('keydown', handleKeyDown);
+        }
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [handleUndo, handleRedo, isModalOpen]);
 
     return (
         <div className="space-y-6 text-slate-800 dark:text-slate-100">
@@ -395,70 +443,50 @@ export default function ElasticsSection() {
 
                             {/* 1. Odontogram Base */}
                             <div className="space-y-3">
-                                <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">
-                                    Odontograma de Elásticos
-                                </label>
+                                <div className="flex items-center justify-between">
+                                    <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                                        Odontograma de Elásticos
+                                    </label>
 
-                                <div className="
-                                    w-full overflow-x-auto
-                                    bg-slate-50 dark:bg-slate-800/30
-                                    rounded-xl border border-slate-200 dark:border-slate-600
-                                    px-2 py-0 flex flex-col items-center relative
-                                ">
-                                    {/* Config Dialog Overlay */}
-                                    {isConfigModalOpen && (
-                                        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/10 backdrop-blur-[2px] rounded-xl">
-                                            <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-600 animate-in zoom-in-95 duration-200 max-w-sm w-full mx-4">
-                                                <h4 className="text-lg font-bold text-slate-800 dark:text-white mb-2 text-center">
-                                                    Configuración de Elástico
-                                                </h4>
-                                                <p className="text-sm text-slate-500 dark:text-slate-400 text-center mb-6">
-                                                    ¿El elástico es interno o externo?
-                                                </p>
+                                    {/* History Toolbar */}
+                                    <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800/50 p-1 rounded-lg border border-slate-200 dark:border-slate-700/50">
+                                        <button
+                                            onClick={handleUndo}
+                                            disabled={historyIndex === 0}
+                                            title="Deshacer (Ctrl+Z)"
+                                            className="p-1.5 rounded-md text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-slate-100 hover:shadow-sm disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:shadow-none transition-all active:scale-95 disabled:active:scale-100"
+                                        >
+                                            <Undo2 size={16} />
+                                        </button>
+                                        <button
+                                            onClick={handleRedo}
+                                            disabled={historyIndex === history.length - 1}
+                                            title="Rehacer (Ctrl+Y)"
+                                            className="p-1.5 rounded-md text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-slate-100 hover:shadow-sm disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:shadow-none transition-all active:scale-95 disabled:active:scale-100"
+                                        >
+                                            <Redo2 size={16} />
+                                        </button>
+                                        <div className="w-[1px] h-4 bg-slate-300 dark:bg-slate-600 mx-1"></div>
+                                        <button
+                                            onClick={handleClear}
+                                            disabled={activeChain.segments.length === 0 && completedChains.length === 0}
+                                            title="Limpiar todos los elásticos"
+                                            className="p-1.5 rounded-md text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-700 hover:text-red-600 dark:hover:text-red-400 hover:shadow-sm disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:shadow-none transition-all active:scale-95 disabled:active:scale-100"
+                                        >
+                                            <Trash2 size={16} />
+                                        </button>
+                                    </div>
+                                </div>
 
-                                                <div className="grid grid-cols-2 gap-3">
-                                                    <button
-                                                        onClick={() => confirmElasticConfig('external')}
-                                                        className="
-                                                            flex flex-col items-center justify-center gap-2 p-3
-                                                            rounded-xl border-2 border-slate-100 dark:border-slate-700
-                                                            hover:border-primary/50 hover:bg-primary/5
-                                                            active:scale-95 transition-all
-                                                            group
-                                                        "
-                                                    >
-                                                        <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-colors">
-                                                            <div className="w-4 h-[2px] bg-current rounded-full" />
-                                                        </div>
-                                                        <span className="text-sm font-semibold text-slate-600 dark:text-slate-300 group-hover:text-primary">Externo</span>
-                                                    </button>
+                                <div
+                                    className="
+                                        w-full overflow-x-auto
+                                        bg-slate-50 dark:bg-slate-800/30
+                                        rounded-xl border border-slate-200 dark:border-slate-600
+                                        px-2 py-0 flex flex-col items-center relative
+                                    "
+                                >
 
-                                                    <button
-                                                        onClick={() => confirmElasticConfig('internal')}
-                                                        className="
-                                                            flex flex-col items-center justify-center gap-2 p-3
-                                                            rounded-xl border-2 border-slate-100 dark:border-slate-700
-                                                            hover:border-primary/50 hover:bg-primary/5
-                                                            active:scale-95 transition-all
-                                                            group
-                                                        "
-                                                    >
-                                                        <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-colors">
-                                                            <div className="w-4 h-[2px] bg-transparent border-t-2 border-dotted border-current w-4" />
-                                                        </div>
-                                                        <span className="text-sm font-semibold text-slate-600 dark:text-slate-300 group-hover:text-primary">Interno</span>
-                                                    </button>
-                                                </div>
-
-                                                <button
-                                                    onClick={cancelElasticConfig}
-                                                    className="w-full mt-4 text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 underline"
-                                                >
-                                                    Cancelar
-                                                </button>
-                                            </div>
-                                        </div>
-                                    )}
 
                                     {/* SVG Container - Compact ViewBox */}
                                     <svg
@@ -525,6 +553,18 @@ export default function ElasticsSection() {
                                             ))}
                                             {/* Render Active Chain */}
                                             {renderElasticChain(activeChain, false)}
+
+                                            {/* Render Preview Segment */}
+                                            {activeChain.lastPoint && previewBracket && activeChain.lastPoint !== previewBracket && (
+                                                renderElasticChain({
+                                                    typeId: selectedElasticTypeId,
+                                                    segments: [{
+                                                        from: activeChain.lastPoint,
+                                                        to: previewBracket,
+                                                        config: elasticRouting
+                                                    }]
+                                                }, false, true)
+                                            )}
                                         </g>
 
                                         {/* LAYER 3: Brackets & Interactivity (Top) */}
@@ -540,7 +580,14 @@ export default function ElasticsSection() {
 
                                                 return (
                                                     <g key={`bracket-${tooth.id}`} transform={`translate(${tooth.x}, ${tooth.y})`}>
-                                                        <g transform={`translate(${bracketXOffset}, ${bracketYOffset})`} className="cursor-pointer" onClick={() => handleBracketClick(tooth.id)}>
+                                                        <g
+                                                            transform={`translate(${bracketXOffset}, ${bracketYOffset})`}
+                                                            className="cursor-pointer"
+                                                            onClick={() => handleBracketClick(tooth.id)}
+                                                            onContextMenu={(e) => handleRightClickElastic(e, tooth.id)}
+                                                            onMouseEnter={() => setPreviewBracket(tooth.id)}
+                                                            onMouseLeave={() => setPreviewBracket(null)}
+                                                        >
                                                             <rect x="-6" y="-6" width="32" height="32" fill="transparent" />
                                                             <image
                                                                 href={bracketImg}
@@ -566,7 +613,7 @@ export default function ElasticsSection() {
                                 <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">
                                     Acción a realizar
                                 </label>
-                                <div className="flex flex-wrap gap-4">
+                                <div className="flex flex-wrap items-center gap-4">
                                     <label className="flex items-center gap-2 cursor-pointer">
                                         <input type="radio" name="actionType" value="bracket" className="w-4 h-4 text-primary focus:ring-primary" />
                                         <span className="text-sm text-slate-700 dark:text-slate-300">Colocar Bracket</span>
@@ -575,10 +622,47 @@ export default function ElasticsSection() {
                                         <input type="radio" name="actionType" value="tad" disabled className="w-4 h-4 text-primary focus:ring-primary" />
                                         <span className="text-sm text-slate-700 dark:text-slate-300">Colocar Microimplant</span>
                                     </label>
-                                    <label className="flex items-center gap-2 cursor-pointer">
+                                    <label className="flex items-center gap-2 cursor-pointer pr-4 border-r border-slate-200 dark:border-slate-700">
                                         <input type="radio" name="actionType" value="elastics" defaultChecked className="w-4 h-4 text-primary focus:ring-primary" />
                                         <span className="text-sm text-slate-700 dark:text-slate-300">Colocar Elásticos</span>
                                     </label>
+
+                                    {/* Configuración de Ruta (Interno/Externo) */}
+                                    <div className="flex items-center gap-3">
+                                        <button
+                                            onClick={() => setElasticRouting('external')}
+                                            className={`
+                                                relative flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-semibold transition-all duration-300
+                                                ${elasticRouting === 'external'
+                                                    ? 'bg-primary text-white shadow-[0_0_12px_rgba(59,130,246,0.6)] scale-[1.02] border-transparent'
+                                                    : 'bg-slate-50 dark:bg-slate-800 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 border border-slate-200 dark:border-slate-700'
+                                                }
+                                            `}
+                                        >
+                                            <div className={`w-4 h-[2px] ${elasticRouting === 'external' ? 'bg-white' : 'bg-slate-400 dark:bg-slate-500'}`} />
+                                            Externo
+                                            {elasticRouting === 'external' && (
+                                                <span className="absolute inset-0 rounded-lg ring-2 ring-primary dark:ring-primary animate-pulse opacity-20 pointer-events-none" />
+                                            )}
+                                        </button>
+
+                                        <button
+                                            onClick={() => setElasticRouting('internal')}
+                                            className={`
+                                                relative flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-semibold transition-all duration-300
+                                                ${elasticRouting === 'internal'
+                                                    ? 'bg-primary text-white shadow-[0_0_12px_rgba(59,130,246,0.6)] scale-[1.02] border-transparent'
+                                                    : 'bg-slate-50 dark:bg-slate-800 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 border border-slate-200 dark:border-slate-700'
+                                                }
+                                            `}
+                                        >
+                                            <div className={`w-4 h-[2px] border-t-2 border-dotted ${elasticRouting === 'internal' ? 'border-white' : 'border-slate-400 dark:border-slate-500'}`} />
+                                            Interno
+                                            {elasticRouting === 'internal' && (
+                                                <span className="absolute inset-0 rounded-lg ring-2 ring-primary dark:ring-primary animate-pulse opacity-20 pointer-events-none" />
+                                            )}
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
 
