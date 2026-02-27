@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { Layers, Plus, X, Calendar, Clock, Undo2, Redo2, Trash2 } from 'lucide-react';
+import { Layers, Plus, X, Calendar, Clock, Undo2, Redo2, Trash2, Loader2 } from 'lucide-react';
 import bracketImg from '@/assets/images/odontogram/bracket.svg';
 
 // 1. Asset Loading (Copied from OdontogramSection)
@@ -67,6 +67,7 @@ const MOCK_INSTRUCTIONS = [
 
 export default function ElasticsSection() {
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
 
     // Sequential Selection State
     // Segment-based State
@@ -146,6 +147,46 @@ export default function ElasticsSection() {
 
         return teeth;
     }, []);
+
+    // Efecto para precargar las imágenes SVG y manejar el estado de carga
+    useEffect(() => {
+        let isMounted = true;
+
+        const preloadImages = async () => {
+            if (!teethData || teethData.length === 0) {
+                if (isMounted) setIsLoading(false);
+                return;
+            }
+
+            try {
+                const imagePromises = teethData
+                    .filter(tooth => tooth.src)
+                    .map(tooth => {
+                        return new Promise((resolve) => {
+                            const img = new Image();
+                            img.src = tooth.src;
+                            img.onload = resolve;
+                            img.onerror = resolve; // Continuar, para no quedar en loading infinito
+                        });
+                    });
+
+                await Promise.all(imagePromises);
+            } catch (error) {
+                console.error("Error al cargar las imágenes de los dientes:", error);
+            } finally {
+                if (isMounted) {
+                    setIsLoading(false);
+                }
+            }
+        };
+
+        setIsLoading(true);
+        preloadImages();
+
+        return () => {
+            isMounted = false;
+        };
+    }, [teethData]);
 
     // Map for fast coordinate lookup
     const toothMap = useMemo(() => {
@@ -483,128 +524,139 @@ export default function ElasticsSection() {
                                         w-full overflow-x-auto
                                         bg-slate-50 dark:bg-slate-800/30
                                         rounded-xl border border-slate-200 dark:border-slate-600
-                                        px-2 py-0 flex flex-col items-center relative
+                                        px-2 py-4 flex flex-col items-center relative
+                                        min-h-[550px] justify-center
                                     "
                                 >
 
+                                    {isLoading ? (
+                                        <div className="flex flex-col items-center justify-center absolute inset-0 animate-in fade-in duration-300">
+                                            <Loader2 className="w-8 h-8 text-primary animate-spin mb-3" />
+                                            <span className="text-sm font-medium text-slate-500 dark:text-slate-400">
+                                                Cargando odontograma...
+                                            </span>
+                                        </div>
+                                    ) : (
+                                        <>
+                                            {/* SVG Container - Compact ViewBox */}
+                                            <svg
+                                                width="1400"
+                                                height="500"
+                                                viewBox="0 0 1400 500"
+                                                className="max-w-full select-none animate-in fade-in duration-500"
+                                            >
+                                                <rect width="1400" height="500" fill="transparent" />
 
-                                    {/* SVG Container - Compact ViewBox */}
-                                    <svg
-                                        width="1400"
-                                        height="500"
-                                        viewBox="0 0 1400 500"
-                                        className="max-w-full select-none"
-                                    >
-                                        <rect width="1400" height="500" fill="transparent" />
-
-                                        {/* BACKGROUND LAYER: Labels & Grid */}
-                                        <g id="background-layer" className="pointer-events-none select-none">
-                                            {/* Labels */}
-                                            <text x="700" y="-50" textAnchor="middle" className="fill-slate-500 dark:fill-slate-400 text-xl font-bold tracking-[0.2em] uppercase">
-                                                Superior (Maxilar)
-                                            </text>
-                                            <text x="700" y="640" textAnchor="middle" className="fill-slate-500 dark:fill-slate-400 text-xl font-bold tracking-[0.2em] uppercase">
-                                                Inferior (Mandíbula)
-                                            </text>
-                                            <text x="20" y="220" textAnchor="middle" transform="rotate(-90, 20, 220)" className="fill-slate-500 dark:fill-slate-400 text-xl font-bold tracking-[0.2em] uppercase">
-                                                Derecho
-                                            </text>
-                                            <text x="1380" y="220" textAnchor="middle" transform="rotate(90, 1380, 220)" className="fill-slate-500 dark:fill-slate-400 text-xl font-bold tracking-[0.2em] uppercase">
-                                                Izquierdo
-                                            </text>
-
-                                            {/* Midline / Center Lines */}
-                                            <line x1="700" y1="50" x2="700" y2="200" stroke="currentColor" strokeOpacity="0.1" strokeDasharray="4" className="text-slate-400" />
-                                            <line x1="700" y1="230" x2="700" y2="380" stroke="currentColor" strokeOpacity="0.1" strokeDasharray="4" className="text-slate-400" />
-                                        </g>
-
-                                        {/* LAYER 1: Teeth (Base) */}
-                                        <g id="teeth-layer">
-                                            {teethData.map((tooth) => (
-                                                <g key={`tooth-${tooth.id}`} transform={`translate(${tooth.x}, ${tooth.y})`}>
-                                                    {tooth.src ? (
-                                                        <image
-                                                            href={tooth.src}
-                                                            width={tooth.width}
-                                                            height={tooth.height}
-                                                            className="transition-opacity"
-                                                        />
-                                                    ) : (
-                                                        <rect width={tooth.width} height={tooth.height} fill="#ccc" rx="4" />
-                                                    )}
-                                                    <text
-                                                        x={tooth.width / 2}
-                                                        y={tooth.isUpper ? -15 : tooth.height + 25}
-                                                        textAnchor="middle"
-                                                        className="fill-slate-500 text-xl font-sans font-bold"
-                                                    >
-                                                        {tooth.id}
+                                                {/* BACKGROUND LAYER: Labels & Grid */}
+                                                <g id="background-layer" className="pointer-events-none select-none">
+                                                    {/* Labels */}
+                                                    <text x="700" y="-50" textAnchor="middle" className="fill-slate-500 dark:fill-slate-400 text-xl font-bold tracking-[0.2em] uppercase">
+                                                        Superior (Maxilar)
                                                     </text>
+                                                    <text x="700" y="640" textAnchor="middle" className="fill-slate-500 dark:fill-slate-400 text-xl font-bold tracking-[0.2em] uppercase">
+                                                        Inferior (Mandíbula)
+                                                    </text>
+                                                    <text x="20" y="220" textAnchor="middle" transform="rotate(-90, 20, 220)" className="fill-slate-500 dark:fill-slate-400 text-xl font-bold tracking-[0.2em] uppercase">
+                                                        Derecho
+                                                    </text>
+                                                    <text x="1380" y="220" textAnchor="middle" transform="rotate(90, 1380, 220)" className="fill-slate-500 dark:fill-slate-400 text-xl font-bold tracking-[0.2em] uppercase">
+                                                        Izquierdo
+                                                    </text>
+
+                                                    {/* Midline / Center Lines */}
+                                                    <line x1="700" y1="50" x2="700" y2="200" stroke="currentColor" strokeOpacity="0.1" strokeDasharray="4" className="text-slate-400" />
+                                                    <line x1="700" y1="230" x2="700" y2="380" stroke="currentColor" strokeOpacity="0.1" strokeDasharray="4" className="text-slate-400" />
                                                 </g>
-                                            ))}
-                                        </g>
 
-                                        {/* LAYER 2: Elastics (Middle) */}
-                                        <g id="elastic-layer" className="pointer-events-none">
-                                            {completedChains.map((chain, idx) => (
-                                                <g key={`completed-chain-${idx}`}>
-                                                    {renderElasticChain(chain, true)}
-                                                </g>
-                                            ))}
-                                            {/* Render Active Chain */}
-                                            {renderElasticChain(activeChain, false)}
-
-                                            {/* Render Preview Segment */}
-                                            {activeChain.lastPoint && previewBracket && activeChain.lastPoint !== previewBracket && (
-                                                renderElasticChain({
-                                                    typeId: selectedElasticTypeId,
-                                                    segments: [{
-                                                        from: activeChain.lastPoint,
-                                                        to: previewBracket,
-                                                        config: elasticRouting
-                                                    }]
-                                                }, false, true)
-                                            )}
-                                        </g>
-
-                                        {/* LAYER 3: Brackets & Interactivity (Top) */}
-                                        <g id="bracket-layer">
-                                            {teethData.map((tooth) => {
-                                                // Dynamic positioning relative to tooth size
-                                                const bracketYOffset = tooth.isUpper ? (tooth.height * 0.75) : (tooth.height * 0.15);
-                                                const bracketXOffset = (tooth.width - 20) / 2;
-                                                const activeIndex = activeChain.lastPoint === tooth.id || activeChain.startPoint === tooth.id || activeChain.segments.some(s => s.from === tooth.id || s.to === tooth.id);
-                                                const isActive = activeIndex;
-                                                const isOrigin = activeChain.startPoint === tooth.id;
-                                                const isCompleted = completedChains.some(chain => chain.segments.some(s => s.from === tooth.id || s.to === tooth.id));
-
-                                                return (
-                                                    <g key={`bracket-${tooth.id}`} transform={`translate(${tooth.x}, ${tooth.y})`}>
-                                                        <g
-                                                            transform={`translate(${bracketXOffset}, ${bracketYOffset})`}
-                                                            className="cursor-pointer"
-                                                            onClick={() => handleBracketClick(tooth.id)}
-                                                            onContextMenu={(e) => handleRightClickElastic(e, tooth.id)}
-                                                            onMouseEnter={() => setPreviewBracket(tooth.id)}
-                                                            onMouseLeave={() => setPreviewBracket(null)}
-                                                        >
-                                                            <rect x="-6" y="-6" width="32" height="32" fill="transparent" />
-                                                            <image
-                                                                href={bracketImg}
-                                                                width={28}
-                                                                height={28}
-                                                                className={`transition-all duration-200 ${isOrigin ? 'drop-shadow-[0_0_8px_rgba(34,197,94,0.9)] brightness-125 scale-125' : isActive ? 'drop-shadow-[0_0_5px_rgba(59,130,246,0.9)] brightness-125 scale-110' : isCompleted ? 'opacity-100 drop-shadow-sm brightness-90' : 'opacity-80 hover:opacity-100 hover:scale-105'}`}
-                                                            />
+                                                {/* LAYER 1: Teeth (Base) */}
+                                                <g id="teeth-layer">
+                                                    {teethData.map((tooth) => (
+                                                        <g key={`tooth-${tooth.id}`} transform={`translate(${tooth.x}, ${tooth.y})`}>
+                                                            {tooth.src ? (
+                                                                <image
+                                                                    href={tooth.src}
+                                                                    width={tooth.width}
+                                                                    height={tooth.height}
+                                                                    className="transition-opacity"
+                                                                />
+                                                            ) : (
+                                                                <rect width={tooth.width} height={tooth.height} fill="#ccc" rx="4" />
+                                                            )}
+                                                            <text
+                                                                x={tooth.width / 2}
+                                                                y={tooth.isUpper ? -15 : tooth.height + 25}
+                                                                textAnchor="middle"
+                                                                className="fill-slate-500 text-xl font-sans font-bold"
+                                                            >
+                                                                {tooth.id}
+                                                            </text>
                                                         </g>
-                                                    </g>
-                                                );
-                                            })}
-                                        </g>
-                                    </svg>
+                                                    ))}
+                                                </g>
 
-                                    <p className="text-base font-light text-slate-600 dark:text-slate-300 text-center mt-5 max-w-lg">
-                                        Seleccione un bracket para iniciar o gestionar la instrucción de elásticos.
-                                    </p>
+                                                {/* LAYER 2: Elastics (Middle) */}
+                                                <g id="elastic-layer" className="pointer-events-none">
+                                                    {completedChains.map((chain, idx) => (
+                                                        <g key={`completed-chain-${idx}`}>
+                                                            {renderElasticChain(chain, true)}
+                                                        </g>
+                                                    ))}
+                                                    {/* Render Active Chain */}
+                                                    {renderElasticChain(activeChain, false)}
+
+                                                    {/* Render Preview Segment */}
+                                                    {activeChain.lastPoint && previewBracket && activeChain.lastPoint !== previewBracket && (
+                                                        renderElasticChain({
+                                                            typeId: selectedElasticTypeId,
+                                                            segments: [{
+                                                                from: activeChain.lastPoint,
+                                                                to: previewBracket,
+                                                                config: elasticRouting
+                                                            }]
+                                                        }, false, true)
+                                                    )}
+                                                </g>
+
+                                                {/* LAYER 3: Brackets & Interactivity (Top) */}
+                                                <g id="bracket-layer">
+                                                    {teethData.map((tooth) => {
+                                                        // Dynamic positioning relative to tooth size
+                                                        const bracketYOffset = tooth.isUpper ? (tooth.height * 0.75) : (tooth.height * 0.15);
+                                                        const bracketXOffset = (tooth.width - 20) / 2;
+                                                        const activeIndex = activeChain.lastPoint === tooth.id || activeChain.startPoint === tooth.id || activeChain.segments.some(s => s.from === tooth.id || s.to === tooth.id);
+                                                        const isActive = activeIndex;
+                                                        const isOrigin = activeChain.startPoint === tooth.id;
+                                                        const isCompleted = completedChains.some(chain => chain.segments.some(s => s.from === tooth.id || s.to === tooth.id));
+
+                                                        return (
+                                                            <g key={`bracket-${tooth.id}`} transform={`translate(${tooth.x}, ${tooth.y})`}>
+                                                                <g
+                                                                    transform={`translate(${bracketXOffset}, ${bracketYOffset})`}
+                                                                    className="cursor-pointer"
+                                                                    onClick={() => handleBracketClick(tooth.id)}
+                                                                    onContextMenu={(e) => handleRightClickElastic(e, tooth.id)}
+                                                                    onMouseEnter={() => setPreviewBracket(tooth.id)}
+                                                                    onMouseLeave={() => setPreviewBracket(null)}
+                                                                >
+                                                                    <rect x="-6" y="-6" width="32" height="32" fill="transparent" />
+                                                                    <image
+                                                                        href={bracketImg}
+                                                                        width={28}
+                                                                        height={28}
+                                                                        className={`transition-all duration-200 ${isOrigin ? 'drop-shadow-[0_0_8px_rgba(34,197,94,0.9)] brightness-125 scale-125' : isActive ? 'drop-shadow-[0_0_5px_rgba(59,130,246,0.9)] brightness-125 scale-110' : isCompleted ? 'opacity-100 drop-shadow-sm brightness-90' : 'opacity-80 hover:opacity-100 hover:scale-105'}`}
+                                                                    />
+                                                                </g>
+                                                            </g>
+                                                        );
+                                                    })}
+                                                </g>
+                                            </svg>
+
+                                            <p className="text-base font-light text-slate-600 dark:text-slate-300 text-center mt-5 max-w-lg mb-2">
+                                                Seleccione un bracket para iniciar o gestionar la instrucción de elásticos.
+                                            </p>
+                                        </>
+                                    )}
                                 </div>
                             </div>
 
