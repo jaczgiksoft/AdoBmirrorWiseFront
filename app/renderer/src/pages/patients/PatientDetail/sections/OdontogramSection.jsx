@@ -323,6 +323,11 @@ function Tooth({ id, type, hasBracket, isBracketMode, onToothClick, onToothRight
     drop-shadow-sm transition-transform
     ${shouldScale ? 'scale-x-95' : ''}
   `}
+                    onLoad={() => {
+                        if (containerRef.current && onResize) {
+                            onResize(id, containerRef.current.offsetWidth);
+                        }
+                    }}
                 />
 
                 {/* Bracket Overlay */}
@@ -467,7 +472,7 @@ const getDynamicOffset = (
     return base;
 };
 
-function ArchRow({ teethIds, toothStates, brackets, tads, isBracketMode, isTadMode, onToothClick, onToothRightClick, onTadClick, currentClinicalAction, onToothResize, toothWidths, baseToothWidths, isUpper }) {
+function ArchRow({ teethIds, toothStates, brackets, tads, isBracketMode, isTadMode, isPeriodontalMode, periodontalUpperY, periodontalLowerY, periodontalUpperThickness, periodontalLowerThickness, onToothClick, onToothRightClick, onTadClick, currentClinicalAction, onToothResize, toothWidths, baseToothWidths, isUpper }) {
     // Generate TAD slots based on teeth list
     // Iterate through pairable teeth (e.g. 18-17, 17-16...)
     // Since teethIds includes both Left and Right, we need to be careful not to create a TAD across the midline (11-21) if not desired.
@@ -556,6 +561,24 @@ function ArchRow({ teethIds, toothStates, brackets, tads, isBracketMode, isTadMo
 
     return (
         <div className={`relative w-full ${isUpper ? 'h-48 flex items-end' : 'h-48 flex items-start'} mb-1`}>
+            {/* Periodontal Visual Band - Single continuous band */}
+            <AnimatePresence>
+                {isPeriodontalMode && (
+                    <motion.div
+                        initial={{ opacity: 0, scaleY: 0 }}
+                        animate={{ opacity: 1, scaleY: 1 }}
+                        exit={{ opacity: 0, scaleY: 0 }}
+                        className={`absolute left-1/2 -translate-x-1/2 bg-red-500/50 rounded-full z-0 blur-[4px] pointer-events-none origin-${isUpper ? 'bottom' : 'top'}`}
+                        style={{
+                            width: '820px',
+                            height: `${isUpper ? periodontalUpperThickness : periodontalLowerThickness}px`,
+                            bottom: isUpper ? `${periodontalUpperY}px` : 'auto',
+                            top: !isUpper ? `${periodontalLowerY}px` : 'auto',
+                        }}
+                    />
+                )}
+            </AnimatePresence>
+
             {/* Render Tooth Slots */}
             {teethIds.map(id => {
                 let xPos = getDynamicOffset(
@@ -778,8 +801,12 @@ function DentalSummary({ toothStates }) {
 }
 
 function ModeCheckbox({ checked, onChange, label, color = 'blue' }) {
-    const isBlue = color === 'blue';
-    const activeColor = isBlue ? 'bg-blue-500 border-blue-500 shadow-blue-500/25' : 'bg-sky-500 border-sky-500 shadow-sky-500/25';
+    const colors = {
+        blue: { active: 'bg-blue-500 border-blue-500 shadow-blue-500/25', bg: 'bg-blue-500' },
+        sky: { active: 'bg-sky-500 border-sky-500 shadow-sky-500/25', bg: 'bg-sky-500' },
+        red: { active: 'bg-red-500 border-red-500 shadow-red-500/25', bg: 'bg-red-500' }
+    };
+    const theme = colors[color] || colors.blue;
 
     return (
         <label className="group flex items-center gap-3 cursor-pointer select-none relative px-3 py-2 rounded-xl transition-all duration-300 hover:bg-slate-50 dark:hover:bg-slate-800/50">
@@ -787,7 +814,7 @@ function ModeCheckbox({ checked, onChange, label, color = 'blue' }) {
             <div className={`
                 w-5 h-5 md:w-6 md:h-6 rounded-[6px] border-[2px] flex items-center justify-center transition-all duration-300 ease-out shadow-sm
                 ${checked
-                    ? `${activeColor} scale-100`
+                    ? `${theme.active} scale-100`
                     : 'bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600 group-hover:border-slate-400 dark:group-hover:border-slate-500'
                 }
             `}>
@@ -798,12 +825,17 @@ function ModeCheckbox({ checked, onChange, label, color = 'blue' }) {
             <span className={`text-sm font-semibold transition-colors duration-200 ${checked ? 'text-slate-800 dark:text-slate-100' : 'text-slate-600 dark:text-slate-400 group-hover:text-slate-800 dark:group-hover:text-slate-300'}`}>
                 {label}
             </span>
-            {checked && (<div className={`absolute inset-0 rounded-xl opacity-10 pointer-events-none ${isBlue ? 'bg-blue-500' : 'bg-sky-500'}`} />)}
+            {checked && (<div className={`absolute inset-0 rounded-xl opacity-10 pointer-events-none ${theme.bg}`} />)}
         </label>
     );
 }
 
-function ActionPanel({ isBracketMode, setBracketMode, isTadMode, setTadMode, onApplyAll, selectedToothType, setSelectedToothType, onReset }) {
+function ActionPanel({
+    isBracketMode, setBracketMode,
+    isTadMode, setTadMode,
+    isPeriodontalMode, setPeriodontalMode,
+    onApplyAll, selectedToothType, setSelectedToothType, onReset
+}) {
     return (
         <div className="bg-white dark:bg-[var(--color-secondary)] p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm mt-6 flex flex-col md:flex-row items-center justify-between gap-4">
             {/* General Actions */}
@@ -813,7 +845,7 @@ function ActionPanel({ isBracketMode, setBracketMode, isTadMode, setTadMode, onA
                 </label>
                 <select
                     className="input input-sm md:input-md w-full md:w-48 border-slate-300 dark:border-slate-600"
-                    disabled={isBracketMode || isTadMode}
+                    disabled={isBracketMode || isTadMode || isPeriodontalMode}
                     value={selectedToothType}
                     onChange={(e) => setSelectedToothType(e.target.value)}
                 >
@@ -824,7 +856,7 @@ function ActionPanel({ isBracketMode, setBracketMode, isTadMode, setTadMode, onA
                 <button
                     type="button"
                     className="btn btn-primary btn-sm md:btn-md shadow-sm"
-                    disabled={isBracketMode || isTadMode}
+                    disabled={isBracketMode || isTadMode || isPeriodontalMode}
                 >
                     Aplicar
                 </button>
@@ -841,9 +873,12 @@ function ActionPanel({ isBracketMode, setBracketMode, isTadMode, setTadMode, onA
                 </button>
             </div>
             <div className="hidden md:block w-px h-8 bg-slate-400 dark:bg-slate-700 mx-1"></div>
-            <div className="flex items-center gap-2 md:gap-4 w-full md:w-auto justify-between md:justify-end flex-wrap md:flex-nowrap">
-                <ModeCheckbox label="Colocar TADs" checked={isTadMode} onChange={(e) => setTadMode(e.target.checked)} color="sky" />
-                <ModeCheckbox label="Colocar Brackets" checked={isBracketMode} onChange={(e) => setBracketMode(e.target.checked)} color="blue" />
+            <div className="flex items-center gap-2 md:gap-4 w-full md:w-auto justify-between md:justify-end flex-wrap md:flex-wrap lg:flex-nowrap">
+                <div className="flex items-center gap-2">
+                    <ModeCheckbox label="Bolsas Periodontales" checked={isPeriodontalMode} onChange={(e) => setPeriodontalMode(e.target.checked)} color="red" />
+                    <ModeCheckbox label="Colocar TADs" checked={isTadMode} onChange={(e) => setTadMode(e.target.checked)} color="sky" />
+                    <ModeCheckbox label="Colocar Brackets" checked={isBracketMode} onChange={(e) => setBracketMode(e.target.checked)} color="blue" />
+                </div>
                 <AnimatePresence>
                     {isBracketMode && (
                         <motion.button
@@ -876,15 +911,38 @@ export default function OdontogramSection() {
     const [tads, setTads] = useState({});
     const [isBracketMode, setIsBracketMode] = useState(false);
     const [isTadMode, setIsTadMode] = useState(false);
+    const [isPeriodontalMode, setIsPeriodontalMode] = useState(false);
+
+    // ⚙️ AJUSTES DE BANDA PERIODONTAL (Configurables por el desarrollador)
+    // Modifica estos valores para cambiar la altura o el grosor de la banda visual roja.
+    const periodontalUpperY = 80; // Altura desde abajo para el maxilar superior
+    const periodontalLowerY = 60; // Altura desde arriba para la mandíbula inferior
+    const periodontalUpperThickness = 105; // Grosor de la banda superior
+    const periodontalLowerThickness = 100; // Grosor de la banda inferior
+
 
     const setBracketMode = (val) => {
         setIsBracketMode(val);
-        if (val) setIsTadMode(false);
+        if (val) {
+            setIsTadMode(false);
+            setIsPeriodontalMode(false);
+        }
     };
 
     const setTadMode = (val) => {
         setIsTadMode(val);
-        if (val) setIsBracketMode(false);
+        if (val) {
+            setIsBracketMode(false);
+            setIsPeriodontalMode(false);
+        }
+    };
+
+    const setPeriodontalMode = (val) => {
+        setIsPeriodontalMode(val);
+        if (val) {
+            setIsBracketMode(false);
+            setIsTadMode(false);
+        }
     };
 
     const [selectedToothType, setSelectedToothType] = useState('original');
@@ -915,13 +973,17 @@ export default function OdontogramSection() {
     }, [toothStates]);
 
     const handleToothRightClick = (id, x, y) => {
-        if (isBracketMode || isTadMode) return;
+        if (isBracketMode || isTadMode || isPeriodontalMode) return;
         setRadialState({ toothId: id, x, y });
     };
 
     const handleToothClick = (id) => {
         if (isBracketMode) {
             setBrackets(prev => ({ ...prev, [id]: !prev[id] }));
+        } else if (isPeriodontalMode) {
+            // Periodontal mode is just visual in this iteration
+        } else if (isTadMode) {
+            // Handled via onTadClick
         } else {
             setToothStates(prev => ({ ...prev, [id]: selectedToothType }));
         }
@@ -972,6 +1034,7 @@ export default function OdontogramSection() {
         // 3. Reset UI Modes
         setIsBracketMode(false);
         setIsTadMode(false);
+        setIsPeriodontalMode(false);
         setSelectedToothType('original');
         setSelectedSurface(null); // Ensure no surface is selected
         // 4. Close Dialog
@@ -987,6 +1050,7 @@ export default function OdontogramSection() {
             <div className={`bg-white dark:bg-[var(--color-secondary)] border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm p-4 flex flex-col items-center relative overflow-hidden transition-colors 
                 ${isBracketMode ? 'ring-2 ring-blue-500/20 border-blue-200 dark:border-blue-900/30' : ''}
                 ${isTadMode ? 'ring-2 ring-sky-500/20 border-sky-200 dark:border-sky-900/30' : ''}
+                ${isPeriodontalMode ? 'ring-2 ring-red-500/20 border-red-200 dark:border-red-900/30' : ''}
             `}>
                 <div className="w-full mb-4 flex items-center justify-between z-10 relative">
                     <div>
@@ -994,6 +1058,7 @@ export default function OdontogramSection() {
                             Odontograma Actual
                             {isBracketMode && <span className="badge badge-sm badge-info gap-1 font-normal">Modo Ortodoncia (Brackets)</span>}
                             {isTadMode && <span className="badge badge-sm badge-info gap-1 font-normal">Modo Ortodoncia (TADs)</span>}
+                            {isPeriodontalMode && <span className="badge badge-sm badge-error gap-1 font-normal">Bolsas Periodontales</span>}
                         </h2>
                         <p className="text-sm text-slate-500 dark:text-slate-400">Vista general del estado dental del paciente.</p>
                     </div>
@@ -1024,6 +1089,11 @@ export default function OdontogramSection() {
                                 tads={tads}
                                 isBracketMode={isBracketMode}
                                 isTadMode={isTadMode}
+                                isPeriodontalMode={isPeriodontalMode}
+                                periodontalUpperY={periodontalUpperY}
+                                periodontalLowerY={periodontalLowerY}
+                                periodontalUpperThickness={periodontalUpperThickness}
+                                periodontalLowerThickness={periodontalLowerThickness}
                                 onToothClick={handleToothClick}
                                 onToothRightClick={handleToothRightClick}
                                 onTadClick={handleTadClick}
@@ -1074,6 +1144,11 @@ export default function OdontogramSection() {
                                 tads={tads}
                                 isBracketMode={isBracketMode}
                                 isTadMode={isTadMode}
+                                isPeriodontalMode={isPeriodontalMode}
+                                periodontalUpperY={periodontalUpperY}
+                                periodontalLowerY={periodontalLowerY}
+                                periodontalUpperThickness={periodontalUpperThickness}
+                                periodontalLowerThickness={periodontalLowerThickness}
                                 onToothClick={handleToothClick}
                                 onToothRightClick={handleToothRightClick}
                                 onTadClick={handleTadClick}
@@ -1108,6 +1183,8 @@ export default function OdontogramSection() {
                 setBracketMode={setBracketMode}
                 isTadMode={isTadMode}
                 setTadMode={setTadMode}
+                isPeriodontalMode={isPeriodontalMode}
+                setPeriodontalMode={setPeriodontalMode}
                 onApplyAll={handleApplyAllBrackets}
                 selectedToothType={selectedToothType}
                 setSelectedToothType={setSelectedToothType}
