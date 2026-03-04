@@ -4,17 +4,54 @@ import bracketImg from '@/assets/images/odontogram/bracket.svg';
 import tadImg from '@/assets/images/odontogram/tad.svg';
 import SingleTooth from '@/components/ExtractionOrders/SingleTooth';
 import ConfirmDialog from '@/components/feedback/ConfirmDialog';
-import RadialMenu from '@/components/odontogram/RadialMenu';
+import { Menu, MenuItem, SubMenu } from '@spaceymonk/react-radial-menu';
 
 // ==========================================
 // 1. Asset Loading & Helpers
 // ==========================================
 
-// Load all tooth SVGs from all subfolders (original, root-canal, etc.)
+// Load all tooth SVGs from all subfolders (original, root-canal, etc.) as image URLs
 const toothImages = import.meta.glob('@/assets/images/odontogram/*/*.svg', {
     eager: true,
     as: 'url'
 });
+
+// Load the raw SVG string for generating dynamic custom SVGs without CSS conflicts
+const toothRawSvgs = import.meta.glob('@/assets/images/odontogram/*/*.svg', {
+    eager: true,
+    query: '?raw',
+    import: 'default'
+});
+
+// Helper to get image src by Tooth ID and Type
+// const getToothSrc = (id, type) => {
+//     // Try to find the specific type first
+//     const specificTypeEntry = Object.entries(toothImages).find(([path]) =>
+//         path.includes(`/odontogram/${type}/tooth-${id}.svg`)
+//     );
+
+//     if (specificTypeEntry) return specificTypeEntry[1];
+
+//     // Fallback to original if not found
+//     const originalEntry = Object.entries(toothImages).find(([path]) =>
+//         path.includes(`/odontogram/original/tooth-${id}.svg`)
+//     );
+
+//     return originalEntry ? originalEntry[1] : null;
+// };
+
+// Helper to get raw SVG strings
+const getToothRaw = (id, type) => {
+    const specificTypeEntry = Object.entries(toothRawSvgs).find(([path]) =>
+        path.includes(`/odontogram/${type}/tooth-${id}.svg`)
+    );
+    if (specificTypeEntry) return specificTypeEntry[1];
+
+    const originalEntry = Object.entries(toothRawSvgs).find(([path]) =>
+        path.includes(`/odontogram/original/tooth-${id}.svg`)
+    );
+    return originalEntry ? originalEntry[1] : null;
+};
 
 // Helper to get image src by Tooth ID and Type
 const getToothSrc = (id, type) => {
@@ -31,6 +68,175 @@ const getToothSrc = (id, type) => {
     );
 
     return originalEntry ? originalEntry[1] : null;
+};
+
+// Encapsulated function to create a Combined SVG data URL containing BOTH implant and crown
+const generateCombinedSvgDataUrl = (id, types = []) => {
+
+    if (!types || types.length === 0) {
+        types = ['implant', 'crown'];
+    }
+
+    try {
+        const parser = new DOMParser();
+        const serializer = new XMLSerializer();
+        const docs = {};
+
+        // Parse all requested SVGs
+        types.forEach(type => {
+            const raw = getToothRaw(id, type);
+            if (raw) {
+                docs[type] = parser.parseFromString(raw, "image/svg+xml");
+            }
+        });
+
+        const baseType = types[0];
+        const baseDoc = docs[baseType];
+        if (!baseDoc) return getToothSrc(id, baseType);
+
+        // 🔥 CLAVE: usar el SVG base real
+        const newSvg = baseDoc.documentElement.cloneNode(true);
+
+        // Buscar el grupo principal
+        const mainGroup = newSvg.querySelector('g');
+        if (!mainGroup) return getToothSrc(id, baseType);
+
+        // Limpiar contenido interno (pero mantener estructura)
+        mainGroup.innerHTML = '';
+
+        // Helper
+        const getEl = (doc, selector) =>
+            doc?.querySelector(selector)?.cloneNode(true);
+
+        const extractCrownElements = (crownDoc) => {
+            const group = crownDoc.querySelector('g[id="crown"], g[id="Crown"]');
+            let elements = [];
+
+            if (group) {
+                elements = Array.from(group.children).filter(el => {
+                    const tagId = (el.getAttribute('id') || '').toLowerCase();
+                    return el.tagName.toLowerCase() !== 'metadata' &&
+                        !tagId.includes('root') &&
+                        !tagId.includes('outline');
+                });
+            }
+
+            if (elements.length === 0) {
+                elements = Array.from(crownDoc.querySelectorAll('*')).filter(el => {
+                    const tagId = (el.getAttribute('id') || '').toLowerCase();
+                    return /^crown[_\d]*$/.test(tagId) &&
+                        el.tagName.toLowerCase() !== 'g' &&
+                        el.tagName.toLowerCase() !== 'metadata';
+                });
+            }
+
+            return elements.map(el => el.cloneNode(true));
+        };
+
+        const hasRootCanal = types.includes('root-canal');
+        const hasCrown = types.includes('crown');
+        const hasFissureRoot = types.includes('fissure-root');
+        const hasFissureFull = types.includes('fissure-full');
+        const hasFissureCrown = types.includes('fissure-crown');
+
+        // =====================================================
+        // crown + fissure-root
+        // root → crown → fil2
+        // =====================================================
+        if (hasCrown && hasFissureRoot) {
+
+            const root = getEl(docs['fissure-root'], '#root');
+            const crownElements = extractCrownElements(docs['crown']);
+            const outline = getEl(docs['fissure-root'], '.fil2') ||
+                getEl(docs['fissure-root'], '#outline');
+
+            root && mainGroup.appendChild(root);
+            crownElements.forEach(el => mainGroup.appendChild(el));
+            outline && mainGroup.appendChild(outline);
+        }
+
+        // =====================================================
+        // crown + fissure-full o fissure-crown
+        // root → crown → outline
+        // =====================================================
+        else if (hasCrown && (hasFissureFull || hasFissureCrown)) {
+
+            const fissureType = hasFissureFull ? 'fissure-full' : 'fissure-crown';
+
+            const root = getEl(docs[fissureType], '#root') || getEl(docs[fissureType], '#Root');
+            const crownElements = extractCrownElements(docs['crown']);
+            const outline = getEl(docs[fissureType], '#outline') || getEl(docs[fissureType], '#Outline') || getEl(docs[fissureType], '.fil2');
+
+            root && mainGroup.appendChild(root);
+            crownElements.forEach(el => mainGroup.appendChild(el));
+            outline && mainGroup.appendChild(outline);
+        }
+
+        // =====================================================
+        // Fallback
+        // =====================================================
+        else {
+            const originalChildren = Array.from(
+                docs[baseType].querySelector('g').children
+            );
+
+            originalChildren.forEach(el => {
+                mainGroup.appendChild(el.cloneNode(true));
+            });
+        }
+
+        let svgString = serializer.serializeToString(newSvg);
+        svgString = svgString.replace(/xmlns:xmlns="[^"]+"/g, '');
+
+        const encoded = encodeURIComponent(svgString)
+            .replace(/'/g, "%27")
+            .replace(/"/g, "%22");
+
+        return `data:image/svg+xml;utf8,${encoded}`;
+
+    } catch (err) {
+        console.error("Error formatting combined SVG:", err);
+        return getToothSrc(id, types[0] || 'implant');
+    }
+};
+
+// Helper to handle combined state toggling
+const getToggledToothState = (currentType, newType) => {
+    // If clicking the same type, toggle back to original
+    if (currentType === newType) return 'original';
+
+    // Exclusive states that immediately override anything else
+    const exclusive = ['extraction', 'missing', 'unerupted', 'deciduous', 'pulpotomy', 'original', 'root-canal'];
+    if (exclusive.includes(newType)) return newType;
+
+    // Convert current state into an array of active types
+    // 'implant-crown' is mapped to ['implant', 'crown'] for backwards compatibility
+    let activeTypes = currentType === 'original' || exclusive.includes(currentType) ? [] :
+        (currentType === 'implant-crown' ? ['implant', 'crown'] : currentType.split('+'));
+
+    // Toggle newType
+    if (activeTypes.includes(newType)) {
+        activeTypes = activeTypes.filter(t => t !== newType);
+    } else {
+        // Enforce mutually exclusive rules within combinations
+        // e.g. you can't have two different types of fissure at once
+        if (newType.startsWith('fissure-')) {
+            activeTypes = activeTypes.filter(t => !t.startsWith('fissure-'));
+        }
+        activeTypes.push(newType);
+    }
+
+    // If we removed everything or ended up with 1 thing
+    if (activeTypes.length === 0) return 'original';
+    if (activeTypes.length === 1) return activeTypes[0];
+
+    // Legacy mapping for implant-crown exact match
+    if (activeTypes.length === 2 && activeTypes.includes('implant') && activeTypes.includes('crown')) {
+        return 'implant-crown';
+    }
+
+    // Join any complex multi-states with a + delimiter
+    return activeTypes.sort().join('+');
 };
 
 // Helper to get display number (Permanent vs Deciduous)
@@ -245,8 +451,12 @@ const buildInitialToothStates = () => {
 // ==========================================
 
 // Individual Tooth Component (Frontal) - Unchanged visuals
-function Tooth({ id, type, hasBracket, isBracketMode, onToothClick, onToothRightClick, currentClinicalAction, onResize }) {
-    const src = getToothSrc(id, type || 'original');
+function Tooth({ id, type, hasBracket, isSelectedBracket, isBracketMode, onToothClick, onToothRightClick, currentClinicalAction, onResize }) {
+    const isImplantCrown = type === 'implant-crown';
+    const activeTypes = isImplantCrown ? ['implant', 'crown'] : (type ? type.split('+') : ['original']);
+    const isCombined = activeTypes.length > 1 || isImplantCrown;
+    const baseType = activeTypes[0] || 'original';
+    const src = !isCombined ? getToothSrc(id, baseType) : null;
     const containerRef = useRef(null);
 
     // Measure width on mount/update
@@ -255,7 +465,7 @@ function Tooth({ id, type, hasBracket, isBracketMode, onToothClick, onToothRight
             const { offsetWidth } = containerRef.current;
             onResize(id, offsetWidth);
         }
-    }, [id, onResize, src]); // Re-measure if src changes (loading different tooth)
+    }, [id, onResize, src, isCombined]); // Re-measure if src changes (loading different tooth)
 
     const shouldScale = TEETH_TO_SCALE.includes(id);
 
@@ -273,7 +483,7 @@ function Tooth({ id, type, hasBracket, isBracketMode, onToothClick, onToothRight
     const isMaxillary = id < 30;
     const bracketPositionClass = isMaxillary ? 'top-[75%]' : 'top-[12%]';
 
-    if (!src) {
+    if (!src && !isCombined) {
         return (
             <div className="w-11 h-16 md:w-14 md:h-20 flex items-center justify-center bg-red-100 text-red-500 text-xs rounded border border-red-200">
                 {id}?
@@ -315,14 +525,10 @@ function Tooth({ id, type, hasBracket, isBracketMode, onToothClick, onToothRight
                     z-10
                 `}>
                 <img
-                    src={src}
-                    alt={`Tooth ${id}`}
+                    src={isCombined ? generateCombinedSvgDataUrl(id, activeTypes) : src}
+                    alt={isCombined ? `Tooth Combined ${id}` : `Tooth ${id}`}
                     draggable={false}
-                    className={`
-    w-full h-full object-contain
-    drop-shadow-sm transition-transform
-    ${shouldScale ? 'scale-x-95' : ''}
-  `}
+                    className={`w-full h-full object-contain drop-shadow-sm transition-transform ${shouldScale ? 'scale-x-95' : ''}`}
                     onLoad={() => {
                         if (containerRef.current && onResize) {
                             onResize(id, containerRef.current.offsetWidth);
@@ -335,14 +541,14 @@ function Tooth({ id, type, hasBracket, isBracketMode, onToothClick, onToothRight
                     {hasBracket && !isInvalidDeciduous && (
                         <motion.div
                             initial={{ opacity: 0, scale: 0.5, y: -5 }}
-                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            animate={{ opacity: 1, scale: isSelectedBracket ? 1.02 : 1, y: 0 }}
                             exit={{ opacity: 0, scale: 0.5 }}
-                            className={`absolute ${bracketPositionClass} left-1/2 -translate-x-1/2 z-20 pointer-events-none`}
+                            className={`absolute ${bracketPositionClass} left-1/2 -translate-x-1/2 z-20 pointer-events-none transition-transform duration-200 ${isSelectedBracket ? 'drop-shadow-[0_0_4px_rgba(59,130,246,0.6)]' : ''}`}
                         >
                             <img
                                 src={bracketImg}
                                 alt="Bracket"
-                                className="w-2.5 h-2.5 md:w-5 md:h-5 object-contain opacity-90 drop-shadow-sm"
+                                className={`w-2.5 h-2.5 md:w-5 md:h-5 object-contain opacity-90 drop-shadow-sm transition-transform duration-200 ${isSelectedBracket ? 'scale-125' : ''}`}
                             />
                         </motion.div>
                     )}
@@ -472,7 +678,7 @@ const getDynamicOffset = (
     return base;
 };
 
-function ArchRow({ teethIds, toothStates, brackets, tads, isBracketMode, isTadMode, isPeriodontalMode, periodontalUpperY, periodontalLowerY, periodontalUpperThickness, periodontalLowerThickness, onToothClick, onToothRightClick, onTadClick, currentClinicalAction, onToothResize, toothWidths, baseToothWidths, isUpper }) {
+function ArchRow({ teethIds, toothStates, brackets, bracketWires, tadWires, selectedBracket, tads, periodontalData, isBracketMode, isTadMode, isPeriodontalMode, periodontalUpperY, periodontalLowerY, periodontalUpperThickness, periodontalLowerThickness, onToothClick, onToothRightClick, onTadClick, currentClinicalAction, onToothResize, toothWidths, baseToothWidths, isUpper }) {
     // Generate TAD slots based on teeth list
     // Iterate through pairable teeth (e.g. 18-17, 17-16...)
     // Since teethIds includes both Left and Right, we need to be careful not to create a TAD across the midline (11-21) if not desired.
@@ -559,8 +765,123 @@ function ArchRow({ teethIds, toothStates, brackets, tads, isBracketMode, isTadMo
         return tadElements;
     };
 
+    const renderWires = () => {
+        const hasSolidWires = bracketWires && Object.keys(bracketWires).length > 0;
+        const hasDashedWires = tadWires && Object.keys(tadWires).length > 0;
+
+        if (!hasSolidWires && !hasDashedWires) return null;
+
+        const solidWiresToRender = [];
+        if (hasSolidWires) {
+            Object.keys(bracketWires).forEach(pairId => {
+                const [t1Str, t2Str] = pairId.split('-');
+                const t1 = parseInt(t1Str, 10);
+                const t2 = parseInt(t2Str, 10);
+
+                if (teethIds.includes(t1) && teethIds.includes(t2)) {
+                    const x1 = getDynamicOffset(t1, toothStates, toothWidths, baseToothWidths);
+                    const x2 = getDynamicOffset(t2, toothStates, toothWidths, baseToothWidths);
+
+                    if (x1 !== undefined && x2 !== undefined) {
+                        solidWiresToRender.push({ pairId, x1, x2 });
+                    }
+                }
+            });
+        }
+
+        const dashedWiresToRender = [];
+        if (hasDashedWires) {
+            Object.keys(tadWires).forEach(connectionId => {
+                const [bracketIdStr, tadIdStr] = connectionId.split('|');
+                const bracketId = parseInt(bracketIdStr, 10);
+
+                // Only render if the bracket is in THIS arch (to avoid massive cross-arch lines originating from the wrong SVG)
+                if (teethIds.includes(bracketId)) {
+                    const [tadT1Str, tadT2Str] = tadIdStr.split('-');
+                    const tadT1 = parseInt(tadT1Str, 10);
+                    const tadT2 = parseInt(tadT2Str, 10);
+
+                    const bracketX = getDynamicOffset(bracketId, toothStates, toothWidths, baseToothWidths);
+
+                    const tadX1 = getDynamicOffset(tadT1, toothStates, toothWidths, baseToothWidths);
+                    const tadX2 = getDynamicOffset(tadT2, toothStates, toothWidths, baseToothWidths);
+
+                    if (bracketX !== undefined && tadX1 !== undefined && tadX2 !== undefined) {
+                        const baseMidX = (tadX1 + tadX2) / 2;
+                        const adjustment = TAD_MICRO_ADJUSTMENTS[tadIdStr] || 0;
+                        const tadX = baseMidX + adjustment;
+
+                        // Default logic: we assume the bracket is in this arch.
+                        // If the TAD is in the opposing arch, the Y coordinate needs to "shoot out" of the SVG to reach it.
+                        const isTadUpper = UPPER_ARCH_IDS.includes(tadT1);
+
+                        dashedWiresToRender.push({ connectionId, bracketX, tadX, isTadUpper });
+                    }
+                }
+            });
+        }
+
+        if (solidWiresToRender.length === 0 && dashedWiresToRender.length === 0) return null;
+
+        return (
+            <svg className="absolute inset-0 z-[15] pointer-events-none w-full h-full overflow-visible">
+                {solidWiresToRender.map(({ pairId, x1, x2 }) => {
+                    const y = isUpper ? 138 : 28;
+                    const cX1 = `calc(50% + ${x1}px)`;
+                    const cX2 = `calc(50% + ${x2}px)`;
+
+                    return (
+                        <line
+                            key={`solid-${pairId}`}
+                            x1={cX1}
+                            y1={y}
+                            x2={cX2}
+                            y2={y}
+                            stroke="#333"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                        />
+                    );
+                })}
+
+                {dashedWiresToRender.map(({ connectionId, bracketX, tadX, isTadUpper }) => {
+                    const bY = isUpper ? 138 : 28;
+
+                    let tY;
+                    if (isUpper && isTadUpper) {           // Upper bracket to Upper TAD
+                        tY = 67;
+                    } else if (!isUpper && !isTadUpper) {  // Lower bracket to Lower TAD
+                        tY = 105;
+                    } else if (isUpper && !isTadUpper) {   // Upper bracket to Lower TAD
+                        tY = 393;
+                    } else {                               // Lower bracket to Upper TAD
+                        tY = -221;
+                    }
+
+                    const cX1 = `calc(50% + ${bracketX}px)`;
+                    const cX2 = `calc(50% + ${tadX}px)`;
+
+                    return (
+                        <line
+                            key={`dashed-${connectionId}`}
+                            x1={cX1}
+                            y1={bY}
+                            x2={cX2}
+                            y2={tY}
+                            stroke="#333"
+                            strokeWidth="2"
+                            strokeDasharray="4,4"
+                            strokeLinecap="round"
+                        />
+                    );
+                })}
+            </svg>
+        );
+    };
+
     return (
         <div className={`relative w-full ${isUpper ? 'h-48 flex items-end' : 'h-48 flex items-start'} mb-1`}>
+            {renderWires()}
             {/* Periodontal Visual Band - Single continuous band */}
             <AnimatePresence>
                 {isPeriodontalMode && (
@@ -600,16 +921,21 @@ function ArchRow({ teethIds, toothStates, brackets, tads, isBracketMode, isTadMo
                             top: isUpper ? 'auto' : 0,
                         }}
                     >
+                        {isPeriodontalMode && periodontalData && periodontalData[id] && (
+                            <PeriodontalOverlay data={periodontalData[id]} isUpper={isUpper} toothId={id} />
+                        )}
                         <Tooth
                             id={id}
                             type={toothStates[id]}
                             hasBracket={!!brackets[id]}
+                            isSelectedBracket={selectedBracket === id}
                             isBracketMode={isBracketMode}
                             onToothClick={isTadMode ? () => { } : onToothClick}
                             onToothRightClick={isTadMode ? undefined : onToothRightClick}
                             currentClinicalAction={currentClinicalAction}
                             onResize={onToothResize}
                         />
+
                     </div>
                 );
             })}
@@ -711,6 +1037,301 @@ function OcclusalArchRow({
 // 5. Support Components (Summary, Actions, Modal)
 // ==========================================
 
+// Periodontal Overlay Component
+function PeriodontalOverlay({ data, isUpper, toothId }) {
+    if (!data || !toothId) return null;
+
+    // Helper to build default config
+    const buildConfig = (sLeft, sRight, stLeft, stRight) => ({
+        shadowVestibularY: isUpper ? 'top-[45%]' : 'bottom-[45%]',
+        shadowLingualY: isUpper ? 'top-[20%]' : 'bottom-[20%]',
+        siteVestibularY: isUpper ? 'bottom-[45%]' : 'bottom-[45%]',
+        siteLingualY: isUpper ? 'bottom-[20%]' : 'bottom-[20%]',
+        shadowLeft: sLeft,
+        shadowRight: sRight,
+        siteLeft: stLeft,
+        siteRight: stRight,
+    });
+
+    const toothPositionConfig = {
+        // --- MAXILAR (SUPERIOR) ---
+        // Cuadrante 1 (18-11)
+        18: buildConfig('left-[22%]', 'right-[22%]', 'left-[12%]', 'right-[12%]'),
+        17: buildConfig('left-[22%]', 'right-[22%]', 'left-[12%]', 'right-[12%]'),
+        16: buildConfig('left-[22%]', 'right-[22%]', 'left-[12%]', 'right-[12%]'),
+        15: buildConfig('left-[20%]', 'right-[20%]', 'left-[-5%]', 'right-[-5%]'),
+        14: buildConfig('left-[20%]', 'right-[20%]', 'left-[-5%]', 'right-[-5%]'),
+        13: buildConfig('left-[15%]', 'right-[15%]', 'left-[-2%]', 'right-[1%]'),
+        12: buildConfig('left-[15%]', 'right-[10%]', 'left-[-11%]', 'right-[-11%]'),
+        11: buildConfig('left-[15%]', 'right-[10%]', 'left-[0%]', 'right-[0%]'),
+
+        // Cuadrante 2 (21-28)
+        21: buildConfig('left-[15%]', 'right-[10%]', 'left-[0%]', 'right-[0%]'),
+        22: buildConfig('left-[15%]', 'right-[10%]', 'left-[-11%]', 'right-[-11%]'),
+        23: buildConfig('left-[15%]', 'right-[15%]', 'left-[-2%]', 'right-[-1%]'),
+        24: buildConfig('left-[20%]', 'right-[20%]', 'left-[-5%]', 'right-[-5%]'),
+        25: buildConfig('left-[20%]', 'right-[20%]', 'left-[-5%]', 'right-[-5%]'),
+        26: buildConfig('left-[22%]', 'right-[22%]', 'left-[12%]', 'right-[12%]'),
+        27: buildConfig('left-[22%]', 'right-[22%]', 'left-[12%]', 'right-[12%]'),
+        28: buildConfig('left-[22%]', 'right-[22%]', 'left-[12%]', 'right-[12%]'),
+
+        // --- MANDÍBULA (INFERIOR) ---
+        // Cuadrante 4 (48-41)
+        48: buildConfig('left-[22%]', 'right-[22%]', 'left-[12%]', 'right-[12%]'),
+        47: buildConfig('left-[22%]', 'right-[22%]', 'left-[12%]', 'right-[12%]'),
+        46: buildConfig('left-[22%]', 'right-[22%]', 'left-[12%]', 'right-[12%]'),
+        45: buildConfig('left-[20%]', 'right-[20%]', 'left-[-5%]', 'right-[-5%]'),
+        44: buildConfig('left-[20%]', 'right-[20%]', 'left-[-2%]', 'right-[-2%]'),
+        43: buildConfig('left-[15%]', 'right-[15%]', 'left-[-2%]', 'right-[-2%]'),
+        42: buildConfig('left-[15%]', 'right-[10%]', 'left-[-9%]', 'right-[-9%]'),
+        41: buildConfig('left-[15%]', 'right-[10%]', 'left-[-8%]', 'right-[-8%]'),
+
+        // Cuadrante 3 (31-38)
+        31: buildConfig('left-[15%]', 'right-[10%]', 'left-[-8%]', 'right-[-8%]'),
+        32: buildConfig('left-[15%]', 'right-[10%]', 'left-[-9%]', 'right-[-9%]'),
+        33: buildConfig('left-[15%]', 'right-[15%]', 'left-[-2%]', 'right-[-2%]'),
+        34: buildConfig('left-[20%]', 'right-[20%]', 'left-[-2%]', 'right-[-2%]'),
+        35: buildConfig('left-[20%]', 'right-[20%]', 'left-[-5%]', 'right-[-5%]'),
+        36: buildConfig('left-[22%]', 'right-[22%]', 'left-[12%]', 'right-[12%]'),
+        37: buildConfig('left-[22%]', 'right-[22%]', 'left-[12%]', 'right-[12%]'),
+        38: buildConfig('left-[22%]', 'right-[22%]', 'left-[12%]', 'right-[12%]'),
+    };
+
+    // Default general molars configs for fallback (like for baby teeth)
+    const config = toothPositionConfig[toothId] || buildConfig('left-[22%]', 'right-[22%]', 'left-[12%]', 'right-[12%]');
+
+
+    const renderSite = (siteData, positionClasses) => {
+        if (!siteData) return null;
+        const { ps, bop } = siteData;
+        const isPathological = ps >= 4;
+        const isSevere = ps >= 7;
+
+        if (!isPathological && !bop) return null;
+
+        return (
+            <div className={`absolute flex flex-col items-center justify-center ${positionClasses} z-40 pointer-events-none`}>
+                {isPathological && (
+                    <span className={`text-[8px] md:text-[8px] font-bold leading-none ${isSevere ? 'text-white bg-red-700' : 'text-red-700 bg-white/90'} rounded px-[1px] py-[1px] shadow-sm`}>
+                        {ps}
+                    </span>
+                )}
+                {bop && (
+                    <div className="w-2 h-2 md:w-2.5 md:h-2.5 bg-red-600 rounded-full mt-0.5 shadow-sm shadow-red-500/50 border border-white" title="Sangrado (BOP)" />
+                )}
+            </div>
+        );
+    };
+
+    const renderShadow = (siteData, positionClasses) => {
+        if (!siteData) return null;
+        const { ps } = siteData;
+        if (ps < 4) return null;
+        const isSevere = ps >= 7;
+        const color = isSevere ? 'bg-indigo-600/50 shadow-[0_0_8px_3px_rgba(79,70,229,0.5)] border border-red-500/50' : 'bg-blue-400/50 shadow-[0_0_6px_2px_rgba(96,165,250,0.5)]';
+        return <div className={`absolute ${positionClasses} w-3.5 h-6 ${color} blur-[1px] rounded-full`} />;
+    };
+
+    return (
+        <div className="absolute inset-x-0 z-30 pointer-events-none flex justify-center w-full" style={{ top: isUpper ? '10%' : '10%', bottom: isUpper ? '20%' : '20%' }}>
+            <div className={`relative w-full h-full max-w-[60px] ${isUpper ? 'rotate-180' : ''}`}>
+                {/* Vestibular Shadows */}
+                {renderShadow(data.MV, `${config.shadowVestibularY} ${config.shadowLeft}`)}
+                {renderShadow(data.V, `${config.shadowVestibularY} left-1/2 -translate-x-1/2`)}
+                {renderShadow(data.DV, `${config.shadowVestibularY} ${config.shadowRight}`)}
+
+                {/* Lingual Shadows */}
+                {renderShadow(data.ML, `${config.shadowLingualY} ${config.shadowLeft}`)}
+                {renderShadow(data.L, `${config.shadowLingualY} left-1/2 -translate-x-1/2`)}
+                {renderShadow(data.DL, `${config.shadowLingualY} ${config.shadowRight}`)}
+
+                {/* Vestibular Values (Rotate back so text is upright) */}
+                <div className={`absolute inset-0 ${isUpper ? 'rotate-180' : ''}`}>
+                    {renderSite(data.MV, `${config.siteVestibularY} ${isUpper ? config.siteRight : config.siteLeft}`)}
+                    {renderSite(data.V, `${config.siteVestibularY} left-1/2 -translate-x-1/2`)}
+                    {renderSite(data.DV, `${config.siteVestibularY} ${isUpper ? config.siteLeft : config.siteRight}`)}
+
+                    {/* Lingual Values */}
+                    {renderSite(data.ML, `${config.siteLingualY} ${isUpper ? config.siteRight : config.siteLeft}`)}
+                    {renderSite(data.L, `${config.siteLingualY} left-1/2 -translate-x-1/2`)}
+                    {renderSite(data.DL, `${config.siteLingualY} ${isUpper ? config.siteLeft : config.siteRight}`)}
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// Periodontal Modal
+function PeriodontalModal({ isOpen, onClose, onSave, toothId, initialData }) {
+    const defaultSite = { ps: '', rg: '', bop: false, cal: '' };
+    const [data, setData] = useState(initialData || {
+        MV: { ...defaultSite },
+        V: { ...defaultSite },
+        DV: { ...defaultSite },
+        ML: { ...defaultSite },
+        L: { ...defaultSite },
+        DL: { ...defaultSite }
+    });
+    const [errorMsg, setErrorMsg] = useState('');
+
+    useEffect(() => {
+        if (isOpen) {
+            setData(initialData || {
+                MV: { ...defaultSite },
+                V: { ...defaultSite },
+                DV: { ...defaultSite },
+                ML: { ...defaultSite },
+                L: { ...defaultSite },
+                DL: { ...defaultSite }
+            });
+        }
+    }, [isOpen, initialData]);
+
+    if (!isOpen || !toothId) return null;
+
+    const handleSiteChange = (site, field, value) => {
+        let finalValue = value;
+        if (field === 'ps' && value !== '') {
+            const numVal = Number(value);
+            if (numVal > 15) {
+                finalValue = '15';
+                setErrorMsg('La Profundidad de Sondaje (PS) máxima permitida es 15 mm.');
+                setTimeout(() => setErrorMsg(''), 3000);
+            } else if (numVal < 0) {
+                finalValue = '0';
+            }
+        }
+
+        setData(prev => {
+            const currentSite = prev[site] || { ...defaultSite };
+            const updatedSite = { ...currentSite, [field]: finalValue };
+
+            // Auto-calculate CAL
+            const psVal = field === 'ps' ? (finalValue === '' ? 0 : Number(finalValue)) : (Number(updatedSite.ps) || 0);
+            const rgVal = field === 'rg' ? (finalValue === '' ? 0 : Number(finalValue)) : (Number(updatedSite.rg) || 0);
+            updatedSite.cal = psVal + rgVal;
+
+            return { ...prev, [site]: updatedSite };
+        });
+    };
+
+    const handleSave = () => {
+        console.log('toothId', toothId, 'data', JSON.stringify(data));
+        const cleanedData = {};
+        for (const site in data) {
+            cleanedData[site] = {
+                ps: data[site].ps === '' ? 0 : Number(data[site].ps),
+                rg: data[site].rg === '' ? 0 : Number(data[site].rg),
+                bop: data[site].bop || false,
+                cal: data[site].cal === '' ? 0 : Number(data[site].cal)
+            };
+        }
+        onSave(toothId, cleanedData);
+        onClose();
+    };
+
+    const renderSiteInputs = (site, label) => (
+        <div className="flex flex-col gap-1 p-3 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-800/50 shadow-sm transition-colors hover:border-blue-300 dark:hover:border-blue-700">
+            <span className="text-xs font-bold text-center text-slate-700 dark:text-slate-300 mb-1">{label}</span>
+            <div className="flex items-center justify-between gap-2">
+                <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 w-6">PS:</label>
+                <input type="number" min="0" max="15" className="input input-xs w-14 text-center border-slate-300 dark:border-slate-600 focus:ring-2 focus:ring-blue-500" value={data[site]?.ps ?? ''} onChange={e => handleSiteChange(site, 'ps', e.target.value)} placeholder="0" />
+            </div>
+
+            <div className="flex items-center justify-between gap-2 mt-2">
+                <label className="text-xs font-semibold text-slate-600 dark:text-slate-300 cursor-pointer flex-1 select-none" onClick={() => handleSiteChange(site, 'bop', !(data[site]?.bop))}>Sangrado (BOP):</label>
+                <input type="checkbox" className="checkbox checkbox-xs checkbox-error rounded-sm border-2" checked={data[site]?.bop || false} onChange={e => handleSiteChange(site, 'bop', e.target.checked)} />
+            </div>
+            <div className="mt-2 pt-2 border-t border-slate-200 dark:border-slate-600 flex justify-between items-center">
+                <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">CAL:</span>
+                <span className={`text-sm font-bold ${(data[site]?.ps || 0) >= 4 ? 'text-red-500' : 'text-slate-700 dark:text-slate-200'}`}>{data[site]?.ps || 0} mm</span>
+            </div>
+        </div>
+    );
+
+    return (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+            <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-3xl w-full p-0 overflow-hidden"
+            >
+                <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-slate-800/80">
+                    <div>
+                        <h3 className="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                            <span className="w-8 h-8 rounded-full bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400 flex items-center justify-center text-sm">
+                                {toothId}
+                            </span>
+                            Registro Periodontal
+                        </h3>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Registra profundidad de sondaje, recesión gingival y sangrado.</p>
+                    </div>
+                    <button onClick={onClose} className="btn btn-sm btn-circle btn-ghost text-slate-500 hover:text-slate-800 dark:hover:text-slate-200">
+                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                    </button>
+                </div>
+
+                <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-8">
+                    {/* Vestibular */}
+                    <div className="space-y-3">
+                        <div className="flex items-center gap-2 mb-4">
+                            <div className="h-px bg-blue-200 dark:bg-blue-800 flex-1"></div>
+                            <h4 className="font-bold text-sm text-blue-700 dark:text-blue-400 uppercase tracking-wider">Vestibular</h4>
+                            <div className="h-px bg-blue-200 dark:bg-blue-800 flex-1"></div>
+                        </div>
+                        <div className="grid grid-cols-3 gap-3">
+                            {renderSiteInputs('MV', 'Mesio')}
+                            {renderSiteInputs('V', 'Medio')}
+                            {renderSiteInputs('DV', 'Disto')}
+                        </div>
+                    </div>
+
+                    {/* Lingual/Palatino */}
+                    <div className="space-y-3">
+                        <div className="flex items-center gap-2 mb-4">
+                            <div className="h-px bg-indigo-200 dark:bg-indigo-800 flex-1"></div>
+                            <h4 className="font-bold text-sm text-indigo-700 dark:text-indigo-400 uppercase tracking-wider">Lingual / Palatino</h4>
+                            <div className="h-px bg-indigo-200 dark:bg-indigo-800 flex-1"></div>
+                        </div>
+                        <div className="grid grid-cols-3 gap-3">
+                            {renderSiteInputs('ML', 'Mesio')}
+                            {renderSiteInputs('L', 'Medio')}
+                            {renderSiteInputs('DL', 'Disto')}
+                        </div>
+                    </div>
+                </div>
+
+                <div className="px-6 py-4 bg-slate-50 dark:bg-slate-800/80 border-t border-slate-200 dark:border-slate-700 flex justify-between items-center gap-3">
+                    <div className="flex-1">
+                        <AnimatePresence>
+                            {errorMsg && (
+                                <motion.div
+                                    initial={{ opacity: 0, x: -10 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    exit={{ opacity: 0, x: -10 }}
+                                    className="text-xs font-semibold text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/30 px-3 py-1.5 rounded flex items-center gap-2"
+                                >
+                                    <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                    </svg>
+                                    {errorMsg}
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                    </div>
+                    <div className="flex gap-3">
+                        <button type="button" onClick={onClose} className="btn btn-ghost border border-slate-300 dark:border-slate-600">Cancelar</button>
+                        <button type="button" onClick={handleSave} className="btn btn-primary bg-blue-600 hover:bg-blue-700 border-none shadow-md shadow-blue-500/30">
+                            Guardar Datos
+                        </button>
+                    </div>
+                </div>
+            </motion.div>
+        </div>
+    );
+}
+
 function ClinicalActionModal({ isOpen, onClose, onSelect }) {
     if (!isOpen) return null;
     return (
@@ -760,7 +1381,11 @@ function ClinicalActionModal({ isOpen, onClose, onSelect }) {
 function DentalSummary({ toothStates }) {
     const [isExpanded, setIsExpanded] = useState(false);
     const stats = DENTAL_TYPES.map(type => {
-        const count = Object.values(toothStates).filter(t => t === type.id).length;
+        const count = Object.values(toothStates).filter(t => {
+            if (t === type.id) return true;
+            if (t === 'implant-crown' && (type.id === 'implant' || type.id === 'crown')) return true;
+            return false;
+        }).length;
         return { ...type, count };
     });
     const visibleStats = isExpanded ? stats : stats.filter(s => s.count > 0);
@@ -908,10 +1533,15 @@ export default function OdontogramSection() {
     const [radialState, setRadialState] = useState(null);
 
     const [brackets, setBrackets] = useState({});
+    const [bracketWires, setBracketWires] = useState({});
+    const [selectedBracket, setSelectedBracket] = useState(null);
     const [tads, setTads] = useState({});
+    const [tadWires, setTadWires] = useState({});
+    const [periodontalData, setPeriodontalData] = useState({});
     const [isBracketMode, setIsBracketMode] = useState(false);
     const [isTadMode, setIsTadMode] = useState(false);
     const [isPeriodontalMode, setIsPeriodontalMode] = useState(false);
+    const [activePeriodontalTooth, setActivePeriodontalTooth] = useState(null);
 
     // ⚙️ AJUSTES DE BANDA PERIODONTAL (Configurables por el desarrollador)
     // Modifica estos valores para cambiar la altura o el grosor de la banda visual roja.
@@ -926,6 +1556,8 @@ export default function OdontogramSection() {
         if (val) {
             setIsTadMode(false);
             setIsPeriodontalMode(false);
+        } else {
+            setSelectedBracket(null);
         }
     };
 
@@ -954,6 +1586,92 @@ export default function OdontogramSection() {
         console.log("[DEBUG] isResetDialogOpen changed:", isResetDialogOpen);
     }, [isResetDialogOpen]);
 
+    // --- HISTORY SYSTEM (UNDO / REDO) ---
+    const [historyState, setHistoryState] = useState(() => ({
+        past: [],
+        present: {
+            toothStates: buildInitialToothStates(),
+            brackets: {},
+            bracketWires: {},
+            tads: {},
+            tadWires: {},
+            surfaceStates: {},
+            periodontalData: {}
+        },
+        future: []
+    }));
+    const isUndoRedoAction = useRef(false);
+
+    useEffect(() => {
+        if (isUndoRedoAction.current) {
+            isUndoRedoAction.current = false;
+            return;
+        }
+        const newState = { toothStates, brackets, bracketWires, tads, tadWires, surfaceStates, periodontalData };
+        setHistoryState(prev => {
+            if (JSON.stringify(prev.present) === JSON.stringify(newState)) return prev;
+            const newPast = [...prev.past, prev.present].slice(-50);
+            return { past: newPast, present: newState, future: [] };
+        });
+    }, [toothStates, brackets, bracketWires, tads, tadWires, surfaceStates, periodontalData]);
+
+    const handleUndo = useCallback(() => {
+        setHistoryState(prev => {
+            if (prev.past.length === 0) return prev;
+            const newPast = [...prev.past];
+            const previousState = newPast.pop();
+
+            isUndoRedoAction.current = true;
+            setToothStates(previousState.toothStates);
+            setBrackets(previousState.brackets);
+            setBracketWires(previousState.bracketWires || {});
+            setTads(previousState.tads);
+            setTadWires(previousState.tadWires || {});
+            setSurfaceStates(previousState.surfaceStates);
+            setPeriodontalData(previousState.periodontalData || {});
+
+            setSelectedBracket(null);
+
+            return { past: newPast, present: previousState, future: [prev.present, ...prev.future] };
+        });
+    }, []);
+
+    const handleRedo = useCallback(() => {
+        setHistoryState(prev => {
+            if (prev.future.length === 0) return prev;
+            const newFuture = [...prev.future];
+            const nextState = newFuture.shift();
+
+            isUndoRedoAction.current = true;
+            setToothStates(nextState.toothStates);
+            setBrackets(nextState.brackets);
+            setBracketWires(nextState.bracketWires || {});
+            setTads(nextState.tads);
+            setTadWires(nextState.tadWires || {});
+            setSurfaceStates(nextState.surfaceStates);
+            setPeriodontalData(nextState.periodontalData || {});
+
+            setSelectedBracket(null);
+
+            return { past: [...prev.past, prev.present], present: nextState, future: newFuture };
+        });
+    }, []);
+
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+                e.preventDefault();
+                handleUndo();
+            } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
+                e.preventDefault();
+                handleRedo();
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [handleUndo, handleRedo]);
+
     // Store measured widths of frontal teeth
     const [toothWidths, setToothWidths] = useState({});
     const [baseToothWidths, setBaseToothWidths] = useState({});
@@ -979,13 +1697,68 @@ export default function OdontogramSection() {
 
     const handleToothClick = (id) => {
         if (isBracketMode) {
-            setBrackets(prev => ({ ...prev, [id]: !prev[id] }));
+            if (!brackets[id]) {
+                setBrackets(prev => ({ ...prev, [id]: true }));
+            } else {
+                if (selectedBracket === id) {
+                    setBrackets(prev => {
+                        const next = { ...prev };
+                        delete next[id];
+                        return next;
+                    });
+                    setSelectedBracket(null);
+                    setBracketWires(prev => {
+                        const next = { ...prev };
+                        Object.keys(next).forEach(key => {
+                            if (key.split('-').includes(String(id))) {
+                                delete next[key];
+                            }
+                        });
+                        return next;
+                    });
+                    setTadWires(prev => {
+                        const next = { ...prev };
+                        Object.keys(next).forEach(key => {
+                            if (key.startsWith(`${id}|`)) {
+                                delete next[key];
+                            }
+                        });
+                        return next;
+                    });
+                } else if (selectedBracket) {
+                    const isSameArch =
+                        (UPPER_ARCH_IDS.includes(id) && UPPER_ARCH_IDS.includes(selectedBracket)) ||
+                        (LOWER_ARCH_IDS.includes(id) && LOWER_ARCH_IDS.includes(selectedBracket));
+
+                    if (isSameArch) {
+                        const pairId = [id, selectedBracket].sort((a, b) => a - b).join('-');
+                        setBracketWires(prev => {
+                            const next = { ...prev };
+                            if (next[pairId]) {
+                                delete next[pairId];
+                            } else {
+                                next[pairId] = true;
+                            }
+                            return next;
+                        });
+                        setSelectedBracket(id);
+                    } else {
+                        setSelectedBracket(id);
+                    }
+                } else {
+                    setSelectedBracket(id);
+                }
+            }
         } else if (isPeriodontalMode) {
-            // Periodontal mode is just visual in this iteration
+            setActivePeriodontalTooth(id);
         } else if (isTadMode) {
             // Handled via onTadClick
         } else {
-            setToothStates(prev => ({ ...prev, [id]: selectedToothType }));
+            setToothStates(prev => {
+                const currentType = prev[id] || 'original';
+                const finalType = getToggledToothState(currentType, selectedToothType);
+                return { ...prev, [id]: finalType };
+            });
         }
     };
 
@@ -1008,7 +1781,23 @@ export default function OdontogramSection() {
 
     const handleTadClick = (t1, t2) => {
         const pairId = [t1, t2].sort((a, b) => a - b).join('-');
-        setTads(prev => ({ ...prev, [pairId]: !prev[pairId] }));
+
+        if (isBracketMode && selectedBracket) {
+            // Only allow if TAD actually exists
+            if (!tads[pairId]) return;
+
+            const connectionId = `${selectedBracket}|${pairId}`;
+            setTadWires(prev => {
+                const next = { ...prev };
+                if (next[connectionId]) delete next[connectionId];
+                else next[connectionId] = true;
+                return next;
+            });
+        } else if (isTadMode) {
+            setTads(prev => ({ ...prev, [pairId]: !prev[pairId] }));
+            // Note: Currently we don't auto-clean tadWires if a TAD is removed, 
+            // but it's safe since they only render if both ends exist.
+        }
     };
 
     const handleApplyAllBrackets = () => {
@@ -1019,7 +1808,37 @@ export default function OdontogramSection() {
         setBrackets(newBrackets);
     };
 
+    const handlePeriodontalSave = (id, data) => {
+        setPeriodontalData(prev => ({ ...prev, [id]: data }));
+    };
 
+
+    // Section for the submenu
+    const third_radial_menu = Math.ceil(DENTAL_TYPES.length / 3);
+
+    const group1_radial_menu = DENTAL_TYPES.slice(0, third_radial_menu);
+    const group2_radial_menu = DENTAL_TYPES.slice(third_radial_menu, third_radial_menu * 2);
+    const group3_radial_menu = DENTAL_TYPES.slice(third_radial_menu * 2);
+
+    const renderMenuItem = (type) => (
+        <MenuItem
+            key={type.id}
+            onItemClick={(e) => {
+                e.stopPropagation();
+                setSelectedToothType(type.id);
+                setRadialState(null);
+            }}
+            data={type.id}
+        >
+            <div className={`w-16 h-16 rounded-full flex items-center justify-center p-2 text-center bg-transparent shadow-none border border-transparent cursor-pointer hover:scale-110 hover:bg-slate-100/10 dark:hover:bg-slate-800/50 transition-transform ${type.color.replace(/bg-[a-z0-9/-]+/g, '').replace(/border-[a-z0-9/-]+/g, '')}`}>
+                <span className="text-[11px] font-bold leading-tight select-none pointer-events-none drop-shadow-md">
+                    {type.label.length > 20
+                        ? type.label.substring(0, 18) + '...'
+                        : type.label}
+                </span>
+            </div>
+        </MenuItem>
+    );
 
     const handleResetOdontogram = () => {
         // 1. Reset Teeth to Initial State (all 'original')
@@ -1027,9 +1846,12 @@ export default function OdontogramSection() {
 
         // 2. Clear all clinical overlays
         setBrackets({});
+        setBracketWires({});
         setTads({});
+        setTadWires({});
         setSurfaceStates({});
         setToothWidths({});
+        setPeriodontalData({});
 
         // 3. Reset UI Modes
         setIsBracketMode(false);
@@ -1052,7 +1874,7 @@ export default function OdontogramSection() {
                 ${isTadMode ? 'ring-2 ring-sky-500/20 border-sky-200 dark:border-sky-900/30' : ''}
                 ${isPeriodontalMode ? 'ring-2 ring-red-500/20 border-red-200 dark:border-red-900/30' : ''}
             `}>
-                <div className="w-full mb-4 flex items-center justify-between z-10 relative">
+                <div className="w-full mb-4 flex items-start justify-between z-10 relative gap-4">
                     <div>
                         <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
                             Odontograma Actual
@@ -1061,6 +1883,41 @@ export default function OdontogramSection() {
                             {isPeriodontalMode && <span className="badge badge-sm badge-error gap-1 font-normal">Bolsas Periodontales</span>}
                         </h2>
                         <p className="text-sm text-slate-500 dark:text-slate-400">Vista general del estado dental del paciente.</p>
+                    </div>
+
+                    {/* --- PANEL DE CONTROL UNDO/REDO --- */}
+                    <div className="flex flex-shrink-0 items-center bg-slate-100 dark:bg-slate-800/50 rounded-lg p-1 border border-slate-200 dark:border-slate-700 shadow-sm">
+                        <button
+                            type="button"
+                            onClick={handleUndo}
+                            disabled={historyState.past.length === 0}
+                            className={`px-3 py-1.5 rounded-md flex items-center gap-1.5 text-xs font-semibold transition-colors ${historyState.past.length === 0
+                                ? 'text-slate-400 dark:text-slate-600 cursor-not-allowed opacity-50'
+                                : 'text-slate-700 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700 hover:shadow-sm'
+                                }`}
+                            title="Deshacer (Ctrl + Z)"
+                        >
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" />
+                            </svg>
+                            Deshacer
+                        </button>
+                        <div className="w-px h-5 bg-slate-300 dark:bg-slate-600 mx-1"></div>
+                        <button
+                            type="button"
+                            onClick={handleRedo}
+                            disabled={historyState.future.length === 0}
+                            className={`px-3 py-1.5 rounded-md flex items-center gap-1.5 text-xs font-semibold transition-colors ${historyState.future.length === 0
+                                ? 'text-slate-400 dark:text-slate-600 cursor-not-allowed opacity-50'
+                                : 'text-slate-700 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700 hover:shadow-sm'
+                                }`}
+                            title="Rehacer (Ctrl + Y)"
+                        >
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M15 15l6-6m0 0l-6-6m6 6H9a6 6 0 000 12h3" />
+                            </svg>
+                            Rehacer
+                        </button>
                     </div>
                 </div>
 
@@ -1086,7 +1943,11 @@ export default function OdontogramSection() {
                                 teethIds={UPPER_ARCH_IDS}
                                 toothStates={toothStates}
                                 brackets={brackets}
+                                bracketWires={bracketWires}
+                                tadWires={tadWires}
+                                selectedBracket={selectedBracket}
                                 tads={tads}
+                                periodontalData={periodontalData}
                                 isBracketMode={isBracketMode}
                                 isTadMode={isTadMode}
                                 isPeriodontalMode={isPeriodontalMode}
@@ -1141,7 +2002,11 @@ export default function OdontogramSection() {
                                 teethIds={LOWER_ARCH_IDS}
                                 toothStates={toothStates}
                                 brackets={brackets}
+                                bracketWires={bracketWires}
+                                tadWires={tadWires}
+                                selectedBracket={selectedBracket}
                                 tads={tads}
+                                periodontalData={periodontalData}
                                 isBracketMode={isBracketMode}
                                 isTadMode={isTadMode}
                                 isPeriodontalMode={isPeriodontalMode}
@@ -1200,6 +2065,14 @@ export default function OdontogramSection() {
                 onSelect={handleClinicalAction}
             />
 
+            <PeriodontalModal
+                isOpen={!!activePeriodontalTooth}
+                onClose={() => setActivePeriodontalTooth(null)}
+                onSave={handlePeriodontalSave}
+                toothId={activePeriodontalTooth}
+                initialData={activePeriodontalTooth ? periodontalData[activePeriodontalTooth] : null}
+            />
+
             {console.log("[DEBUG] ConfirmDialog render check:", isResetDialogOpen)}
             <ConfirmDialog
                 open={isResetDialogOpen}
@@ -1218,20 +2091,63 @@ export default function OdontogramSection() {
 
             <AnimatePresence>
                 {radialState && (
-                    <RadialMenu
-                        x={radialState.x}
-                        y={radialState.y}
-                        options={[
-                            { id: 'crown', label: 'Crown', color: 'bg-amber-500 text-white border-amber-600' },
-                            { id: 'implant', label: 'Implant', color: 'bg-blue-500 text-white border-blue-600' },
-                            { id: 'root-canal', label: 'Endodontics', color: 'bg-pink-500 text-white border-pink-600' },
-                            { id: 'extraction', label: 'Extraction', color: 'bg-slate-700 text-white border-slate-800' }
-                        ]}
-                        onSelect={(option) => {
-                            setToothStates(prev => ({ ...prev, [radialState.toothId]: option.id }));
+                    <motion.div
+                        className="fixed inset-0 z-[9999] bg-black/20 backdrop-blur-sm"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        onClick={() => setRadialState(null)}
+                        onContextMenu={(e) => {
+                            e.preventDefault();
+                            setRadialState(null);
                         }}
-                        onClose={() => setRadialState(null)}
-                    />
+                    >
+                        <div className="menu-wrapper">
+                            <Menu
+                                centerX={radialState.x}
+                                centerY={radialState.y}
+                                innerRadius={70}
+                                outerRadius={160}
+                                show={!!radialState}
+                                animation={["fade", "scale", "rotate"]}
+                                animationTimeout={150}
+                            >
+
+                                {/* Grupo 1 - Directos */}
+                                {group1_radial_menu.map(renderMenuItem)}
+
+                                {/* SubMenu Nivel 1 */}
+                                <SubMenu
+                                    data="group-2"
+                                    displayPosition="center"
+                                    itemView={
+                                        <div className="w-16 h-16 flex items-center justify-center text-center shadow-lg ">
+                                            <span className="text-[11px] font-bold">Más opciones</span>
+                                        </div>
+                                    }
+                                >
+
+                                    {/* Grupo 2 */}
+                                    {group2_radial_menu.map(renderMenuItem)}
+
+                                    {/* SubMenu Nivel 2 */}
+                                    <SubMenu
+                                        data="group-3"
+                                        displayPosition="center"
+                                        itemView={
+                                            <div className="w-16 h-16 flex items-center justify-center text-center shadow-lg">
+                                                <span className="text-[11px] font-bold">Más tratamientos</span>
+                                            </div>
+                                        }
+                                    >
+                                        {group3_radial_menu.map(renderMenuItem)}
+                                    </SubMenu>
+
+                                </SubMenu>
+
+                            </Menu>
+                        </div>
+                    </motion.div>
                 )}
             </AnimatePresence>
         </motion.div>

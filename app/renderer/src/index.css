@@ -331,3 +331,23 @@ input[type="number"]::-webkit-inner-spin-button {
 input[type="number"] {
     -moz-appearance: textfield;
 }
+
+/* ================================
+   REACT RADIAL MENU STYLES
+================================ */
+.menu-wrapper {
+    --__reactRadialMenu__menu-bgColor: #ffffff;
+    --__reactRadialMenu__separator-color: rgb(2, 2, 2, 0.500);
+    --__reactRadialMenu__item-color: #000000;
+    --__reactRadialMenu__activeItem-color: #ffffff;
+    --__reactRadialMenu__activeItem-bgColor: #217cb9;
+    --__reactRadialMenu__arrow-color: #ffffff;
+    --__reactRadialMenu__activeArrow-color: #ffffff;
+}
+
+.dark .menu-wrapper {
+    --__reactRadialMenu__menu-bgColor: var(--color-dark);
+    --__reactRadialMenu__separator-color: rgba(255, 255, 255, 0.500);
+    /* Puedes ajustar los colores para dark mode aquí si lo deseas */
+    --__reactRadialMenu__item-color: #ffffff;
+}
