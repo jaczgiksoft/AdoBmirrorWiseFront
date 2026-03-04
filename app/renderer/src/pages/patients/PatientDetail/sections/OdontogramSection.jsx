@@ -1825,6 +1825,13 @@ export default function OdontogramSection() {
             key={type.id}
             onItemClick={(e) => {
                 e.stopPropagation();
+                if (radialState && radialState.toothId) {
+                    setToothStates(prev => {
+                        const currentType = prev[radialState.toothId] || 'original';
+                        const finalType = getToggledToothState(currentType, type.id);
+                        return { ...prev, [radialState.toothId]: finalType };
+                    });
+                }
                 setSelectedToothType(type.id);
                 setRadialState(null);
             }}
