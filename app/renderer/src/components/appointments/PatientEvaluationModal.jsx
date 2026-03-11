@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-    X, Star, Smile, AlertTriangle, Clock, Timer, XCircle,
-    Sparkles, Droplet, AlertOctagon, Check
+    X, Smile, Meh, Frown, MinusCircle, Check
 } from 'lucide-react';
 
 export function CategorySelector({ title, value, onChange, options }) {
@@ -11,7 +10,7 @@ export function CategorySelector({ title, value, onChange, options }) {
             <h3 className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-3">
                 {title}
             </h3>
-            <div className="grid grid-cols-3 gap-3">
+            <div className={`grid gap-3 ${options.length === 4 ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-3'}`}>
                 {options.map((option) => {
                     const isSelected = value === option.value;
                     const Icon = option.icon;
@@ -20,7 +19,7 @@ export function CategorySelector({ title, value, onChange, options }) {
                             key={option.value}
                             onClick={() => onChange(option.value)}
                             className={`
-                                relative flex flex-col items-center justify-center p-4 rounded-xl border transition-all duration-200
+                                relative flex flex-col items-center justify-center py-2 px-4 rounded-xl border transition-all duration-200
                                 hover:scale-[1.02] active:scale-95
                                 ${isSelected
                                     ? 'border-primary bg-primary/10 text-primary shadow-sm'
@@ -28,7 +27,7 @@ export function CategorySelector({ title, value, onChange, options }) {
                                 }
                             `}
                         >
-                            <Icon size={28} className={isSelected ? "text-primary mb-2" : "text-slate-400 dark:text-slate-500 mb-2"} />
+                            <Icon size={22} className={isSelected ? "text-primary mb-1" : "text-slate-400 dark:text-slate-500 mb-1"} />
                             <span className="text-sm font-semibold">{option.label}</span>
 
                             {isSelected && (
@@ -49,50 +48,51 @@ export function CategorySelector({ title, value, onChange, options }) {
 }
 
 export default function PatientEvaluationModal({ open, onClose, appointment, onSave }) {
-    const [attitude, setAttitude] = useState(null);
-    const [punctuality, setPunctuality] = useState(null);
-    const [hygiene, setHygiene] = useState(null);
+    const [oralHygiene, setOralHygiene] = useState(null);
+    const [applianceCare, setApplianceCare] = useState(null);
+    const [elasticUsage, setElasticUsage] = useState(null);
+    const [treatmentProgress, setTreatmentProgress] = useState(null);
+    const [comments, setComments] = useState("");
 
     // If modal is not open, we still render AnimatePresence to handle exit animation
     if (!appointment) return null;
 
-    const attitudeOptions = [
-        { value: 3, label: 'Excelente', icon: Star },
-        { value: 2, label: 'Normal', icon: Smile },
-        { value: 1, label: 'Difícil', icon: AlertTriangle },
+    const standardOptions = [
+        { value: 3, label: 'Good', icon: Smile },
+        { value: 2, label: 'Regular', icon: Meh },
+        { value: 1, label: 'Bad', icon: Frown }
     ];
 
-    const punctualityOptions = [
-        { value: 3, label: 'Puntual', icon: Clock },
-        { value: 2, label: 'Tolerable', icon: Timer },
-        { value: 1, label: 'Impuntual', icon: XCircle },
+    const extendedOptions = [
+        { value: 3, label: 'Good', icon: Smile },
+        { value: 2, label: 'Regular', icon: Meh },
+        { value: 1, label: 'Bad', icon: Frown },
+        { value: 0, label: 'N/A', icon: MinusCircle }
     ];
 
-    const hygieneOptions = [
-        { value: 3, label: 'Adecuada', icon: Sparkles },
-        { value: 2, label: 'Regular', icon: Droplet },
-        { value: 1, label: 'Deficiente', icon: AlertOctagon },
-    ];
-
-    const canSave = attitude && punctuality && hygiene;
+    const canSave = oralHygiene !== null && applianceCare !== null && elasticUsage !== null && treatmentProgress !== null;
 
     const handleSave = () => {
         if (!canSave) return;
         const evaluation = {
             appointmentId: appointment.id,
             patientId: appointment.patient?.id,
-            attitude,
-            punctuality,
-            hygiene,
+            oralHygiene,
+            applianceCare,
+            elasticUsage,
+            treatmentProgress,
+            comments,
             createdAt: new Date()
         };
         onSave(evaluation);
         onClose();
         // Reset state after animation
         setTimeout(() => {
-            setAttitude(null);
-            setPunctuality(null);
-            setHygiene(null);
+            setOralHygiene(null);
+            setApplianceCare(null);
+            setElasticUsage(null);
+            setTreatmentProgress(null);
+            setComments("");
         }, 300);
     };
 
@@ -143,27 +143,47 @@ export default function PatientEvaluationModal({ open, onClose, appointment, onS
                         </div>
 
                         {/* Body - Selectors */}
-                        <div className="p-6 overflow-y-auto max-h-[60vh] custom-scrollbar">
+                        <div className="py-0 px-6 overflow-y-auto max-h-[60vh] custom-scrollbar">
                             <CategorySelector
-                                title="Actitud"
-                                value={attitude}
-                                onChange={setAttitude}
-                                options={attitudeOptions}
+                                title="Higiene Oral"
+                                value={oralHygiene}
+                                onChange={setOralHygiene}
+                                options={standardOptions}
                             />
 
                             <CategorySelector
-                                title="Puntualidad"
-                                value={punctuality}
-                                onChange={setPunctuality}
-                                options={punctualityOptions}
+                                title="Cuidado de Aparatos"
+                                value={applianceCare}
+                                onChange={setApplianceCare}
+                                options={extendedOptions}
                             />
 
                             <CategorySelector
-                                title="Higiene"
-                                value={hygiene}
-                                onChange={setHygiene}
-                                options={hygieneOptions}
+                                title="Uso de Elásticos"
+                                value={elasticUsage}
+                                onChange={setElasticUsage}
+                                options={extendedOptions}
                             />
+
+                            <CategorySelector
+                                title="Progreso del Tratamiento"
+                                value={treatmentProgress}
+                                onChange={setTreatmentProgress}
+                                options={extendedOptions}
+                            />
+
+                            <div className="mb-6">
+                                <h3 className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-3">
+                                    Comentarios
+                                </h3>
+                                <textarea
+                                    value={comments}
+                                    onChange={(e) => setComments(e.target.value)}
+                                    rows={4}
+                                    placeholder="Comentarios opcionales sobre el paciente o su progreso..."
+                                    className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-3 text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+                                />
+                            </div>
                         </div>
 
                         {/* Footer */}
