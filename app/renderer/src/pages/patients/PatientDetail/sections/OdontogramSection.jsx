@@ -790,7 +790,7 @@ const buildInitialToothStates = () => {
 // ==========================================
 
 // Individual Tooth Component (Frontal) - Unchanged visuals
-function Tooth({ id, type, hasBracket, isSelectedBracket, isBracketMode, onToothClick, onToothRightClick, currentClinicalAction, onResize, hideLabel }) {
+function Tooth({ id, type, hasBracket, isSelectedBracket, isBracketMode, onToothClick, onToothRightClick, currentClinicalAction, onResize, hideLabel, hoveredPreviewType }) {
     const isImplantCrown = type === 'implant-crown';
     const activeTypes = isImplantCrown ? ['implant', 'crown'] : (type ? type.split('+') : ['original']);
     const isCombined = activeTypes.length > 1 || isImplantCrown;
@@ -912,7 +912,7 @@ function Tooth({ id, type, hasBracket, isSelectedBracket, isBracketMode, onTooth
 
                 {/* Bracket Overlay */}
                 <AnimatePresence>
-                    {hasBracket && !isInvalidDeciduous && (
+                    {hasBracket && !isInvalidDeciduous && (!hoveredPreviewType || !INACTIVE_TYPES.includes(hoveredPreviewType)) && (
                         <motion.div
                             initial={{ opacity: 0, scale: 0.5, y: -5 }}
                             animate={{ opacity: 1, scale: isSelectedBracket ? 1.02 : 1, y: 0 }}
@@ -1052,7 +1052,7 @@ const getDynamicOffset = (
     return base;
 };
 
-function ArchRow({ activeRadialTooth, teethIds, toothStates, brackets, bracketWires, tadWires, selectedBracket, tads, periodontalData, isBracketMode, isTadMode, isPeriodontalMode, periodontalUpperY, periodontalLowerY, periodontalUpperThickness, periodontalLowerThickness, onToothClick, onToothRightClick, onTadClick, currentClinicalAction, onToothResize, toothWidths, baseToothWidths, isUpper }) {
+function ArchRow({ activeRadialTooth, teethIds, toothStates, brackets, bracketWires, tadWires, selectedBracket, tads, periodontalData, isBracketMode, isTadMode, isPeriodontalMode, periodontalUpperY, periodontalLowerY, periodontalUpperThickness, periodontalLowerThickness, onToothClick, onToothRightClick, onTadClick, currentClinicalAction, onToothResize, toothWidths, baseToothWidths, isUpper, hoveredPreviewType }) {
     // Generate TAD slots based on teeth list
     // Iterate through pairable teeth (e.g. 18-17, 17-16...)
     // Since teethIds includes both Left and Right, we need to be careful not to create a TAD across the midline (11-21) if not desired.
@@ -1323,6 +1323,7 @@ function ArchRow({ activeRadialTooth, teethIds, toothStates, brackets, bracketWi
                             currentClinicalAction={currentClinicalAction}
                             onResize={onToothResize}
                             hideLabel={activeRadialTooth === id}
+                            hoveredPreviewType={activeRadialTooth === id ? hoveredPreviewType : null}
                         />
 
                     </div>
@@ -2096,8 +2097,45 @@ export default function OdontogramSection() {
         setPendingCombination(null);
     };
 
+    const cleanupBracketsForTooth = useCallback((toothId) => {
+        setBrackets(prev => {
+            if (!prev[toothId]) return prev;
+            const next = { ...prev };
+            delete next[toothId];
+            return next;
+        });
+
+        setSelectedBracket(prev => (prev === toothId ? null : prev));
+
+        setBracketWires(prev => {
+            let changed = false;
+            const next = { ...prev };
+            Object.keys(next).forEach(key => {
+                if (key.split('-').includes(String(toothId))) {
+                    delete next[key];
+                    changed = true;
+                }
+            });
+            return changed ? next : prev;
+        });
+
+        setTadWires(prev => {
+            let changed = false;
+            const next = { ...prev };
+            Object.keys(next).forEach(key => {
+                if (key.startsWith(`${toothId}|`)) {
+                    delete next[key];
+                    changed = true;
+                }
+            });
+            return changed ? next : prev;
+        });
+    }, []);
+
     const handleToothClick = (id) => {
         if (isBracketMode) {
+            if (INACTIVE_TYPES.includes(toothStates[id])) return;
+
             if (!brackets[id]) {
                 setBrackets(prev => ({ ...prev, [id]: true }));
             } else {
@@ -2155,11 +2193,14 @@ export default function OdontogramSection() {
         } else if (isTadMode) {
             // Handled via onTadClick
         } else {
-            setToothStates(prev => {
-                const currentType = prev[id] || 'original';
-                const finalType = getToggledToothState(currentType, selectedToothType);
-                return { ...prev, [id]: finalType };
-            });
+            const currentType = toothStates[id] || 'original';
+            const finalType = getToggledToothState(currentType, selectedToothType);
+
+            setToothStates(prev => ({ ...prev, [id]: finalType }));
+
+            if (INACTIVE_TYPES.includes(finalType)) {
+                cleanupBracketsForTooth(id);
+            }
         }
     };
 
@@ -2204,7 +2245,10 @@ export default function OdontogramSection() {
     const handleApplyAllBrackets = () => {
         const newBrackets = { ...brackets };
         Object.values(QUADRANTS).flat().forEach(id => {
-            if (!newBrackets[id]) newBrackets[id] = true;
+            const state = toothStates[id];
+            if (!INACTIVE_TYPES.includes(state)) {
+                if (!newBrackets[id]) newBrackets[id] = true;
+            }
         });
         setBrackets(newBrackets);
     };
@@ -3105,6 +3149,11 @@ export default function OdontogramSection() {
                             setLevel2Open(true);
                         } else {
                             setToothStates(prev => ({ ...prev, [radialState.toothId]: finalType }));
+
+                            if (INACTIVE_TYPES.includes(finalType)) {
+                                cleanupBracketsForTooth(radialState.toothId);
+                            }
+
                             setSelectedToothType(type.id);
                             setRadialState(null);
                             setLevel2Open(false);
@@ -3220,6 +3269,11 @@ export default function OdontogramSection() {
                     }
 
                     setToothStates(prev => ({ ...prev, [pendingCombination.toothId]: newFinalType }));
+
+                    if (INACTIVE_TYPES.includes(newFinalType)) {
+                        cleanupBracketsForTooth(pendingCombination.toothId);
+                    }
+
                     setSelectedToothType(pendingCombination.newType);
                     setRadialState(null);
                     setLevel2Open(false);
@@ -3425,6 +3479,7 @@ export default function OdontogramSection() {
                                 toothWidths={toothWidths}
                                 baseToothWidths={baseToothWidths}
                                 isUpper={true}
+                                hoveredPreviewType={hoveredPreviewType}
                             />
 
                             {/* ROW 2: OCCLUSAL */}
@@ -3487,6 +3542,7 @@ export default function OdontogramSection() {
                                 toothWidths={toothWidths}
                                 baseToothWidths={baseToothWidths}
                                 isUpper={false}
+                                hoveredPreviewType={hoveredPreviewType}
                             />
                         </div>
 
