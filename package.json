@@ -23,6 +23,7 @@
     "@fullcalendar/react": "^6.1.20",
     "@fullcalendar/resource-timegrid": "^6.1.20",
     "@fullcalendar/timegrid": "^6.1.20",
+    "@spaceymonk/react-radial-menu": "^2.1.0",
     "axios": "^1.12.2",
     "cors": "^2.8.5",
     "cross-env": "^10.1.0",
@@ -55,7 +56,8 @@
     "electron-builder": "^26.0.12",
     "rimraf": "^6.0.1",
     "tailwindcss": "^4.1.14",
-    "vite": "^7.1.10"
+    "vite": "^7.1.10",
+    "vite-plugin-svgr": "^4.5.0"
   },
   "build": {
     "appId": "com.mirai.pos",

@@ -4,17 +4,54 @@ import bracketImg from '@/assets/images/odontogram/bracket.svg';
 import tadImg from '@/assets/images/odontogram/tad.svg';
 import SingleTooth from '@/components/ExtractionOrders/SingleTooth';
 import ConfirmDialog from '@/components/feedback/ConfirmDialog';
-import RadialMenu from '@/components/odontogram/RadialMenu';
+import { Menu, MenuItem, SubMenu } from '@spaceymonk/react-radial-menu';
 
 // ==========================================
 // 1. Asset Loading & Helpers
 // ==========================================
 
-// Load all tooth SVGs from all subfolders (original, root-canal, etc.)
-const toothImages = import.meta.glob('@/assets/images/odontogram/*/*.svg', {
+// Load all tooth SVGs from all subfolders (original, root-canal, etc.) as image URLs
+const toothImages = import.meta.glob('@/assets/images/odontogram/**/*.svg', {
     eager: true,
     as: 'url'
 });
+
+// Load the raw SVG string for generating dynamic custom SVGs without CSS conflicts
+const toothRawSvgs = import.meta.glob('@/assets/images/odontogram/**/*.svg', {
+    eager: true,
+    query: '?raw',
+    import: 'default'
+});
+
+// Helper to get image src by Tooth ID and Type
+// const getToothSrc = (id, type) => {
+//     // Try to find the specific type first
+//     const specificTypeEntry = Object.entries(toothImages).find(([path]) =>
+//         path.includes(`/odontogram/${type}/tooth-${id}.svg`)
+//     );
+
+//     if (specificTypeEntry) return specificTypeEntry[1];
+
+//     // Fallback to original if not found
+//     const originalEntry = Object.entries(toothImages).find(([path]) =>
+//         path.includes(`/odontogram/original/tooth-${id}.svg`)
+//     );
+
+//     return originalEntry ? originalEntry[1] : null;
+// };
+
+// Helper to get raw SVG strings
+const getToothRaw = (id, type) => {
+    const specificTypeEntry = Object.entries(toothRawSvgs).find(([path]) =>
+        path.includes(`/odontogram/${type}/tooth-${id}.svg`)
+    );
+    if (specificTypeEntry) return specificTypeEntry[1];
+
+    const originalEntry = Object.entries(toothRawSvgs).find(([path]) =>
+        path.includes(`/odontogram/original/tooth-${id}.svg`)
+    );
+    return originalEntry ? originalEntry[1] : null;
+};
 
 // Helper to get image src by Tooth ID and Type
 const getToothSrc = (id, type) => {
@@ -31,6 +68,211 @@ const getToothSrc = (id, type) => {
     );
 
     return originalEntry ? originalEntry[1] : null;
+};
+
+const getBaseSvgType = (types) => {
+
+    const priority = [
+        'crown',
+        'root-canal',
+        'fissure-root',
+        'fissure-crown',
+        'fissure-full',
+        'implant'
+    ];
+
+    for (const type of priority) {
+        if (types.includes(type)) {
+            return type;
+        }
+    }
+
+    return types[0];
+};
+
+// Encapsulated function to create a Combined SVG data URL containing BOTH implant and crown
+const generateCombinedSvgDataUrl = (id, types = []) => {
+
+    if (!types || types.length === 0) {
+        types = ['implant', 'crown'];
+    }
+
+    types = [...new Set(types)];
+
+    try {
+        const parser = new DOMParser();
+        const serializer = new XMLSerializer();
+        const docs = {};
+
+        // Parse all requested SVGs
+        types.forEach(type => {
+            const raw = getToothRaw(id, type);
+            if (raw) {
+                docs[type] = parser.parseFromString(raw, "image/svg+xml");
+            }
+        });
+
+        const baseType = getBaseSvgType(types);
+        const baseDoc = docs[baseType];
+        if (!baseDoc) return getToothSrc(id, baseType);
+
+        // 🔥 CLAVE: usar el SVG base real
+        const newSvg = baseDoc.documentElement.cloneNode(true);
+
+        // Buscar el grupo principal
+        const mainGroup = newSvg.querySelector('g');
+        if (!mainGroup) return getToothSrc(id, baseType);
+
+        // Limpiar contenido interno (pero mantener estructura)
+        mainGroup.innerHTML = '';
+
+        // Helper
+        const getEl = (doc, selector) =>
+            doc?.querySelector(selector)?.cloneNode(true);
+
+        const extractCrownElements = (crownDoc) => {
+            const group = crownDoc.querySelector('g[id="crown"], g[id="Crown"]');
+            let elements = [];
+
+            if (group) {
+                elements = Array.from(group.children).filter(el => {
+                    const tagId = (el.getAttribute('id') || '').toLowerCase();
+                    return el.tagName.toLowerCase() !== 'metadata' &&
+                        !tagId.includes('root') &&
+                        !tagId.includes('outline');
+                });
+            }
+
+            if (elements.length === 0) {
+                elements = Array.from(crownDoc.querySelectorAll('*')).filter(el => {
+                    const tagId = (el.getAttribute('id') || '').toLowerCase();
+                    return /^crown[_\d]*$/.test(tagId) &&
+                        el.tagName.toLowerCase() !== 'g' &&
+                        el.tagName.toLowerCase() !== 'metadata';
+                });
+            }
+
+            return elements.map(el => el.cloneNode(true));
+        };
+
+        const hasImplant = types.includes('implant');
+        const hasRootCanal = types.includes('root-canal');
+        const hasCrown = types.includes('crown');
+        const hasFissureRoot = types.includes('fissure-root');
+        const hasFissureFull = types.includes('fissure-full');
+        const hasFissureCrown = types.includes('fissure-crown');
+
+        // =====================================================
+        // DIRECT ASSET LOADING FOR SPECIFIC COMBINATIONS
+        // =====================================================
+        if (hasImplant && hasCrown) {
+            return getToothSrc(id, 'combinations/implant+crown');
+        } else if (hasRootCanal && hasFissureCrown) {
+            return getToothSrc(id, 'combinations/root-canal+fissure-crown');
+        } else if (hasRootCanal && hasCrown) {
+            return getToothSrc(id, 'combinations/root-canal+crown');
+        }
+
+        // =====================================================
+        // CONSTRUCCIÓN DINÁMICA DE SVG
+        // =====================================================
+
+        // 2. crown + fissure-root
+        // root → crown → fil2
+        else if (hasCrown && hasFissureRoot) {
+
+            const root = getEl(docs['fissure-root'], '#root');
+            const crownElements = extractCrownElements(docs['crown']);
+            const outline = getEl(docs['fissure-root'], '.fil2') ||
+                getEl(docs['fissure-root'], '#outline');
+
+            root && mainGroup.appendChild(root);
+            crownElements.forEach(el => mainGroup.appendChild(el));
+            outline && mainGroup.appendChild(outline);
+        }
+
+        // =====================================================
+        // crown + fissure-full o fissure-crown
+        // root → crown → outline
+        // =====================================================
+        else if (hasCrown && (hasFissureFull || hasFissureCrown)) {
+
+            const fissureType = hasFissureFull ? 'fissure-full' : 'fissure-crown';
+
+            const root = getEl(docs[fissureType], '#root') || getEl(docs[fissureType], '#Root');
+            const crownElements = extractCrownElements(docs['crown']);
+            const outline = getEl(docs[fissureType], '#outline') || getEl(docs[fissureType], '#Outline') || getEl(docs[fissureType], '.fil2');
+
+            root && mainGroup.appendChild(root);
+            crownElements.forEach(el => mainGroup.appendChild(el));
+            outline && mainGroup.appendChild(outline);
+        }
+
+        // =====================================================
+        // Fallback
+        // =====================================================
+        else {
+            const originalChildren = Array.from(
+                docs[baseType].querySelector('g').children
+            );
+
+            originalChildren.forEach(el => {
+                mainGroup.appendChild(el.cloneNode(true));
+            });
+        }
+
+        let svgString = serializer.serializeToString(newSvg);
+        svgString = svgString.replace(/xmlns:xmlns="[^"]+"/g, '');
+
+        const encoded = encodeURIComponent(svgString)
+            .replace(/'/g, "%27")
+            .replace(/"/g, "%22");
+
+        return `data:image/svg+xml;utf8,${encoded}`;
+
+    } catch (err) {
+        console.error("Error formatting combined SVG:", err);
+        return getToothSrc(id, types[0] || 'implant');
+    }
+};
+
+// Helper to handle combined state toggling
+const getToggledToothState = (currentType, newType) => {
+    // If clicking the same type, toggle back to original
+    if (currentType === newType) return 'original';
+
+    // Exclusive states that immediately override anything else
+    const exclusive = ['extraction', 'missing', 'unerupted', 'deciduous', 'pulpotomy', 'original'];
+    if (exclusive.includes(newType)) return newType;
+
+    // Convert current state into an array of active types
+    // 'implant-crown' is mapped to ['implant', 'crown'] for backwards compatibility
+    let activeTypes = currentType === 'original' || exclusive.includes(currentType) ? [] :
+        (currentType === 'implant-crown' ? ['implant', 'crown'] : currentType.split('+'));
+
+    // Toggle newType
+    if (activeTypes.includes(newType)) {
+        activeTypes = activeTypes.filter(t => t !== newType);
+    } else {
+        // Enforce mutually exclusive rules within combinations
+        // e.g. you can't have two different types of fissure at once
+        if (newType.startsWith('fissure-')) {
+            activeTypes = activeTypes.filter(t => !t.startsWith('fissure-'));
+        }
+        activeTypes.push(newType);
+    }
+
+    // If we removed everything or ended up with 1 thing
+    if (activeTypes.length === 0) return 'original';
+    if (activeTypes.length === 1) return activeTypes[0];
+
+    // Legacy mapping for implant-crown exact match
+    if (activeTypes.length === 2 && activeTypes.includes('implant') && activeTypes.includes('crown')) {
+        return 'implant-crown';
+    }
+
+    // Join any complex multi-states with a + delimiter
+    return activeTypes.sort().join('+');
 };
 
 // Helper to get display number (Permanent vs Deciduous)
@@ -97,6 +339,309 @@ const DENTAL_TYPES = [
     { id: 'pulpotomy', label: 'Pulpotomía', color: 'text-indigo-700 bg-indigo-50 dark:bg-indigo-900/20 dark:text-indigo-400' },
 ];
 
+const RADIAL_MENU_DEFAULT_SIZES = {
+    level1: { innerRadius: 78, outerRadius: 250 },
+    level2: { innerRadius: 185, outerRadius: 299 }
+};
+
+// Apartado de código para poder indicar qué diente es y pasar los valores para ajustarlos
+// Ejemplo: { 18: { level1: { innerRadius: 90, outerRadius: 260 }, level2: { innerRadius: 195, outerRadius: 310 } } }
+const RADIAL_MENU_CUSTOM_SIZES = {
+    18: {
+        offsetX: -10,
+        offsetY: 7,
+        level1: { innerRadius: 85, outerRadius: 190 },
+        level2: { innerRadius: 195, outerRadius: 290 }
+    },
+    17: {
+        offsetX: -10,
+        offsetY: 7,
+        level1: { innerRadius: 90, outerRadius: 190 },
+        level2: { innerRadius: 195, outerRadius: 290 }
+    },
+    16: {
+        offsetX: -10,
+        offsetY: 3,
+        level1: { innerRadius: 90, outerRadius: 190 },
+        level2: { innerRadius: 195, outerRadius: 290 }
+    },
+    15: {
+        offsetX: -10,
+        offsetY: -1,
+        typeOffsets: {
+            'pulpotomy': { offsetX: 10, offsetY: -15 },
+            'deciduous': { offsetX: 10, offsetY: -15 },
+        },
+        level1: { innerRadius: 100, outerRadius: 190 },
+        level2: { innerRadius: 195, outerRadius: 290 }
+    },
+    14: {
+        offsetX: -11,
+        offsetY: -3,
+        typeOffsets: {
+            'pulpotomy': { offsetX: 10, offsetY: -15 },
+            'deciduous': { offsetX: 10, offsetY: -15 },
+        },
+        level1: { innerRadius: 100, outerRadius: 190 },
+        level2: { innerRadius: 195, outerRadius: 290 }
+    },
+    13: {
+        offsetX: -11,
+        offsetY: -12,
+        typeOffsets: {
+            'pulpotomy': { offsetX: 0, offsetY: -20 },
+            'deciduous': { offsetX: 0, offsetY: -20 },
+        },
+        level1: { innerRadius: 110, outerRadius: 190 },
+        level2: { innerRadius: 195, outerRadius: 290 }
+    },
+    12: {
+        offsetX: -11,
+        offsetY: -2,
+        typeOffsets: {
+            'pulpotomy': { offsetX: 0, offsetY: -30 },
+            'deciduous': { offsetX: 0, offsetY: -30 },
+        },
+        level1: { innerRadius: 95, outerRadius: 190 },
+        level2: { innerRadius: 195, outerRadius: 290 }
+    },
+    11: {
+        offsetX: -11,
+        offsetY: -6,
+        typeOffsets: {
+            'pulpotomy': { offsetX: 0, offsetY: -20 },
+            'deciduous': { offsetX: 0, offsetY: -20 },
+        },
+        level1: { innerRadius: 107, outerRadius: 190 },
+        level2: { innerRadius: 195, outerRadius: 290 }
+    },
+    // 21 al 28
+    28: {
+        offsetX: -10,
+        offsetY: 7,
+        level1: { innerRadius: 85, outerRadius: 190 },
+        level2: { innerRadius: 195, outerRadius: 290 }
+    },
+    27: {
+        offsetX: -10,
+        offsetY: 7,
+        level1: { innerRadius: 90, outerRadius: 190 },
+        level2: { innerRadius: 195, outerRadius: 290 }
+    },
+    26: {
+        offsetX: -10,
+        offsetY: 3,
+        level1: { innerRadius: 90, outerRadius: 190 },
+        level2: { innerRadius: 195, outerRadius: 290 }
+    },
+    25: {
+        offsetX: -10,
+        offsetY: -1,
+        typeOffsets: {
+            'pulpotomy': { offsetX: -10, offsetY: -15 },
+            'deciduous': { offsetX: -10, offsetY: -15 },
+        },
+        level1: { innerRadius: 100, outerRadius: 190 },
+        level2: { innerRadius: 195, outerRadius: 290 }
+    },
+    24: {
+        offsetX: -11,
+        offsetY: -3,
+        typeOffsets: {
+            'pulpotomy': { offsetX: -10, offsetY: -15 },
+            'deciduous': { offsetX: -10, offsetY: -15 },
+        },
+        level1: { innerRadius: 100, outerRadius: 190 },
+        level2: { innerRadius: 195, outerRadius: 290 }
+    },
+    23: {
+        offsetX: -11,
+        offsetY: -12,
+        typeOffsets: {
+            'pulpotomy': { offsetX: 0, offsetY: -20 },
+            'deciduous': { offsetX: 0, offsetY: -20 },
+        },
+        level1: { innerRadius: 110, outerRadius: 190 },
+        level2: { innerRadius: 195, outerRadius: 290 }
+    },
+    22: {
+        offsetX: -11,
+        offsetY: -2,
+        typeOffsets: {
+            'pulpotomy': { offsetX: 0, offsetY: -30 },
+            'deciduous': { offsetX: 0, offsetY: -30 },
+        },
+        level1: { innerRadius: 95, outerRadius: 190 },
+        level2: { innerRadius: 195, outerRadius: 290 }
+    },
+    21: {
+        offsetX: -11,
+        offsetY: -6,
+        typeOffsets: {
+            'pulpotomy': { offsetX: 0, offsetY: -20 },
+            'deciduous': { offsetX: 0, offsetY: -20 },
+        },
+        level1: { innerRadius: 107, outerRadius: 190 },
+        level2: { innerRadius: 195, outerRadius: 290 }
+    },
+    /*-- inferiores ---*/
+    // 31 al 38
+    31: {
+        offsetX: -8,
+        offsetY: -26,
+        typeOffsets: {
+            'pulpotomy': { offsetX: 0, offsetY: 30 },
+            'deciduous': { offsetX: 0, offsetY: 30 },
+        },
+        level1: { innerRadius: 90, outerRadius: 180 },
+        level2: { innerRadius: 195, outerRadius: 290 }
+    },
+    32: {
+        offsetX: -7,
+        offsetY: -25,
+        typeOffsets: {
+            'pulpotomy': { offsetX: 0, offsetY: 30 },
+            'deciduous': { offsetX: 0, offsetY: 30 },
+        },
+        level1: { innerRadius: 90, outerRadius: 190 },
+        level2: { innerRadius: 195, outerRadius: 290 }
+    },
+    33: {
+        offsetX: -9,
+        offsetY: -14,
+        typeOffsets: {
+            'pulpotomy': { offsetX: 0, offsetY: 30 },
+            'deciduous': { offsetX: 0, offsetY: 30 },
+        },
+        level1: { innerRadius: 105, outerRadius: 190 },
+        level2: { innerRadius: 195, outerRadius: 290 }
+    },
+    34: {
+        offsetX: -10,
+        offsetY: -30,
+        typeOffsets: {
+            'pulpotomy': { offsetX: -10, offsetY: 15 },
+            'deciduous': { offsetX: -10, offsetY: 15 },
+        },
+        level1: { innerRadius: 90, outerRadius: 190 },
+        level2: { innerRadius: 195, outerRadius: 290 }
+    },
+    35: {
+        offsetX: -10,
+        offsetY: -30,
+        typeOffsets: {
+            'pulpotomy': { offsetX: -15, offsetY: 12 },
+            'deciduous': { offsetX: -15, offsetY: 12 },
+        },
+        level1: { innerRadius: 90, outerRadius: 190 },
+        level2: { innerRadius: 195, outerRadius: 290 }
+    },
+    36: {
+        offsetX: -12,
+        offsetY: -35,
+        level1: { innerRadius: 90, outerRadius: 190 },
+        level2: { innerRadius: 195, outerRadius: 290 }
+    },
+    37: {
+        offsetX: -13,
+        offsetY: -40,
+        level1: { innerRadius: 90, outerRadius: 190 },
+        level2: { innerRadius: 195, outerRadius: 290 }
+    },
+    38: {
+        offsetX: -13,
+        offsetY: -45,
+        level1: { innerRadius: 90, outerRadius: 190 },
+        level2: { innerRadius: 195, outerRadius: 290 }
+    },
+    // 41 al 48
+    41: {
+        offsetX: -8,
+        offsetY: -26,
+        typeOffsets: {
+            'pulpotomy': { offsetX: 0, offsetY: 30 },
+            'deciduous': { offsetX: 0, offsetY: 30 },
+        },
+        level1: { innerRadius: 90, outerRadius: 180 },
+        level2: { innerRadius: 195, outerRadius: 290 }
+    },
+    42: {
+        offsetX: -7,
+        offsetY: -25,
+        typeOffsets: {
+            'pulpotomy': { offsetX: 0, offsetY: 30 },
+            'deciduous': { offsetX: 0, offsetY: 30 },
+        },
+        level1: { innerRadius: 90, outerRadius: 190 },
+        level2: { innerRadius: 195, outerRadius: 290 }
+    },
+    43: {
+        offsetX: -9,
+        offsetY: -14,
+        typeOffsets: {
+            'pulpotomy': { offsetX: 0, offsetY: 30 },
+            'deciduous': { offsetX: 0, offsetY: 30 },
+        },
+        level1: { innerRadius: 105, outerRadius: 190 },
+        level2: { innerRadius: 195, outerRadius: 290 }
+    },
+    44: {
+        offsetX: -10,
+        offsetY: -30,
+        typeOffsets: {
+            'pulpotomy': { offsetX: 10, offsetY: 15 },
+            'deciduous': { offsetX: 10, offsetY: 15 },
+        },
+        level1: { innerRadius: 90, outerRadius: 190 },
+        level2: { innerRadius: 195, outerRadius: 290 }
+    },
+    45: {
+        offsetX: -10,
+        offsetY: -30,
+        typeOffsets: {
+            'pulpotomy': { offsetX: 15, offsetY: 12 },
+            'deciduous': { offsetX: 15, offsetY: 12 },
+        },
+        level1: { innerRadius: 90, outerRadius: 190 },
+        level2: { innerRadius: 195, outerRadius: 290 }
+    },
+    46: {
+        offsetX: -12,
+        offsetY: -35,
+        level1: { innerRadius: 90, outerRadius: 190 },
+        level2: { innerRadius: 195, outerRadius: 290 }
+    },
+    47: {
+        offsetX: -13,
+        offsetY: -40,
+        level1: { innerRadius: 90, outerRadius: 190 },
+        level2: { innerRadius: 195, outerRadius: 290 }
+    },
+    48: {
+        offsetX: -13,
+        offsetY: -45,
+        level1: { innerRadius: 90, outerRadius: 190 },
+        level2: { innerRadius: 195, outerRadius: 290 }
+    },
+};
+
+// Helper para obtener los tamaños según el diente actual
+const getRadialMenuSizes = (toothId) => {
+    if (!toothId || !RADIAL_MENU_CUSTOM_SIZES[toothId]) {
+        return RADIAL_MENU_DEFAULT_SIZES;
+    }
+    return {
+        level1: {
+            ...RADIAL_MENU_DEFAULT_SIZES.level1,
+            ...RADIAL_MENU_CUSTOM_SIZES[toothId].level1
+        },
+        level2: {
+            ...RADIAL_MENU_DEFAULT_SIZES.level2,
+            ...RADIAL_MENU_CUSTOM_SIZES[toothId].level2
+        }
+    };
+};
+
 const OCCLUSAL_TYPES = [
     { id: 'normal', label: 'Limpiar / Normal', color: 'bg-white' },
 
@@ -147,8 +692,8 @@ const TOOTH_COORDINATES = {
  */
 const MICRO_ADJUSTMENTS_PERMANENT = {
     // UPPER ARCH
-    12: -3, 13: -3, 14: -3, 15: -5, 16: -3, 17: -6, 18: -6,
-    22: 3, 23: 3, 24: 3, 25: 5, 26: 3, 27: 6, 28: 6,
+    12: -3, 13: -3, 14: -3, 15: -3, 16: -3, 17: -6, 18: -6,
+    22: 3, 23: 3, 24: 3, 25: 3, 26: 3, 27: 6, 28: 6,
 
     // LOWER ARCH
     42: 9, 43: 10, 44: 10, 45: 9, 46: 6, 47: -3, 48: -8,
@@ -245,9 +790,14 @@ const buildInitialToothStates = () => {
 // ==========================================
 
 // Individual Tooth Component (Frontal) - Unchanged visuals
-function Tooth({ id, type, hasBracket, isBracketMode, onToothClick, onToothRightClick, currentClinicalAction, onResize }) {
-    const src = getToothSrc(id, type || 'original');
+function Tooth({ id, type, hasBracket, isSelectedBracket, isBracketMode, onToothClick, onToothRightClick, currentClinicalAction, onResize, hideLabel }) {
+    const isImplantCrown = type === 'implant-crown';
+    const activeTypes = isImplantCrown ? ['implant', 'crown'] : (type ? type.split('+') : ['original']);
+    const isCombined = activeTypes.length > 1 || isImplantCrown;
+    const baseType = activeTypes[0] || 'original';
+    const src = !isCombined ? getToothSrc(id, baseType) : null;
     const containerRef = useRef(null);
+    const pressTimer = useRef(null);
 
     // Measure width on mount/update
     useLayoutEffect(() => {
@@ -255,7 +805,7 @@ function Tooth({ id, type, hasBracket, isBracketMode, onToothClick, onToothRight
             const { offsetWidth } = containerRef.current;
             onResize(id, offsetWidth);
         }
-    }, [id, onResize, src]); // Re-measure if src changes (loading different tooth)
+    }, [id, onResize, src, isCombined]); // Re-measure if src changes (loading different tooth)
 
     const shouldScale = TEETH_TO_SCALE.includes(id);
 
@@ -273,7 +823,39 @@ function Tooth({ id, type, hasBracket, isBracketMode, onToothClick, onToothRight
     const isMaxillary = id < 30;
     const bracketPositionClass = isMaxillary ? 'top-[75%]' : 'top-[12%]';
 
-    if (!src) {
+    const handlePointerDown = (e) => {
+        if (e.button !== 0 || isInvalidDeciduous) return; // Only left-click
+        const rect = e.currentTarget.getBoundingClientRect();
+        const x = rect.left + rect.width / 2;
+        const y = rect.top + rect.height / 2;
+
+        pressTimer.current = setTimeout(() => {
+            if (onToothRightClick) {
+                onToothRightClick(id, x, y);
+            }
+            pressTimer.current = null;
+        }, 500);
+    };
+
+    const handlePointerUp = (e) => {
+        if (e.button !== 0) return;
+        if (pressTimer.current !== null) {
+            clearTimeout(pressTimer.current);
+            pressTimer.current = null;
+            if (!isInvalidDeciduous && onToothClick) {
+                onToothClick(id);
+            }
+        }
+    };
+
+    const handlePointerLeave = () => {
+        if (pressTimer.current !== null) {
+            clearTimeout(pressTimer.current);
+            pressTimer.current = null;
+        }
+    };
+
+    if (!src && !isCombined) {
         return (
             <div className="w-11 h-16 md:w-14 md:h-20 flex items-center justify-center bg-red-100 text-red-500 text-xs rounded border border-red-200">
                 {id}?
@@ -294,7 +876,9 @@ function Tooth({ id, type, hasBracket, isBracketMode, onToothClick, onToothRight
     return (
         <div
             className={wrapperClasses}
-            onClick={() => !isInvalidDeciduous && onToothClick(id)}
+            onPointerDown={handlePointerDown}
+            onPointerUp={handlePointerUp}
+            onPointerLeave={handlePointerLeave}
             onContextMenu={(e) => {
                 e.preventDefault();
                 if (isInvalidDeciduous || !onToothRightClick) return;
@@ -315,14 +899,10 @@ function Tooth({ id, type, hasBracket, isBracketMode, onToothClick, onToothRight
                     z-10
                 `}>
                 <img
-                    src={src}
-                    alt={`Tooth ${id}`}
+                    src={isCombined ? generateCombinedSvgDataUrl(id, activeTypes) : src}
+                    alt={isCombined ? `Tooth Combined ${id}` : `Tooth ${id}`}
                     draggable={false}
-                    className={`
-    w-full h-full object-contain
-    drop-shadow-sm transition-transform
-    ${shouldScale ? 'scale-x-95' : ''}
-  `}
+                    className={`w-full h-full object-contain drop-shadow-sm transition-transform ${shouldScale ? 'scale-x-95' : ''}`}
                     onLoad={() => {
                         if (containerRef.current && onResize) {
                             onResize(id, containerRef.current.offsetWidth);
@@ -335,21 +915,21 @@ function Tooth({ id, type, hasBracket, isBracketMode, onToothClick, onToothRight
                     {hasBracket && !isInvalidDeciduous && (
                         <motion.div
                             initial={{ opacity: 0, scale: 0.5, y: -5 }}
-                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            animate={{ opacity: 1, scale: isSelectedBracket ? 1.02 : 1, y: 0 }}
                             exit={{ opacity: 0, scale: 0.5 }}
-                            className={`absolute ${bracketPositionClass} left-1/2 -translate-x-1/2 z-20 pointer-events-none`}
+                            className={`absolute ${bracketPositionClass} left-1/2 -translate-x-1/2 z-20 pointer-events-none transition-transform duration-200 ${isSelectedBracket ? 'drop-shadow-[0_0_4px_rgba(59,130,246,0.6)]' : ''}`}
                         >
                             <img
                                 src={bracketImg}
                                 alt="Bracket"
-                                className="w-2.5 h-2.5 md:w-5 md:h-5 object-contain opacity-90 drop-shadow-sm"
+                                className={`w-2.5 h-2.5 md:w-5 md:h-5 object-contain opacity-90 drop-shadow-sm transition-transform duration-200 ${isSelectedBracket ? 'scale-125' : ''}`}
                             />
                         </motion.div>
                     )}
                 </AnimatePresence>
             </div>
             {/* Tooth Number Label */}
-            <div className="flex flex-col items-center leading-none select-none">
+            <div className={`flex flex-col items-center leading-none select-none transition-opacity duration-300 ${hideLabel ? 'opacity-0' : 'opacity-100'}`}>
                 <span className={labelClasses}>
                     {displayNumber}
                 </span>
@@ -472,7 +1052,7 @@ const getDynamicOffset = (
     return base;
 };
 
-function ArchRow({ teethIds, toothStates, brackets, tads, isBracketMode, isTadMode, isPeriodontalMode, periodontalUpperY, periodontalLowerY, periodontalUpperThickness, periodontalLowerThickness, onToothClick, onToothRightClick, onTadClick, currentClinicalAction, onToothResize, toothWidths, baseToothWidths, isUpper }) {
+function ArchRow({ activeRadialTooth, teethIds, toothStates, brackets, bracketWires, tadWires, selectedBracket, tads, periodontalData, isBracketMode, isTadMode, isPeriodontalMode, periodontalUpperY, periodontalLowerY, periodontalUpperThickness, periodontalLowerThickness, onToothClick, onToothRightClick, onTadClick, currentClinicalAction, onToothResize, toothWidths, baseToothWidths, isUpper }) {
     // Generate TAD slots based on teeth list
     // Iterate through pairable teeth (e.g. 18-17, 17-16...)
     // Since teethIds includes both Left and Right, we need to be careful not to create a TAD across the midline (11-21) if not desired.
@@ -559,8 +1139,123 @@ function ArchRow({ teethIds, toothStates, brackets, tads, isBracketMode, isTadMo
         return tadElements;
     };
 
+    const renderWires = () => {
+        const hasSolidWires = bracketWires && Object.keys(bracketWires).length > 0;
+        const hasDashedWires = tadWires && Object.keys(tadWires).length > 0;
+
+        if (!hasSolidWires && !hasDashedWires) return null;
+
+        const solidWiresToRender = [];
+        if (hasSolidWires) {
+            Object.keys(bracketWires).forEach(pairId => {
+                const [t1Str, t2Str] = pairId.split('-');
+                const t1 = parseInt(t1Str, 10);
+                const t2 = parseInt(t2Str, 10);
+
+                if (teethIds.includes(t1) && teethIds.includes(t2)) {
+                    const x1 = getDynamicOffset(t1, toothStates, toothWidths, baseToothWidths);
+                    const x2 = getDynamicOffset(t2, toothStates, toothWidths, baseToothWidths);
+
+                    if (x1 !== undefined && x2 !== undefined) {
+                        solidWiresToRender.push({ pairId, x1, x2 });
+                    }
+                }
+            });
+        }
+
+        const dashedWiresToRender = [];
+        if (hasDashedWires) {
+            Object.keys(tadWires).forEach(connectionId => {
+                const [bracketIdStr, tadIdStr] = connectionId.split('|');
+                const bracketId = parseInt(bracketIdStr, 10);
+
+                // Only render if the bracket is in THIS arch (to avoid massive cross-arch lines originating from the wrong SVG)
+                if (teethIds.includes(bracketId)) {
+                    const [tadT1Str, tadT2Str] = tadIdStr.split('-');
+                    const tadT1 = parseInt(tadT1Str, 10);
+                    const tadT2 = parseInt(tadT2Str, 10);
+
+                    const bracketX = getDynamicOffset(bracketId, toothStates, toothWidths, baseToothWidths);
+
+                    const tadX1 = getDynamicOffset(tadT1, toothStates, toothWidths, baseToothWidths);
+                    const tadX2 = getDynamicOffset(tadT2, toothStates, toothWidths, baseToothWidths);
+
+                    if (bracketX !== undefined && tadX1 !== undefined && tadX2 !== undefined) {
+                        const baseMidX = (tadX1 + tadX2) / 2;
+                        const adjustment = TAD_MICRO_ADJUSTMENTS[tadIdStr] || 0;
+                        const tadX = baseMidX + adjustment;
+
+                        // Default logic: we assume the bracket is in this arch.
+                        // If the TAD is in the opposing arch, the Y coordinate needs to "shoot out" of the SVG to reach it.
+                        const isTadUpper = UPPER_ARCH_IDS.includes(tadT1);
+
+                        dashedWiresToRender.push({ connectionId, bracketX, tadX, isTadUpper });
+                    }
+                }
+            });
+        }
+
+        if (solidWiresToRender.length === 0 && dashedWiresToRender.length === 0) return null;
+
+        return (
+            <svg className="absolute inset-0 z-[15] pointer-events-none w-full h-full overflow-visible">
+                {solidWiresToRender.map(({ pairId, x1, x2 }) => {
+                    const y = isUpper ? 138 : 28;
+                    const cX1 = `calc(50% + ${x1}px)`;
+                    const cX2 = `calc(50% + ${x2}px)`;
+
+                    return (
+                        <line
+                            key={`solid-${pairId}`}
+                            x1={cX1}
+                            y1={y}
+                            x2={cX2}
+                            y2={y}
+                            stroke="#333"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                        />
+                    );
+                })}
+
+                {dashedWiresToRender.map(({ connectionId, bracketX, tadX, isTadUpper }) => {
+                    const bY = isUpper ? 138 : 28;
+
+                    let tY;
+                    if (isUpper && isTadUpper) {           // Upper bracket to Upper TAD
+                        tY = 67;
+                    } else if (!isUpper && !isTadUpper) {  // Lower bracket to Lower TAD
+                        tY = 105;
+                    } else if (isUpper && !isTadUpper) {   // Upper bracket to Lower TAD
+                        tY = 393;
+                    } else {                               // Lower bracket to Upper TAD
+                        tY = -221;
+                    }
+
+                    const cX1 = `calc(50% + ${bracketX}px)`;
+                    const cX2 = `calc(50% + ${tadX}px)`;
+
+                    return (
+                        <line
+                            key={`dashed-${connectionId}`}
+                            x1={cX1}
+                            y1={bY}
+                            x2={cX2}
+                            y2={tY}
+                            stroke="#333"
+                            strokeWidth="2"
+                            strokeDasharray="4,4"
+                            strokeLinecap="round"
+                        />
+                    );
+                })}
+            </svg>
+        );
+    };
+
     return (
         <div className={`relative w-full ${isUpper ? 'h-48 flex items-end' : 'h-48 flex items-start'} mb-1`}>
+            {renderWires()}
             {/* Periodontal Visual Band - Single continuous band */}
             <AnimatePresence>
                 {isPeriodontalMode && (
@@ -589,27 +1284,47 @@ function ArchRow({ teethIds, toothStates, brackets, tads, isBracketMode, isTadMo
                 );
                 if (xPos === undefined) return null; // Should not happen
 
+                let typeOffsetX = 0;
+                let typeOffsetY = 0;
+                if (activeRadialTooth === id) {
+                    const activeType = toothStates[id] || 'original';
+                    const customSize = RADIAL_MENU_CUSTOM_SIZES[id];
+                    const tOffset = customSize?.typeOffsets?.[activeType];
+                    if (tOffset) {
+                        typeOffsetX = tOffset.offsetX || 0;
+                        typeOffsetY = tOffset.offsetY || 0;
+                    }
+                }
+
                 return (
                     <div
                         key={id}
-                        className="absolute"
+                        className={`absolute ${activeRadialTooth === id ? 'z-[100] scale-[1.15] drop-shadow-2xl transition-all duration-300 ease-out' : 'z-10 transition-all duration-300'}`}
                         style={{
                             left: `calc(50% + ${xPos}px)`,
-                            transform: 'translateX(-50%)',
+                            transform: typeOffsetX !== 0 || typeOffsetY !== 0
+                                ? `translate(calc(-50% + ${typeOffsetX}px), ${typeOffsetY}px)`
+                                : 'translateX(-50%)',
                             bottom: isUpper ? 0 : 'auto',
                             top: isUpper ? 'auto' : 0,
                         }}
                     >
+                        {isPeriodontalMode && periodontalData && periodontalData[id] && (
+                            <PeriodontalOverlay data={periodontalData[id]} isUpper={isUpper} toothId={id} />
+                        )}
                         <Tooth
                             id={id}
                             type={toothStates[id]}
                             hasBracket={!!brackets[id]}
+                            isSelectedBracket={selectedBracket === id}
                             isBracketMode={isBracketMode}
                             onToothClick={isTadMode ? () => { } : onToothClick}
                             onToothRightClick={isTadMode ? undefined : onToothRightClick}
                             currentClinicalAction={currentClinicalAction}
                             onResize={onToothResize}
+                            hideLabel={activeRadialTooth === id}
                         />
+
                     </div>
                 );
             })}
@@ -621,6 +1336,7 @@ function ArchRow({ teethIds, toothStates, brackets, tads, isBracketMode, isTadMo
 }
 
 function OcclusalArchRow({
+    activeRadialTooth,
     teethIds,
     surfaceStates,
     toothStates,
@@ -659,12 +1375,15 @@ function OcclusalArchRow({
 
                 const OCCLUSAL_FIXED_SIZE = 35; // Ajusta visualmente si quieres
                 const occlusalSize = OCCLUSAL_FIXED_SIZE;
-                const isCrown = toothStates[id] === 'crown';
+
+                const typeString = toothStates[id] || 'original';
+                const activeTypes = typeString === 'implant-crown' ? ['implant', 'crown'] : typeString.split('+');
+                const isCrown = activeTypes.includes('crown');
 
                 return (
                     <div
                         key={id}
-                        className="absolute origin-center"
+                        className={`absolute origin-center ${activeRadialTooth === id ? 'z-[100] scale-[1.15] drop-shadow-2xl transition-all duration-300 ease-out' : 'z-10 transition-all duration-300'}`}
                         style={{
                             left: `calc(50% + ${xPos}px)`,
                             transform: 'translateX(-50%)',
@@ -710,6 +1429,301 @@ function OcclusalArchRow({
 // ==========================================
 // 5. Support Components (Summary, Actions, Modal)
 // ==========================================
+
+// Periodontal Overlay Component
+function PeriodontalOverlay({ data, isUpper, toothId }) {
+    if (!data || !toothId) return null;
+
+    // Helper to build default config
+    const buildConfig = (sLeft, sRight, stLeft, stRight) => ({
+        shadowVestibularY: isUpper ? 'top-[45%]' : 'bottom-[45%]',
+        shadowLingualY: isUpper ? 'top-[20%]' : 'bottom-[20%]',
+        siteVestibularY: isUpper ? 'bottom-[45%]' : 'bottom-[45%]',
+        siteLingualY: isUpper ? 'bottom-[20%]' : 'bottom-[20%]',
+        shadowLeft: sLeft,
+        shadowRight: sRight,
+        siteLeft: stLeft,
+        siteRight: stRight,
+    });
+
+    const toothPositionConfig = {
+        // --- MAXILAR (SUPERIOR) ---
+        // Cuadrante 1 (18-11)
+        18: buildConfig('left-[22%]', 'right-[22%]', 'left-[12%]', 'right-[12%]'),
+        17: buildConfig('left-[22%]', 'right-[22%]', 'left-[12%]', 'right-[12%]'),
+        16: buildConfig('left-[22%]', 'right-[22%]', 'left-[12%]', 'right-[12%]'),
+        15: buildConfig('left-[20%]', 'right-[20%]', 'left-[-5%]', 'right-[-5%]'),
+        14: buildConfig('left-[20%]', 'right-[20%]', 'left-[-5%]', 'right-[-5%]'),
+        13: buildConfig('left-[15%]', 'right-[15%]', 'left-[-2%]', 'right-[1%]'),
+        12: buildConfig('left-[15%]', 'right-[10%]', 'left-[-11%]', 'right-[-11%]'),
+        11: buildConfig('left-[15%]', 'right-[10%]', 'left-[0%]', 'right-[0%]'),
+
+        // Cuadrante 2 (21-28)
+        21: buildConfig('left-[15%]', 'right-[10%]', 'left-[0%]', 'right-[0%]'),
+        22: buildConfig('left-[15%]', 'right-[10%]', 'left-[-11%]', 'right-[-11%]'),
+        23: buildConfig('left-[15%]', 'right-[15%]', 'left-[-2%]', 'right-[-1%]'),
+        24: buildConfig('left-[20%]', 'right-[20%]', 'left-[-5%]', 'right-[-5%]'),
+        25: buildConfig('left-[20%]', 'right-[20%]', 'left-[-5%]', 'right-[-5%]'),
+        26: buildConfig('left-[22%]', 'right-[22%]', 'left-[12%]', 'right-[12%]'),
+        27: buildConfig('left-[22%]', 'right-[22%]', 'left-[12%]', 'right-[12%]'),
+        28: buildConfig('left-[22%]', 'right-[22%]', 'left-[12%]', 'right-[12%]'),
+
+        // --- MANDÍBULA (INFERIOR) ---
+        // Cuadrante 4 (48-41)
+        48: buildConfig('left-[22%]', 'right-[22%]', 'left-[12%]', 'right-[12%]'),
+        47: buildConfig('left-[22%]', 'right-[22%]', 'left-[12%]', 'right-[12%]'),
+        46: buildConfig('left-[22%]', 'right-[22%]', 'left-[12%]', 'right-[12%]'),
+        45: buildConfig('left-[20%]', 'right-[20%]', 'left-[-5%]', 'right-[-5%]'),
+        44: buildConfig('left-[20%]', 'right-[20%]', 'left-[-2%]', 'right-[-2%]'),
+        43: buildConfig('left-[15%]', 'right-[15%]', 'left-[-2%]', 'right-[-2%]'),
+        42: buildConfig('left-[15%]', 'right-[10%]', 'left-[-9%]', 'right-[-9%]'),
+        41: buildConfig('left-[15%]', 'right-[10%]', 'left-[-8%]', 'right-[-8%]'),
+
+        // Cuadrante 3 (31-38)
+        31: buildConfig('left-[15%]', 'right-[10%]', 'left-[-8%]', 'right-[-8%]'),
+        32: buildConfig('left-[15%]', 'right-[10%]', 'left-[-9%]', 'right-[-9%]'),
+        33: buildConfig('left-[15%]', 'right-[15%]', 'left-[-2%]', 'right-[-2%]'),
+        34: buildConfig('left-[20%]', 'right-[20%]', 'left-[-2%]', 'right-[-2%]'),
+        35: buildConfig('left-[20%]', 'right-[20%]', 'left-[-5%]', 'right-[-5%]'),
+        36: buildConfig('left-[22%]', 'right-[22%]', 'left-[12%]', 'right-[12%]'),
+        37: buildConfig('left-[22%]', 'right-[22%]', 'left-[12%]', 'right-[12%]'),
+        38: buildConfig('left-[22%]', 'right-[22%]', 'left-[12%]', 'right-[12%]'),
+    };
+
+    // Default general molars configs for fallback (like for baby teeth)
+    const config = toothPositionConfig[toothId] || buildConfig('left-[22%]', 'right-[22%]', 'left-[12%]', 'right-[12%]');
+
+
+    const renderSite = (siteData, positionClasses) => {
+        if (!siteData) return null;
+        const { ps, bop } = siteData;
+        const isPathological = ps >= 4;
+        const isSevere = ps >= 7;
+
+        if (!isPathological && !bop) return null;
+
+        return (
+            <div className={`absolute flex flex-col items-center justify-center ${positionClasses} z-40 pointer-events-none`}>
+                {isPathological && (
+                    <span className={`text-[8px] md:text-[8px] font-bold leading-none ${isSevere ? 'text-white bg-red-700' : 'text-red-700 bg-white/90'} rounded px-[1px] py-[1px] shadow-sm`}>
+                        {ps}
+                    </span>
+                )}
+                {bop && (
+                    <div className="w-2 h-2 md:w-2.5 md:h-2.5 bg-red-600 rounded-full mt-0.5 shadow-sm shadow-red-500/50 border border-white" title="Sangrado (BOP)" />
+                )}
+            </div>
+        );
+    };
+
+    const renderShadow = (siteData, positionClasses) => {
+        if (!siteData) return null;
+        const { ps } = siteData;
+        if (ps < 4) return null;
+        const isSevere = ps >= 7;
+        const color = isSevere ? 'bg-indigo-600/50 shadow-[0_0_8px_3px_rgba(79,70,229,0.5)] border border-red-500/50' : 'bg-blue-400/50 shadow-[0_0_6px_2px_rgba(96,165,250,0.5)]';
+        return <div className={`absolute ${positionClasses} w-3.5 h-6 ${color} blur-[1px] rounded-full`} />;
+    };
+
+    return (
+        <div className="absolute inset-x-0 z-30 pointer-events-none flex justify-center w-full" style={{ top: isUpper ? '10%' : '10%', bottom: isUpper ? '20%' : '20%' }}>
+            <div className={`relative w-full h-full max-w-[60px] ${isUpper ? 'rotate-180' : ''}`}>
+                {/* Vestibular Shadows */}
+                {renderShadow(data.MV, `${config.shadowVestibularY} ${config.shadowLeft}`)}
+                {renderShadow(data.V, `${config.shadowVestibularY} left-1/2 -translate-x-1/2`)}
+                {renderShadow(data.DV, `${config.shadowVestibularY} ${config.shadowRight}`)}
+
+                {/* Lingual Shadows */}
+                {renderShadow(data.ML, `${config.shadowLingualY} ${config.shadowLeft}`)}
+                {renderShadow(data.L, `${config.shadowLingualY} left-1/2 -translate-x-1/2`)}
+                {renderShadow(data.DL, `${config.shadowLingualY} ${config.shadowRight}`)}
+
+                {/* Vestibular Values (Rotate back so text is upright) */}
+                <div className={`absolute inset-0 ${isUpper ? 'rotate-180' : ''}`}>
+                    {renderSite(data.MV, `${config.siteVestibularY} ${isUpper ? config.siteRight : config.siteLeft}`)}
+                    {renderSite(data.V, `${config.siteVestibularY} left-1/2 -translate-x-1/2`)}
+                    {renderSite(data.DV, `${config.siteVestibularY} ${isUpper ? config.siteLeft : config.siteRight}`)}
+
+                    {/* Lingual Values */}
+                    {renderSite(data.ML, `${config.siteLingualY} ${isUpper ? config.siteRight : config.siteLeft}`)}
+                    {renderSite(data.L, `${config.siteLingualY} left-1/2 -translate-x-1/2`)}
+                    {renderSite(data.DL, `${config.siteLingualY} ${isUpper ? config.siteLeft : config.siteRight}`)}
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// Periodontal Modal
+function PeriodontalModal({ isOpen, onClose, onSave, toothId, initialData }) {
+    const defaultSite = { ps: '', rg: '', bop: false, cal: '' };
+    const [data, setData] = useState(initialData || {
+        MV: { ...defaultSite },
+        V: { ...defaultSite },
+        DV: { ...defaultSite },
+        ML: { ...defaultSite },
+        L: { ...defaultSite },
+        DL: { ...defaultSite }
+    });
+    const [errorMsg, setErrorMsg] = useState('');
+
+    useEffect(() => {
+        if (isOpen) {
+            setData(initialData || {
+                MV: { ...defaultSite },
+                V: { ...defaultSite },
+                DV: { ...defaultSite },
+                ML: { ...defaultSite },
+                L: { ...defaultSite },
+                DL: { ...defaultSite }
+            });
+        }
+    }, [isOpen, initialData]);
+
+    if (!isOpen || !toothId) return null;
+
+    const handleSiteChange = (site, field, value) => {
+        let finalValue = value;
+        if (field === 'ps' && value !== '') {
+            const numVal = Number(value);
+            if (numVal > 15) {
+                finalValue = '15';
+                setErrorMsg('La Profundidad de Sondaje (PS) máxima permitida es 15 mm.');
+                setTimeout(() => setErrorMsg(''), 3000);
+            } else if (numVal < 0) {
+                finalValue = '0';
+            }
+        }
+
+        setData(prev => {
+            const currentSite = prev[site] || { ...defaultSite };
+            const updatedSite = { ...currentSite, [field]: finalValue };
+
+            // Auto-calculate CAL
+            const psVal = field === 'ps' ? (finalValue === '' ? 0 : Number(finalValue)) : (Number(updatedSite.ps) || 0);
+            const rgVal = field === 'rg' ? (finalValue === '' ? 0 : Number(finalValue)) : (Number(updatedSite.rg) || 0);
+            updatedSite.cal = psVal + rgVal;
+
+            return { ...prev, [site]: updatedSite };
+        });
+    };
+
+    const handleSave = () => {
+        console.log('toothId', toothId, 'data', JSON.stringify(data));
+        const cleanedData = {};
+        for (const site in data) {
+            cleanedData[site] = {
+                ps: data[site].ps === '' ? 0 : Number(data[site].ps),
+                rg: data[site].rg === '' ? 0 : Number(data[site].rg),
+                bop: data[site].bop || false,
+                cal: data[site].cal === '' ? 0 : Number(data[site].cal)
+            };
+        }
+        onSave(toothId, cleanedData);
+        onClose();
+    };
+
+    const renderSiteInputs = (site, label) => (
+        <div className="flex flex-col gap-1 p-3 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-800/50 shadow-sm transition-colors hover:border-blue-300 dark:hover:border-blue-700">
+            <span className="text-xs font-bold text-center text-slate-700 dark:text-slate-300 mb-1">{label}</span>
+            <div className="flex items-center justify-between gap-2">
+                <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 w-6">PS:</label>
+                <input type="number" min="0" max="15" className="input input-xs w-14 text-center border-slate-300 dark:border-slate-600 focus:ring-2 focus:ring-blue-500" value={data[site]?.ps ?? ''} onChange={e => handleSiteChange(site, 'ps', e.target.value)} placeholder="0" />
+            </div>
+
+            <div className="flex items-center justify-between gap-2 mt-2">
+                <label className="text-xs font-semibold text-slate-600 dark:text-slate-300 cursor-pointer flex-1 select-none" onClick={() => handleSiteChange(site, 'bop', !(data[site]?.bop))}>Sangrado (BOP):</label>
+                <input type="checkbox" className="checkbox checkbox-xs checkbox-error rounded-sm border-2" checked={data[site]?.bop || false} onChange={e => handleSiteChange(site, 'bop', e.target.checked)} />
+            </div>
+            <div className="mt-2 pt-2 border-t border-slate-200 dark:border-slate-600 flex justify-between items-center">
+                <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">CAL:</span>
+                <span className={`text-sm font-bold ${(data[site]?.ps || 0) >= 4 ? 'text-red-500' : 'text-slate-700 dark:text-slate-200'}`}>{data[site]?.ps || 0} mm</span>
+            </div>
+        </div>
+    );
+
+    return (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+            <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-3xl w-full p-0 overflow-hidden"
+            >
+                <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-slate-800/80">
+                    <div>
+                        <h3 className="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                            <span className="w-8 h-8 rounded-full bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400 flex items-center justify-center text-sm">
+                                {toothId}
+                            </span>
+                            Registro Periodontal
+                        </h3>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Registra profundidad de sondaje, recesión gingival y sangrado.</p>
+                    </div>
+                    <button onClick={onClose} className="btn btn-sm btn-circle btn-ghost text-slate-500 hover:text-slate-800 dark:hover:text-slate-200">
+                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                    </button>
+                </div>
+
+                <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-8">
+                    {/* Vestibular */}
+                    <div className="space-y-3">
+                        <div className="flex items-center gap-2 mb-4">
+                            <div className="h-px bg-blue-200 dark:bg-blue-800 flex-1"></div>
+                            <h4 className="font-bold text-sm text-blue-700 dark:text-blue-400 uppercase tracking-wider">Vestibular</h4>
+                            <div className="h-px bg-blue-200 dark:bg-blue-800 flex-1"></div>
+                        </div>
+                        <div className="grid grid-cols-3 gap-3">
+                            {renderSiteInputs('MV', 'Mesio')}
+                            {renderSiteInputs('V', 'Medio')}
+                            {renderSiteInputs('DV', 'Disto')}
+                        </div>
+                    </div>
+
+                    {/* Lingual/Palatino */}
+                    <div className="space-y-3">
+                        <div className="flex items-center gap-2 mb-4">
+                            <div className="h-px bg-indigo-200 dark:bg-indigo-800 flex-1"></div>
+                            <h4 className="font-bold text-sm text-indigo-700 dark:text-indigo-400 uppercase tracking-wider">Lingual / Palatino</h4>
+                            <div className="h-px bg-indigo-200 dark:bg-indigo-800 flex-1"></div>
+                        </div>
+                        <div className="grid grid-cols-3 gap-3">
+                            {renderSiteInputs('ML', 'Mesio')}
+                            {renderSiteInputs('L', 'Medio')}
+                            {renderSiteInputs('DL', 'Disto')}
+                        </div>
+                    </div>
+                </div>
+
+                <div className="px-6 py-4 bg-slate-50 dark:bg-slate-800/80 border-t border-slate-200 dark:border-slate-700 flex justify-between items-center gap-3">
+                    <div className="flex-1">
+                        <AnimatePresence>
+                            {errorMsg && (
+                                <motion.div
+                                    initial={{ opacity: 0, x: -10 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    exit={{ opacity: 0, x: -10 }}
+                                    className="text-xs font-semibold text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/30 px-3 py-1.5 rounded flex items-center gap-2"
+                                >
+                                    <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                    </svg>
+                                    {errorMsg}
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                    </div>
+                    <div className="flex gap-3">
+                        <button type="button" onClick={onClose} className="btn btn-ghost border border-slate-300 dark:border-slate-600">Cancelar</button>
+                        <button type="button" onClick={handleSave} className="btn btn-primary bg-blue-600 hover:bg-blue-700 border-none shadow-md shadow-blue-500/30">
+                            Guardar Datos
+                        </button>
+                    </div>
+                </div>
+            </motion.div>
+        </div>
+    );
+}
 
 function ClinicalActionModal({ isOpen, onClose, onSelect }) {
     if (!isOpen) return null;
@@ -760,7 +1774,11 @@ function ClinicalActionModal({ isOpen, onClose, onSelect }) {
 function DentalSummary({ toothStates }) {
     const [isExpanded, setIsExpanded] = useState(false);
     const stats = DENTAL_TYPES.map(type => {
-        const count = Object.values(toothStates).filter(t => t === type.id).length;
+        const count = Object.values(toothStates).filter(t => {
+            if (t === type.id) return true;
+            if (t === 'implant-crown' && (type.id === 'implant' || type.id === 'crown')) return true;
+            return false;
+        }).length;
         return { ...type, count };
     });
     const visibleStats = isExpanded ? stats : stats.filter(s => s.count > 0);
@@ -906,12 +1924,22 @@ export default function OdontogramSection() {
     // Initial State: All teeth are 'original'
     const [toothStates, setToothStates] = useState(buildInitialToothStates);
     const [radialState, setRadialState] = useState(null);
+    const [level2Open, setLevel2Open] = useState(false);
+    const [pendingCombination, setPendingCombination] = useState(null);
+    const [hoveredMenuItem, setHoveredMenuItem] = useState(null);
+    const [hoveredPreviewType, setHoveredPreviewType] = useState(null);
+    const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
 
     const [brackets, setBrackets] = useState({});
+    const [bracketWires, setBracketWires] = useState({});
+    const [selectedBracket, setSelectedBracket] = useState(null);
     const [tads, setTads] = useState({});
+    const [tadWires, setTadWires] = useState({});
+    const [periodontalData, setPeriodontalData] = useState({});
     const [isBracketMode, setIsBracketMode] = useState(false);
     const [isTadMode, setIsTadMode] = useState(false);
     const [isPeriodontalMode, setIsPeriodontalMode] = useState(false);
+    const [activePeriodontalTooth, setActivePeriodontalTooth] = useState(null);
 
     // ⚙️ AJUSTES DE BANDA PERIODONTAL (Configurables por el desarrollador)
     // Modifica estos valores para cambiar la altura o el grosor de la banda visual roja.
@@ -926,6 +1954,8 @@ export default function OdontogramSection() {
         if (val) {
             setIsTadMode(false);
             setIsPeriodontalMode(false);
+        } else {
+            setSelectedBracket(null);
         }
     };
 
@@ -954,6 +1984,92 @@ export default function OdontogramSection() {
         console.log("[DEBUG] isResetDialogOpen changed:", isResetDialogOpen);
     }, [isResetDialogOpen]);
 
+    // --- HISTORY SYSTEM (UNDO / REDO) ---
+    const [historyState, setHistoryState] = useState(() => ({
+        past: [],
+        present: {
+            toothStates: buildInitialToothStates(),
+            brackets: {},
+            bracketWires: {},
+            tads: {},
+            tadWires: {},
+            surfaceStates: {},
+            periodontalData: {}
+        },
+        future: []
+    }));
+    const isUndoRedoAction = useRef(false);
+
+    useEffect(() => {
+        if (isUndoRedoAction.current) {
+            isUndoRedoAction.current = false;
+            return;
+        }
+        const newState = { toothStates, brackets, bracketWires, tads, tadWires, surfaceStates, periodontalData };
+        setHistoryState(prev => {
+            if (JSON.stringify(prev.present) === JSON.stringify(newState)) return prev;
+            const newPast = [...prev.past, prev.present].slice(-50);
+            return { past: newPast, present: newState, future: [] };
+        });
+    }, [toothStates, brackets, bracketWires, tads, tadWires, surfaceStates, periodontalData]);
+
+    const handleUndo = useCallback(() => {
+        setHistoryState(prev => {
+            if (prev.past.length === 0) return prev;
+            const newPast = [...prev.past];
+            const previousState = newPast.pop();
+
+            isUndoRedoAction.current = true;
+            setToothStates(previousState.toothStates);
+            setBrackets(previousState.brackets);
+            setBracketWires(previousState.bracketWires || {});
+            setTads(previousState.tads);
+            setTadWires(previousState.tadWires || {});
+            setSurfaceStates(previousState.surfaceStates);
+            setPeriodontalData(previousState.periodontalData || {});
+
+            setSelectedBracket(null);
+
+            return { past: newPast, present: previousState, future: [prev.present, ...prev.future] };
+        });
+    }, []);
+
+    const handleRedo = useCallback(() => {
+        setHistoryState(prev => {
+            if (prev.future.length === 0) return prev;
+            const newFuture = [...prev.future];
+            const nextState = newFuture.shift();
+
+            isUndoRedoAction.current = true;
+            setToothStates(nextState.toothStates);
+            setBrackets(nextState.brackets);
+            setBracketWires(nextState.bracketWires || {});
+            setTads(nextState.tads);
+            setTadWires(nextState.tadWires || {});
+            setSurfaceStates(nextState.surfaceStates);
+            setPeriodontalData(nextState.periodontalData || {});
+
+            setSelectedBracket(null);
+
+            return { past: [...prev.past, prev.present], present: nextState, future: newFuture };
+        });
+    }, []);
+
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+                e.preventDefault();
+                handleUndo();
+            } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
+                e.preventDefault();
+                handleRedo();
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [handleUndo, handleRedo]);
+
     // Store measured widths of frontal teeth
     const [toothWidths, setToothWidths] = useState({});
     const [baseToothWidths, setBaseToothWidths] = useState({});
@@ -975,17 +2091,75 @@ export default function OdontogramSection() {
     const handleToothRightClick = (id, x, y) => {
         if (isBracketMode || isTadMode || isPeriodontalMode) return;
         setRadialState({ toothId: id, x, y });
+        setLevel2Open(false);
+        setHoveredMenuItem(null);
+        setPendingCombination(null);
     };
 
     const handleToothClick = (id) => {
         if (isBracketMode) {
-            setBrackets(prev => ({ ...prev, [id]: !prev[id] }));
+            if (!brackets[id]) {
+                setBrackets(prev => ({ ...prev, [id]: true }));
+            } else {
+                if (selectedBracket === id) {
+                    setBrackets(prev => {
+                        const next = { ...prev };
+                        delete next[id];
+                        return next;
+                    });
+                    setSelectedBracket(null);
+                    setBracketWires(prev => {
+                        const next = { ...prev };
+                        Object.keys(next).forEach(key => {
+                            if (key.split('-').includes(String(id))) {
+                                delete next[key];
+                            }
+                        });
+                        return next;
+                    });
+                    setTadWires(prev => {
+                        const next = { ...prev };
+                        Object.keys(next).forEach(key => {
+                            if (key.startsWith(`${id}|`)) {
+                                delete next[key];
+                            }
+                        });
+                        return next;
+                    });
+                } else if (selectedBracket) {
+                    const isSameArch =
+                        (UPPER_ARCH_IDS.includes(id) && UPPER_ARCH_IDS.includes(selectedBracket)) ||
+                        (LOWER_ARCH_IDS.includes(id) && LOWER_ARCH_IDS.includes(selectedBracket));
+
+                    if (isSameArch) {
+                        const pairId = [id, selectedBracket].sort((a, b) => a - b).join('-');
+                        setBracketWires(prev => {
+                            const next = { ...prev };
+                            if (next[pairId]) {
+                                delete next[pairId];
+                            } else {
+                                next[pairId] = true;
+                            }
+                            return next;
+                        });
+                        setSelectedBracket(id);
+                    } else {
+                        setSelectedBracket(id);
+                    }
+                } else {
+                    setSelectedBracket(id);
+                }
+            }
         } else if (isPeriodontalMode) {
-            // Periodontal mode is just visual in this iteration
+            setActivePeriodontalTooth(id);
         } else if (isTadMode) {
             // Handled via onTadClick
         } else {
-            setToothStates(prev => ({ ...prev, [id]: selectedToothType }));
+            setToothStates(prev => {
+                const currentType = prev[id] || 'original';
+                const finalType = getToggledToothState(currentType, selectedToothType);
+                return { ...prev, [id]: finalType };
+            });
         }
     };
 
@@ -1008,7 +2182,23 @@ export default function OdontogramSection() {
 
     const handleTadClick = (t1, t2) => {
         const pairId = [t1, t2].sort((a, b) => a - b).join('-');
-        setTads(prev => ({ ...prev, [pairId]: !prev[pairId] }));
+
+        if (isBracketMode && selectedBracket) {
+            // Only allow if TAD actually exists
+            if (!tads[pairId]) return;
+
+            const connectionId = `${selectedBracket}|${pairId}`;
+            setTadWires(prev => {
+                const next = { ...prev };
+                if (next[connectionId]) delete next[connectionId];
+                else next[connectionId] = true;
+                return next;
+            });
+        } else if (isTadMode) {
+            setTads(prev => ({ ...prev, [pairId]: !prev[pairId] }));
+            // Note: Currently we don't auto-clean tadWires if a TAD is removed, 
+            // but it's safe since they only render if both ends exist.
+        }
     };
 
     const handleApplyAllBrackets = () => {
@@ -1018,8 +2208,1082 @@ export default function OdontogramSection() {
         });
         setBrackets(newBrackets);
     };
+    const handlePeriodontalSave = (id, data) => {
+        setPeriodontalData(prev => ({ ...prev, [id]: data }));
+    };
+
+    const RADIAL_MENU_CUSTOM_ROTATION = {
+        default: {
+            'original': 0,
+            'root-canal': 25,
+            'crown': 60,
+            'fissure-root': 85,
+            'fissure-crown': 120,
+            'fissure-full': 160,
+            'pulpotomy': 180,
+            'deciduous': 200,
+            'implant': 255,
+            'missing': 285,
+            'unerupted': 315,
+            'extraction': 0, // Fallback, not visible
+
+            // Level 2 Combinations
+            'implant-level2': 0,
+            'implant-crown': 0,
+            'root-canal-level2': 0,
+            'root-canal+crown': 0,
+            'root-canal+crown+fissure-crown': 0,
+            'crown-level2': 0,
+            'crown+fissure-root': 0,
+            'crown+fissure-crown': 0,
+            'crown+fissure-full': 0
+        },
+        11: {
+            'original': 290,
+            'root-canal': 320,
+            'crown': 80,
+            'fissure-root': 185,
+            'fissure-crown': 160,
+            'fissure-full': 120,
+            'pulpotomy': 250,
+            'deciduous': 220,
+            'implant': 60,
+            'missing': 350,
+            'unerupted': 20,
+            'extraction': 0, // Fallback, not visible
+
+            // Level 2 Combinations
+            'implant-level2': 0,
+            'implant-crown': 0,
+            'root-canal-level2': 0,
+            'root-canal+crown': 0,
+            'root-canal+crown+fissure-crown': 0,
+            'crown-level2': 0,
+            'crown+fissure-root': 0,
+            'crown+fissure-crown': 0,
+            'crown+fissure-full': 0
+        },
+        12: {
+            'original': 290,
+            'root-canal': 320,
+            'crown': 80,
+            'fissure-root': 185,
+            'fissure-crown': 160,
+            'fissure-full': 120,
+            'pulpotomy': 250,
+            'deciduous': 220,
+            'implant': 60,
+            'missing': 350,
+            'unerupted': 20,
+            'extraction': 0, // Fallback, not visible
+
+            // Level 2 Combinations
+            'implant-level2': 0,
+            'implant-crown': 0,
+            'root-canal-level2': 0,
+            'root-canal+crown': 0,
+            'root-canal+crown+fissure-crown': 0,
+            'crown-level2': 0,
+            'crown+fissure-root': 0,
+            'crown+fissure-crown': 0,
+            'crown+fissure-full': 0
+        },
+        13: {
+            'original': 290,
+            'root-canal': 320,
+            'crown': 80,
+            'fissure-root': 185,
+            'fissure-crown': 160,
+            'fissure-full': 120,
+            'pulpotomy': 250,
+            'deciduous': 220,
+            'implant': 60,
+            'missing': 350,
+            'unerupted': 20,
+            'extraction': 0, // Fallback, not visible
+
+            // Level 2 Combinations
+            'implant-level2': 0,
+            'implant-crown': 0,
+            'root-canal-level2': 0,
+            'root-canal+crown': 0,
+            'root-canal+crown+fissure-crown': 0,
+            'crown-level2': 0,
+            'crown+fissure-root': 0,
+            'crown+fissure-crown': 0,
+            'crown+fissure-full': 0
+        },
+        14: {
+            'original': 290,
+            'root-canal': 320,
+            'crown': 80,
+            'fissure-root': 185,
+            'fissure-crown': 160,
+            'fissure-full': 120,
+            'pulpotomy': 250,
+            'deciduous': 220,
+            'implant': 60,
+            'missing': 350,
+            'unerupted': 20,
+            'extraction': 0, // Fallback, not visible
+
+            // Level 2 Combinations
+            'implant-level2': 0,
+            'implant-crown': 0,
+            'root-canal-level2': 0,
+            'root-canal+crown': 0,
+            'root-canal+crown+fissure-crown': 0,
+            'crown-level2': 0,
+            'crown+fissure-root': 0,
+            'crown+fissure-crown': 0,
+            'crown+fissure-full': 0
+        },
+        15: {
+            'original': 290,
+            'root-canal': 320,
+            'crown': 80,
+            'fissure-root': 185,
+            'fissure-crown': 160,
+            'fissure-full': 120,
+            'pulpotomy': 250,
+            'deciduous': 220,
+            'implant': 60,
+            'missing': 350,
+            'unerupted': 20,
+            'extraction': 0, // Fallback, not visible
+
+            // Level 2 Combinations
+            'implant-level2': 0,
+            'implant-crown': 0,
+            'root-canal-level2': 0,
+            'root-canal+crown': 0,
+            'root-canal+crown+fissure-crown': 0,
+            'crown-level2': 0,
+            'crown+fissure-root': 0,
+            'crown+fissure-crown': 0,
+            'crown+fissure-full': 0
+        },
+        16: {
+            'original': -70,
+            'root-canal': -20,
+            'crown': 130,
+            'fissure-root': -110,
+            'fissure-crown': -150,
+            'fissure-full': -190,
+            'pulpotomy': 220,
+            'deciduous': 250,
+            'implant': 80,
+            'missing': 10,
+            'unerupted': 40,
+            'extraction': 0, // Fallback, not visible
+
+            // Level 2 Combinations
+            'implant-level2': 0,
+            'implant-crown': 0,
+            'root-canal-level2': 0,
+            'root-canal+crown': 0,
+            'root-canal+crown+fissure-crown': 0,
+            'crown-level2': 0,
+            'crown+fissure-root': 0,
+            'crown+fissure-crown': 0,
+            'crown+fissure-full': 0
+        },
+        17: {
+            'original': -70,
+            'root-canal': -20,
+            'crown': 130,
+            'fissure-root': -110,
+            'fissure-crown': -150,
+            'fissure-full': -190,
+            'pulpotomy': 220,
+            'deciduous': 250,
+            'implant': 80,
+            'missing': 10,
+            'unerupted': 40,
+            'extraction': 0, // Fallback, not visible
+
+            // Level 2 Combinations
+            'implant-level2': 0,
+            'implant-crown': 0,
+            'root-canal-level2': 0,
+            'root-canal+crown': 0,
+            'root-canal+crown+fissure-crown': 0,
+            'crown-level2': 0,
+            'crown+fissure-root': 0,
+            'crown+fissure-crown': 0,
+            'crown+fissure-full': 0
+        },
+        18: {
+            'original': -70,
+            'root-canal': -20,
+            'crown': 130,
+            'fissure-root': -110,
+            'fissure-crown': -150,
+            'fissure-full': -190,
+            'pulpotomy': 220,
+            'deciduous': 250,
+            'implant': 80,
+            'missing': 10,
+            'unerupted': 40,
+            'extraction': 0, // Fallback, not visible
+
+            // Level 2 Combinations
+            'implant-level2': 0,
+            'implant-crown': 0,
+            'root-canal-level2': 0,
+            'root-canal+crown': 0,
+            'root-canal+crown+fissure-crown': 0,
+            'crown-level2': 0,
+            'crown+fissure-root': 0,
+            'crown+fissure-crown': 0,
+            'crown+fissure-full': 0
+        },
+        //Maxiliar izquierdo
+        21: {
+            'original': 290,
+            'root-canal': 320,
+            'crown': 80,
+            'fissure-root': 185,
+            'fissure-crown': 160,
+            'fissure-full': 120,
+            'pulpotomy': 250,
+            'deciduous': 220,
+            'implant': 60,
+            'missing': 350,
+            'unerupted': 20,
+            'extraction': 0, // Fallback, not visible
+
+            // Level 2 Combinations
+            'implant-level2': 0,
+            'implant-crown': 0,
+            'root-canal-level2': 0,
+            'root-canal+crown': 0,
+            'root-canal+crown+fissure-crown': 0,
+            'crown-level2': 0,
+            'crown+fissure-root': 0,
+            'crown+fissure-crown': 0,
+            'crown+fissure-full': 0
+        },
+        22: {
+            'original': 290,
+            'root-canal': 320,
+            'crown': 80,
+            'fissure-root': 185,
+            'fissure-crown': 160,
+            'fissure-full': 120,
+            'pulpotomy': 250,
+            'deciduous': 220,
+            'implant': 60,
+            'missing': 350,
+            'unerupted': 20,
+            'extraction': 0, // Fallback, not visible
+
+            // Level 2 Combinations
+            'implant-level2': 0,
+            'implant-crown': 0,
+            'root-canal-level2': 0,
+            'root-canal+crown': 0,
+            'root-canal+crown+fissure-crown': 0,
+            'crown-level2': 0,
+            'crown+fissure-root': 0,
+            'crown+fissure-crown': 0,
+            'crown+fissure-full': 0
+        },
+        23: {
+            'original': 290,
+            'root-canal': 320,
+            'crown': 80,
+            'fissure-root': 185,
+            'fissure-crown': 160,
+            'fissure-full': 120,
+            'pulpotomy': 250,
+            'deciduous': 220,
+            'implant': 60,
+            'missing': 350,
+            'unerupted': 20,
+            'extraction': 0, // Fallback, not visible
+
+            // Level 2 Combinations
+            'implant-level2': 0,
+            'implant-crown': 0,
+            'root-canal-level2': 0,
+            'root-canal+crown': 0,
+            'root-canal+crown+fissure-crown': 0,
+            'crown-level2': 0,
+            'crown+fissure-root': 0,
+            'crown+fissure-crown': 0,
+            'crown+fissure-full': 0
+        },
+        24: {
+            'original': 290,
+            'root-canal': 320,
+            'crown': 80,
+            'fissure-root': 185,
+            'fissure-crown': 160,
+            'fissure-full': 120,
+            'pulpotomy': 250,
+            'deciduous': 220,
+            'implant': 60,
+            'missing': 350,
+            'unerupted': 20,
+            'extraction': 0, // Fallback, not visible
+
+            // Level 2 Combinations
+            'implant-level2': 0,
+            'implant-crown': 0,
+            'root-canal-level2': 0,
+            'root-canal+crown': 0,
+            'root-canal+crown+fissure-crown': 0,
+            'crown-level2': 0,
+            'crown+fissure-root': 0,
+            'crown+fissure-crown': 0,
+            'crown+fissure-full': 0
+        },
+        25: {
+            'original': 290,
+            'root-canal': 320,
+            'crown': 80,
+            'fissure-root': 185,
+            'fissure-crown': 160,
+            'fissure-full': 120,
+            'pulpotomy': 250,
+            'deciduous': 220,
+            'implant': 60,
+            'missing': 350,
+            'unerupted': 20,
+            'extraction': 0, // Fallback, not visible
+
+            // Level 2 Combinations
+            'implant-level2': 0,
+            'implant-crown': 0,
+            'root-canal-level2': 0,
+            'root-canal+crown': 0,
+            'root-canal+crown+fissure-crown': 0,
+            'crown-level2': 0,
+            'crown+fissure-root': 0,
+            'crown+fissure-crown': 0,
+            'crown+fissure-full': 0
+        },
+        26: {
+            'original': -70,
+            'root-canal': -20,
+            'crown': 130,
+            'fissure-root': -110,
+            'fissure-crown': -150,
+            'fissure-full': -190,
+            'pulpotomy': 220,
+            'deciduous': 250,
+            'implant': 80,
+            'missing': 10,
+            'unerupted': 40,
+            'extraction': 0, // Fallback, not visible
+
+            // Level 2 Combinations
+            'implant-level2': 0,
+            'implant-crown': 0,
+            'root-canal-level2': 0,
+            'root-canal+crown': 0,
+            'root-canal+crown+fissure-crown': 0,
+            'crown-level2': 0,
+            'crown+fissure-root': 0,
+            'crown+fissure-crown': 0,
+            'crown+fissure-full': 0
+        },
+        27: {
+            'original': -70,
+            'root-canal': -20,
+            'crown': 130,
+            'fissure-root': -110,
+            'fissure-crown': -150,
+            'fissure-full': -190,
+            'pulpotomy': 220,
+            'deciduous': 250,
+            'implant': 80,
+            'missing': 10,
+            'unerupted': 40,
+            'extraction': 0, // Fallback, not visible
+
+            // Level 2 Combinations
+            'implant-level2': 0,
+            'implant-crown': 0,
+            'root-canal-level2': 0,
+            'root-canal+crown': 0,
+            'root-canal+crown+fissure-crown': 0,
+            'crown-level2': 0,
+            'crown+fissure-root': 0,
+            'crown+fissure-crown': 0,
+            'crown+fissure-full': 0
+        },
+        28: {
+            'original': -70,
+            'root-canal': -20,
+            'crown': 130,
+            'fissure-root': -110,
+            'fissure-crown': -150,
+            'fissure-full': -190,
+            'pulpotomy': 220,
+            'deciduous': 250,
+            'implant': 80,
+            'missing': 10,
+            'unerupted': 40,
+            'extraction': 0, // Fallback, not visible
+
+            // Level 2 Combinations
+            'implant-level2': 0,
+            'implant-crown': 0,
+            'root-canal-level2': 0,
+            'root-canal+crown': 0,
+            'root-canal+crown+fissure-crown': 0,
+            'crown-level2': 0,
+            'crown+fissure-root': 0,
+            'crown+fissure-crown': 0,
+            'crown+fissure-full': 0
+        },
+        //Inferior derecho
+        41: {
+            'original': 110,
+            'root-canal': 140,
+            'crown': -100,
+            'fissure-root': 5,
+            'fissure-crown': -20,
+            'fissure-full': -60,
+            'pulpotomy': 70,
+            'deciduous': 40,
+            'implant': -120,
+            'missing': 170,
+            'unerupted': -160,
+            'extraction': 0, // Fallback, not visible
+
+            // Level 2 Combinations
+            'implant-level2': 0,
+            'implant-crown': 0,
+            'root-canal-level2': 0,
+            'root-canal+crown': 0,
+            'root-canal+crown+fissure-crown': 0,
+            'crown-level2': 0,
+            'crown+fissure-root': 0,
+            'crown+fissure-crown': 0,
+            'crown+fissure-full': 0
+        },
+        42: {
+            'original': 110,
+            'root-canal': 140,
+            'crown': -100,
+            'fissure-root': 5,
+            'fissure-crown': -20,
+            'fissure-full': -60,
+            'pulpotomy': 70,
+            'deciduous': 40,
+            'implant': -120,
+            'missing': 170,
+            'unerupted': -160,
+            'extraction': 0, // Fallback, not visible
+
+            // Level 2 Combinations
+            'implant-level2': 0,
+            'implant-crown': 0,
+            'root-canal-level2': 0,
+            'root-canal+crown': 0,
+            'root-canal+crown+fissure-crown': 0,
+            'crown-level2': 0,
+            'crown+fissure-root': 0,
+            'crown+fissure-crown': 0,
+            'crown+fissure-full': 0
+        },
+        43: {
+            'original': 110,
+            'root-canal': 140,
+            'crown': -100,
+            'fissure-root': 5,
+            'fissure-crown': -20,
+            'fissure-full': -60,
+            'pulpotomy': 70,
+            'deciduous': 40,
+            'implant': -120,
+            'missing': 170,
+            'unerupted': -160,
+            'extraction': 0, // Fallback, not visible
+
+            // Level 2 Combinations
+            'implant-level2': 0,
+            'implant-crown': 0,
+            'root-canal-level2': 0,
+            'root-canal+crown': 0,
+            'root-canal+crown+fissure-crown': 0,
+            'crown-level2': 0,
+            'crown+fissure-root': 0,
+            'crown+fissure-crown': 0,
+            'crown+fissure-full': 0
+        },
+        44: {
+            'original': 110,
+            'root-canal': 140,
+            'crown': -100,
+            'fissure-root': 5,
+            'fissure-crown': -20,
+            'fissure-full': -60,
+            'pulpotomy': 70,
+            'deciduous': 40,
+            'implant': -120,
+            'missing': 170,
+            'unerupted': -160,
+            'extraction': 0, // Fallback, not visible
+
+            // Level 2 Combinations
+            'implant-level2': 0,
+            'implant-crown': 0,
+            'root-canal-level2': 0,
+            'root-canal+crown': 0,
+            'root-canal+crown+fissure-crown': 0,
+            'crown-level2': 0,
+            'crown+fissure-root': 0,
+            'crown+fissure-crown': 0,
+            'crown+fissure-full': 0
+        },
+        45: {
+            'original': 110,
+            'root-canal': 140,
+            'crown': -100,
+            'fissure-root': 5,
+            'fissure-crown': -20,
+            'fissure-full': -60,
+            'pulpotomy': 70,
+            'deciduous': 40,
+            'implant': -120,
+            'missing': 170,
+            'unerupted': -160,
+            'extraction': 0, // Fallback, not visible
+
+            // Level 2 Combinations
+            'implant-level2': 0,
+            'implant-crown': 0,
+            'root-canal-level2': 0,
+            'root-canal+crown': 0,
+            'root-canal+crown+fissure-crown': 0,
+            'crown-level2': 0,
+            'crown+fissure-root': 0,
+            'crown+fissure-crown': 0,
+            'crown+fissure-full': 0
+        },
+        46: {
+            'original': 120,
+            'root-canal': 150,
+            'crown': -60,
+            'fissure-root': 60,
+            'fissure-crown': 25,
+            'fissure-full': -10,
+            'pulpotomy': 10,
+            'deciduous': 180,
+            'implant': -100,
+            'missing': 180,
+            'unerupted': 220,
+            'extraction': 0, // Fallback, not visible
+
+            // Level 2 Combinations
+            'implant-level2': 0,
+            'implant-crown': 0,
+            'root-canal-level2': 0,
+            'root-canal+crown': 0,
+            'root-canal+crown+fissure-crown': 0,
+            'crown-level2': 0,
+            'crown+fissure-root': 0,
+            'crown+fissure-crown': 0,
+            'crown+fissure-full': 0
+        },
+        47: {
+            'original': 120,
+            'root-canal': 150,
+            'crown': -60,
+            'fissure-root': 60,
+            'fissure-crown': 25,
+            'fissure-full': -10,
+            'pulpotomy': 10,
+            'deciduous': 180,
+            'implant': -100,
+            'missing': 180,
+            'unerupted': 220,
+            'extraction': 0, // Fallback, not visible
+
+            // Level 2 Combinations
+            'implant-level2': 0,
+            'implant-crown': 0,
+            'root-canal-level2': 0,
+            'root-canal+crown': 0,
+            'root-canal+crown+fissure-crown': 0,
+            'crown-level2': 0,
+            'crown+fissure-root': 0,
+            'crown+fissure-crown': 0,
+            'crown+fissure-full': 0
+        },
+        48: {
+            'original': 120,
+            'root-canal': 150,
+            'crown': -60,
+            'fissure-root': 60,
+            'fissure-crown': 25,
+            'fissure-full': -10,
+            'pulpotomy': 10,
+            'deciduous': 180,
+            'implant': -100,
+            'missing': 180,
+            'unerupted': 220,
+            'extraction': 0, // Fallback, not visible
+
+            // Level 2 Combinations
+            'implant-level2': 0,
+            'implant-crown': 0,
+            'root-canal-level2': 0,
+            'root-canal+crown': 0,
+            'root-canal+crown+fissure-crown': 0,
+            'crown-level2': 0,
+            'crown+fissure-root': 0,
+            'crown+fissure-crown': 0,
+            'crown+fissure-full': 0
+        },
+        //Inferior izquierdo
+        31: {
+            'original': 110,
+            'root-canal': 140,
+            'crown': -100,
+            'fissure-root': 5,
+            'fissure-crown': -20,
+            'fissure-full': -60,
+            'pulpotomy': 70,
+            'deciduous': 40,
+            'implant': -120,
+            'missing': 170,
+            'unerupted': -160,
+            'extraction': 0, // Fallback, not visible
+
+            // Level 2 Combinations
+            'implant-level2': 0,
+            'implant-crown': 0,
+            'root-canal-level2': 0,
+            'root-canal+crown': 0,
+            'root-canal+crown+fissure-crown': 0,
+            'crown-level2': 0,
+            'crown+fissure-root': 0,
+            'crown+fissure-crown': 0,
+            'crown+fissure-full': 0
+        },
+        32: {
+            'original': 110,
+            'root-canal': 140,
+            'crown': -100,
+            'fissure-root': 5,
+            'fissure-crown': -20,
+            'fissure-full': -60,
+            'pulpotomy': 70,
+            'deciduous': 40,
+            'implant': -120,
+            'missing': 170,
+            'unerupted': -160,
+            'extraction': 0, // Fallback, not visible
+
+            // Level 2 Combinations
+            'implant-level2': 0,
+            'implant-crown': 0,
+            'root-canal-level2': 0,
+            'root-canal+crown': 0,
+            'root-canal+crown+fissure-crown': 0,
+            'crown-level2': 0,
+            'crown+fissure-root': 0,
+            'crown+fissure-crown': 0,
+            'crown+fissure-full': 0
+        },
+        33: {
+            'original': 110,
+            'root-canal': 140,
+            'crown': -100,
+            'fissure-root': 5,
+            'fissure-crown': -20,
+            'fissure-full': -60,
+            'pulpotomy': 70,
+            'deciduous': 40,
+            'implant': -120,
+            'missing': 170,
+            'unerupted': -160,
+            'extraction': 0, // Fallback, not visible
+
+            // Level 2 Combinations
+            'implant-level2': 0,
+            'implant-crown': 0,
+            'root-canal-level2': 0,
+            'root-canal+crown': 0,
+            'root-canal+crown+fissure-crown': 0,
+            'crown-level2': 0,
+            'crown+fissure-root': 0,
+            'crown+fissure-crown': 0,
+            'crown+fissure-full': 0
+        },
+        34: {
+            'original': 110,
+            'root-canal': 140,
+            'crown': -100,
+            'fissure-root': 5,
+            'fissure-crown': -20,
+            'fissure-full': -60,
+            'pulpotomy': 70,
+            'deciduous': 40,
+            'implant': -120,
+            'missing': 170,
+            'unerupted': -160,
+            'extraction': 0, // Fallback, not visible
+
+            // Level 2 Combinations
+            'implant-level2': 0,
+            'implant-crown': 0,
+            'root-canal-level2': 0,
+            'root-canal+crown': 0,
+            'root-canal+crown+fissure-crown': 0,
+            'crown-level2': 0,
+            'crown+fissure-root': 0,
+            'crown+fissure-crown': 0,
+            'crown+fissure-full': 0
+        },
+        35: {
+            'original': 110,
+            'root-canal': 140,
+            'crown': -100,
+            'fissure-root': 5,
+            'fissure-crown': -20,
+            'fissure-full': -60,
+            'pulpotomy': 70,
+            'deciduous': 40,
+            'implant': -120,
+            'missing': 170,
+            'unerupted': -160,
+            'extraction': 0, // Fallback, not visible
+
+            // Level 2 Combinations
+            'implant-level2': 0,
+            'implant-crown': 0,
+            'root-canal-level2': 0,
+            'root-canal+crown': 0,
+            'root-canal+crown+fissure-crown': 0,
+            'crown-level2': 0,
+            'crown+fissure-root': 0,
+            'crown+fissure-crown': 0,
+            'crown+fissure-full': 0
+        },
+        36: {
+            'original': 120,
+            'root-canal': 150,
+            'crown': -60,
+            'fissure-root': 60,
+            'fissure-crown': 25,
+            'fissure-full': -10,
+            'pulpotomy': 10,
+            'deciduous': 180,
+            'implant': -100,
+            'missing': 180,
+            'unerupted': 220,
+            'extraction': 0, // Fallback, not visible
+
+            // Level 2 Combinations
+            'implant-level2': 0,
+            'implant-crown': 0,
+            'root-canal-level2': 0,
+            'root-canal+crown': 0,
+            'root-canal+crown+fissure-crown': 0,
+            'crown-level2': 0,
+            'crown+fissure-root': 0,
+            'crown+fissure-crown': 0,
+            'crown+fissure-full': 0
+        },
+        37: {
+            'original': 120,
+            'root-canal': 150,
+            'crown': -60,
+            'fissure-root': 60,
+            'fissure-crown': 25,
+            'fissure-full': -10,
+            'pulpotomy': 10,
+            'deciduous': 180,
+            'implant': -100,
+            'missing': 180,
+            'unerupted': 220,
+            'extraction': 0, // Fallback, not visible
+
+            // Level 2 Combinations
+            'implant-level2': 0,
+            'implant-crown': 0,
+            'root-canal-level2': 0,
+            'root-canal+crown': 0,
+            'root-canal+crown+fissure-crown': 0,
+            'crown-level2': 0,
+            'crown+fissure-root': 0,
+            'crown+fissure-crown': 0,
+            'crown+fissure-full': 0
+        },
+        38: {
+            'original': 120,
+            'root-canal': 150,
+            'crown': -60,
+            'fissure-root': 60,
+            'fissure-crown': 25,
+            'fissure-full': -10,
+            'pulpotomy': 10,
+            'deciduous': 180,
+            'implant': -100,
+            'missing': 180,
+            'unerupted': 220,
+            'extraction': 0, // Fallback, not visible
+
+            // Level 2 Combinations
+            'implant-level2': 0,
+            'implant-crown': 0,
+            'root-canal-level2': 0,
+            'root-canal+crown': 0,
+            'root-canal+crown+fissure-crown': 0,
+            'crown-level2': 0,
+            'crown+fissure-root': 0,
+            'crown+fissure-crown': 0,
+            'crown+fissure-full': 0
+        }
+    };
+
+    const renderMenuItem = (type, index, array) => {
+
+        const currentToothId = radialState?.toothId;
+        const rotationMap = RADIAL_MENU_CUSTOM_ROTATION[currentToothId] || RADIAL_MENU_CUSTOM_ROTATION.default;
+        const customRotation = rotationMap[type.id] !== undefined ? rotationMap[type.id] : 0;
+
+        return (
+            <MenuItem
+                key={type.id}
+                onMouseEnter={(e) => {
+                    setHoveredMenuItem(type.id);
+                    if (radialState && radialState.toothId) {
+                        const currentType = toothStates[radialState.toothId] || 'original';
+                        const previewFinal = getToggledToothState(currentType, type.id);
+                        setHoveredPreviewType(previewFinal);
+                    }
+                    setMousePos({ x: e.clientX, y: e.clientY });
+                }}
+                onMouseMove={(e) => setMousePos({ x: e.clientX, y: e.clientY })}
+                onMouseLeave={() => {
+                    setHoveredMenuItem(null);
+                    setHoveredPreviewType(null);
+                }}
+                onItemClick={(e) => {
+                    e.stopPropagation();
+
+                    // // Reproducir el nombre del tratamiento seleccionado
+                    if ('speechSynthesis' in window) {
+                        const utterance = new SpeechSynthesisUtterance("Selecionado " + type.label);
+                        // utterance.lang = 'es-MX';
+
+                        // Opcional: configurar idioma o voz aquí, ej. utterance.lang = 'es-MX';
+                        window.speechSynthesis.speak(utterance);
+                    }
+
+                    if (radialState && radialState.toothId) {
+                        const currentType = toothStates[radialState.toothId] || 'original';
+                        const finalType = getToggledToothState(currentType, type.id);
+
+                        const exclusive = ['extraction', 'missing', 'unerupted', 'deciduous', 'pulpotomy', 'original'];
+                        const isExclusive = exclusive.includes(type.id);
+
+                        // Nueva Regla Directa: Si escogemos Implante, Endodoncia o Corona, SIEMPRE abrir el 2do menú
+                        const isBaseTreatment = ['implant', 'root-canal', 'crown'].includes(type.id);
+
+                        if (
+                            isBaseTreatment ||
+                            (currentType !== 'original' &&
+                                finalType !== 'original' &&
+                                finalType !== type.id &&
+                                finalType !== currentType &&
+                                !isExclusive)
+                        ) {
+                            setPendingCombination({
+                                toothId: radialState.toothId,
+                                newType: type.id,
+                                finalTypeStr: finalType,
+                                finalTypesArray: finalType === 'implant-crown' ? ['implant', 'crown'] : finalType.split('+')
+                            });
+                            setLevel2Open(true);
+                        } else {
+                            setToothStates(prev => ({ ...prev, [radialState.toothId]: finalType }));
+                            setSelectedToothType(type.id);
+                            setRadialState(null);
+                            setLevel2Open(false);
+                            setPendingCombination(null);
+                        }
+                    } else {
+                        setSelectedToothType(type.id);
+                        setRadialState(null);
+                        setLevel2Open(false);
+                    }
+                    setHoveredMenuItem(null);
+                }}
+                data={type.id}
+            >
+                <div
+                    className={`group relative w-[76px] h-[76px] rounded-full flex items-center justify-center p-1 text-center bg-transparent shadow-none border border-transparent cursor-pointer hover:scale-105 hover:bg-slate-100/10 dark:hover:bg-slate-800/50 transition-transform ${type.color.replace(/bg-[a-z0-9/-]+/g, '').replace(/border-[a-z0-9/-]+/g, '')}`}
+                >
+                    {radialState?.toothId && (
+                        <img
+                            src={getToothSrc(radialState.toothId, type.id)}
+                            alt={type.label}
+                            draggable={false}
+                            style={{ transform: `rotate(${customRotation}deg)` }}
+                            className={`w-4/5 h-4/5 object-contain drop-shadow-md select-none opacity-90 transition-opacity`}
+                        />
+                    )}
+                </div>
+            </MenuItem>
+        )
+    };
+
+    const renderCombinationItem = (comboOption, index, array) => {
+        const { isReturn, isCombined, types, label, id } = comboOption;
+        const comboId = id || types?.join('+') || '';
+
+        const currentToothId = pendingCombination?.toothId;
+        const rotationMap = RADIAL_MENU_CUSTOM_ROTATION[currentToothId] || RADIAL_MENU_CUSTOM_ROTATION.default;
+
+        // Buscamos primero si existe una rotación específica para el nivel 2 (ej. 'crown-level2', 'implant-crown-level2')
+        // Si no existe, usamos la rotación base ('crown', 'implant-crown') o 0 como respaldo.
+        const level2Key = `${comboId}-level2`;
+        const customRotation = rotationMap[level2Key] !== undefined
+            ? rotationMap[level2Key]
+            : (rotationMap[comboId] !== undefined ? rotationMap[comboId] : 0);
+
+        // Botón Regresar
+        if (isReturn) {
+            return (
+                <MenuItem
+                    key="return-button"
+                    onMouseEnter={(e) => {
+                        setHoveredMenuItem(label);
+                        setMousePos({ x: e.clientX, y: e.clientY });
+                    }}
+                    onMouseMove={(e) => setMousePos({ x: e.clientX, y: e.clientY })}
+                    onMouseLeave={() => {
+                        setHoveredMenuItem(null);
+                        setHoveredPreviewType(null);
+                    }}
+                    onItemClick={(e) => {
+                        e.stopPropagation();
+                        setLevel2Open(false);
+                        setPendingCombination(null);
+                    }}
+                >
+                    <div className="group relative w-[80px] h-[80px] flex flex-col items-center justify-center p-1 text-center shadow-sm cursor-pointer transition-colors">
+                        <svg className="w-8 h-8 text-slate-500 dark:text-slate-400 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                        </svg>
+                        <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 drop-shadow-sm">Regresar</span>
+                    </div>
+                </MenuItem>
+            );
+        }
+
+        const iconSrc = generateCombinedSvgDataUrl(pendingCombination.toothId, types);
+
+        return (
+            <MenuItem
+                key={id || (isCombined ? 'combined' : 'replace')}
+                onMouseEnter={(e) => {
+                    setHoveredMenuItem(label);
+                    let previewFinal;
+                    if (isCombined) {
+                        previewFinal = id ? id : pendingCombination?.finalTypeStr;
+                    } else {
+                        previewFinal = pendingCombination?.newType;
+                    }
+                    if (previewFinal) setHoveredPreviewType(previewFinal);
+                    setMousePos({ x: e.clientX, y: e.clientY });
+                }}
+                onMouseMove={(e) => setMousePos({ x: e.clientX, y: e.clientY })}
+                onMouseLeave={() => {
+                    setHoveredMenuItem(null);
+                    setHoveredPreviewType(null);
+                }}
+                onItemClick={(e) => {
+                    e.stopPropagation();
 
 
+                    // if ('speechSynthesis' in window) {
+                    //     window.speechSynthesis.speak(new SpeechSynthesisUtterance("Seleccionado " + label));
+                    // }
+
+                    // Calcular el tipo final dependiendo de si es combinado o reemplazo puro
+                    let newFinalType;
+                    if (isCombined) {
+                        // Si hay un ID explícito de combinación manual (ej. root-canal+crown)
+                        newFinalType = id ? id : pendingCombination.finalTypeStr;
+                    } else {
+                        // Reemplazar: solo el tratamiento nuevo
+                        newFinalType = pendingCombination.newType;
+                    }
+
+                    setToothStates(prev => ({ ...prev, [pendingCombination.toothId]: newFinalType }));
+                    setSelectedToothType(pendingCombination.newType);
+                    setRadialState(null);
+                    setLevel2Open(false);
+                    setPendingCombination(null);
+                }}
+            >
+                <div className="group relative w-[80px] h-[80px] rounded-full flex flex-col items-center justify-center p-1 text-center bg-transparent shadow-none border border-transparent cursor-pointer hover:scale-105 hover:bg-slate-100/10 dark:hover:bg-slate-800/50 transition-transform">
+                    <img
+                        src={iconSrc}
+                        alt={label}
+                        draggable={false}
+                        style={{ transform: `rotate(${customRotation}deg)` }}
+                        className="w-4/5 h-4/5 object-contain drop-shadow-md select-none opacity-90 transition-opacity"
+                    />
+
+
+                </div>
+            </MenuItem>
+        );
+    };
+
+    const buildCombinationOptions = () => {
+        if (!pendingCombination) return [];
+
+        const { newType } = pendingCombination;
+        let options = [];
+
+        // 1. Mostrar las combinaciones dinámicas
+        switch (newType) {
+            case 'implant':
+                options.push({ isCombined: true, types: ['implant', 'crown'], label: 'Implante + Corona', id: 'implant-crown' });
+                break;
+            case 'root-canal':
+                options.push({ isCombined: true, types: ['root-canal', 'crown'], label: 'Endodoncia + Corona', id: 'root-canal+crown' });
+                options.push({
+                    isCombined: true,
+                    types: ['root-canal', 'crown', 'fissure-crown'],
+                    label: 'Endo + Corona + Fisura',
+                    id: 'root-canal+crown+fissure-crown'
+                });
+                break;
+            case 'crown':
+                options.push({ isCombined: true, types: ['crown', 'fissure-root'], label: 'Corona + Fisura Raíz', id: 'crown+fissure-root' });
+                options.push({ isCombined: true, types: ['crown', 'fissure-crown'], label: 'Corona + Fisura Corona', id: 'crown+fissure-crown' });
+                options.push({ isCombined: true, types: ['crown', 'fissure-full'], label: 'Corona + Fisura Corona', id: 'crown+fissure-full' });
+                break;
+            default:
+                // Fallback a comportamiento anterior para otros tratamientos combinables no listados
+                options.push({ isCombined: true, types: pendingCombination.finalTypesArray, label: 'Combinar' });
+                break;
+        }
+
+        // 2. Opción de Reemplazar (poner el tratamiento puro y sobreescribir)
+        const replaceMatch = DENTAL_TYPES.find(t => t.id === newType);
+        const replaceStr = replaceMatch ? `${replaceMatch.label}` : 'Reemplazar';
+        options.push({ isCombined: false, types: [newType], label: replaceStr });
+
+        // 3. Botón de regresar
+        options.push({ isReturn: true, label: 'Regresar' });
+
+        return options;
+    };
+
+    const combinationOptions = buildCombinationOptions();
 
     const handleResetOdontogram = () => {
         // 1. Reset Teeth to Initial State (all 'original')
@@ -1027,9 +3291,12 @@ export default function OdontogramSection() {
 
         // 2. Clear all clinical overlays
         setBrackets({});
+        setBracketWires({});
         setTads({});
+        setTadWires({});
         setSurfaceStates({});
         setToothWidths({});
+        setPeriodontalData({});
 
         // 3. Reset UI Modes
         setIsBracketMode(false);
@@ -1040,6 +3307,10 @@ export default function OdontogramSection() {
         // 4. Close Dialog
         setIsResetDialogOpen(false);
     };
+
+    const displayToothStates = hoveredPreviewType && radialState?.toothId
+        ? { ...toothStates, [radialState.toothId]: hoveredPreviewType }
+        : toothStates;
 
     return (
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="p-1 space-y-6">
@@ -1052,7 +3323,7 @@ export default function OdontogramSection() {
                 ${isTadMode ? 'ring-2 ring-sky-500/20 border-sky-200 dark:border-sky-900/30' : ''}
                 ${isPeriodontalMode ? 'ring-2 ring-red-500/20 border-red-200 dark:border-red-900/30' : ''}
             `}>
-                <div className="w-full mb-4 flex items-center justify-between z-10 relative">
+                <div className="w-full mb-4 flex items-start justify-between z-10 relative gap-4">
                     <div>
                         <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
                             Odontograma Actual
@@ -1061,6 +3332,41 @@ export default function OdontogramSection() {
                             {isPeriodontalMode && <span className="badge badge-sm badge-error gap-1 font-normal">Bolsas Periodontales</span>}
                         </h2>
                         <p className="text-sm text-slate-500 dark:text-slate-400">Vista general del estado dental del paciente.</p>
+                    </div>
+
+                    {/* --- PANEL DE CONTROL UNDO/REDO --- */}
+                    <div className="flex flex-shrink-0 items-center bg-slate-100 dark:bg-slate-800/50 rounded-lg p-1 border border-slate-200 dark:border-slate-700 shadow-sm">
+                        <button
+                            type="button"
+                            onClick={handleUndo}
+                            disabled={historyState.past.length === 0}
+                            className={`px-3 py-1.5 rounded-md flex items-center gap-1.5 text-xs font-semibold transition-colors ${historyState.past.length === 0
+                                ? 'text-slate-400 dark:text-slate-600 cursor-not-allowed opacity-50'
+                                : 'text-slate-700 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700 hover:shadow-sm'
+                                }`}
+                            title="Deshacer (Ctrl + Z)"
+                        >
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" />
+                            </svg>
+                            Deshacer
+                        </button>
+                        <div className="w-px h-5 bg-slate-300 dark:bg-slate-600 mx-1"></div>
+                        <button
+                            type="button"
+                            onClick={handleRedo}
+                            disabled={historyState.future.length === 0}
+                            className={`px-3 py-1.5 rounded-md flex items-center gap-1.5 text-xs font-semibold transition-colors ${historyState.future.length === 0
+                                ? 'text-slate-400 dark:text-slate-600 cursor-not-allowed opacity-50'
+                                : 'text-slate-700 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700 hover:shadow-sm'
+                                }`}
+                            title="Rehacer (Ctrl + Y)"
+                        >
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M15 15l6-6m0 0l-6-6m6 6H9a6 6 0 000 12h3" />
+                            </svg>
+                            Rehacer
+                        </button>
                     </div>
                 </div>
 
@@ -1076,17 +3382,34 @@ export default function OdontogramSection() {
                             Superior (Maxilar)
                         </div>
 
+                        {/* BLUR OVERLAY PARA EL ODONTOGRAMA CUANDO EL MENU ESTA ABIERTO */}
+                        <AnimatePresence>
+                            {radialState && (
+                                <motion.div
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    exit={{ opacity: 0 }}
+                                    className="absolute -inset-10 z-[50] backdrop-blur-[6px] bg-white/20 dark:bg-slate-900/40 rounded-3xl pointer-events-none"
+                                />
+                            )}
+                        </AnimatePresence>
+
                         {/* === UPPER ARCH === */}
-                        <div className="relative flex flex-col w-full isolate">
+                        <div className={`relative flex flex-col w-full ${radialState ? '' : 'isolate'}`}>
                             {/* CENTER DIVIDER */}
                             <div className="absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-px bg-slate-400 dark:bg-slate-700 z-0"></div>
 
                             {/* ROW 1: FRONTAL */}
                             <ArchRow
+                                activeRadialTooth={radialState?.toothId}
                                 teethIds={UPPER_ARCH_IDS}
-                                toothStates={toothStates}
+                                toothStates={displayToothStates}
                                 brackets={brackets}
+                                bracketWires={bracketWires}
+                                tadWires={tadWires}
+                                selectedBracket={selectedBracket}
                                 tads={tads}
+                                periodontalData={periodontalData}
                                 isBracketMode={isBracketMode}
                                 isTadMode={isTadMode}
                                 isPeriodontalMode={isPeriodontalMode}
@@ -1105,11 +3428,12 @@ export default function OdontogramSection() {
                             />
 
                             {/* ROW 2: OCCLUSAL */}
-                            <div className="border-b border-slate-400 dark:border-slate-700/50 w-full mb-0 pb-1">
+                            <div className="border-b border-slate-400 dark:border-slate-700/50 w-full mb-0 pb-1 relative z-10">
                                 <OcclusalArchRow
+                                    activeRadialTooth={radialState?.toothId}
                                     teethIds={UPPER_ARCH_IDS}
                                     surfaceStates={surfaceStates}
-                                    toothStates={toothStates}
+                                    toothStates={displayToothStates}
                                     onSurfaceClick={handleSurfaceClick}
                                     toothWidths={toothWidths}
                                     baseToothWidths={baseToothWidths}
@@ -1119,16 +3443,17 @@ export default function OdontogramSection() {
                         </div>
 
                         {/* === LOWER ARCH === */}
-                        <div className="relative flex flex-col w-full isolate">
+                        <div className={`relative flex flex-col w-full ${radialState ? '' : 'isolate'}`}>
                             {/* CENTER DIVIDER */}
                             <div className="absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-px bg-slate-400 dark:bg-slate-700 z-0"></div>
 
                             {/* ROW 3: OCCLUSAL */}
-                            <div className="w-full mt-0 pt-1">
+                            <div className="w-full mt-0 pt-1 relative z-10">
                                 <OcclusalArchRow
+                                    activeRadialTooth={radialState?.toothId}
                                     teethIds={LOWER_ARCH_IDS}
                                     surfaceStates={surfaceStates}
-                                    toothStates={toothStates}
+                                    toothStates={displayToothStates}
                                     onSurfaceClick={handleSurfaceClick}
                                     toothWidths={toothWidths}
                                     baseToothWidths={baseToothWidths}
@@ -1138,10 +3463,15 @@ export default function OdontogramSection() {
 
                             {/* ROW 4: FRONTAL */}
                             <ArchRow
+                                activeRadialTooth={radialState?.toothId}
                                 teethIds={LOWER_ARCH_IDS}
-                                toothStates={toothStates}
+                                toothStates={displayToothStates}
                                 brackets={brackets}
+                                bracketWires={bracketWires}
+                                tadWires={tadWires}
+                                selectedBracket={selectedBracket}
                                 tads={tads}
+                                periodontalData={periodontalData}
                                 isBracketMode={isBracketMode}
                                 isTadMode={isTadMode}
                                 isPeriodontalMode={isPeriodontalMode}
@@ -1200,6 +3530,14 @@ export default function OdontogramSection() {
                 onSelect={handleClinicalAction}
             />
 
+            <PeriodontalModal
+                isOpen={!!activePeriodontalTooth}
+                onClose={() => setActivePeriodontalTooth(null)}
+                onSave={handlePeriodontalSave}
+                toothId={activePeriodontalTooth}
+                initialData={activePeriodontalTooth ? periodontalData[activePeriodontalTooth] : null}
+            />
+
             {console.log("[DEBUG] ConfirmDialog render check:", isResetDialogOpen)}
             <ConfirmDialog
                 open={isResetDialogOpen}
@@ -1218,20 +3556,107 @@ export default function OdontogramSection() {
 
             <AnimatePresence>
                 {radialState && (
-                    <RadialMenu
-                        x={radialState.x}
-                        y={radialState.y}
-                        options={[
-                            { id: 'crown', label: 'Crown', color: 'bg-amber-500 text-white border-amber-600' },
-                            { id: 'implant', label: 'Implant', color: 'bg-blue-500 text-white border-blue-600' },
-                            { id: 'root-canal', label: 'Endodontics', color: 'bg-pink-500 text-white border-pink-600' },
-                            { id: 'extraction', label: 'Extraction', color: 'bg-slate-700 text-white border-slate-800' }
-                        ]}
-                        onSelect={(option) => {
-                            setToothStates(prev => ({ ...prev, [radialState.toothId]: option.id }));
+                    <motion.div
+                        className="fixed inset-0 z-[9999]"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        onClick={() => {
+                            setRadialState(null);
+                            setLevel2Open(false);
+                            setHoveredMenuItem(null);
+                            setPendingCombination(null);
+                            setHoveredPreviewType(null);
                         }}
-                        onClose={() => setRadialState(null)}
-                    />
+                        onContextMenu={(e) => {
+                            e.preventDefault();
+                            setRadialState(null);
+                            setLevel2Open(false);
+                            setHoveredMenuItem(null);
+                            setPendingCombination(null);
+                            setHoveredPreviewType(null);
+                        }}
+                    >
+                        <div className="menu-wrapper">
+                            <div style={{ position: 'relative' }}>
+
+                                {/* Nivel 1 (Todos los tratamientos) */}
+                                {(() => {
+                                    const customSize = radialState ? RADIAL_MENU_CUSTOM_SIZES[radialState.toothId] : null;
+                                    const finalOffsetX = (customSize?.offsetX || 0);
+                                    const finalOffsetY = (customSize?.offsetY || 0);
+
+                                    return (
+                                        <Menu
+                                            centerX={radialState.x + finalOffsetX}
+                                            centerY={radialState.y + finalOffsetY}
+                                            innerRadius={radialState ? getRadialMenuSizes(radialState.toothId).level1.innerRadius : 78}
+                                            outerRadius={radialState ? getRadialMenuSizes(radialState.toothId).level1.outerRadius : 250}
+                                            show={!!radialState}
+                                            animation={["fade", "scale", "rotate"]}
+                                            animationTimeout={150}
+                                            drawBackground={true}
+                                        >
+                                            {DENTAL_TYPES.filter(type => {
+                                                if (type.id === 'extraction') return false;
+                                                const adultMolars = [16, 17, 18, 26, 27, 28, 36, 37, 38, 46, 47, 48];
+                                                if (adultMolars.includes(radialState?.toothId) && (type.id === 'deciduous' || type.id === 'pulpotomy')) {
+                                                    return false;
+                                                }
+                                                return true;
+                                            }).map(renderMenuItem)}
+                                        </Menu>
+                                    );
+                                })()}
+
+                                {/* Nivel 2 (Combinaciones Dinámicas) */}
+                                {level2Open && pendingCombination && (() => {
+                                    const customSize = radialState ? RADIAL_MENU_CUSTOM_SIZES[radialState.toothId] : null;
+                                    const finalOffsetX = (customSize?.offsetX || 0);
+                                    const finalOffsetY = (customSize?.offsetY || 0);
+
+                                    return (
+                                        <Menu
+                                            centerX={radialState.x + finalOffsetX}
+                                            centerY={radialState.y + finalOffsetY}
+                                            innerRadius={radialState ? getRadialMenuSizes(radialState.toothId).level2.innerRadius : 185}
+                                            outerRadius={radialState ? getRadialMenuSizes(radialState.toothId).level2.outerRadius : 299}
+                                            show={true}
+                                            animation={["fade", "scale", "rotate"]}
+                                            animationTimeout={150}
+                                            drawBackground={true}
+                                        >
+                                            {combinationOptions.map(renderCombinationItem)}
+                                        </Menu>
+                                    );
+                                })()}
+
+                                {/* Tooltip en el centro del Menú Radial (Movido al final para z-index real) */}
+                                <AnimatePresence>
+                                    {hoveredMenuItem && (
+                                        <motion.div
+                                            initial={{ opacity: 0, scale: 0.8 }}
+                                            animate={{ opacity: 1, scale: 1 }}
+                                            exit={{ opacity: 0, scale: 0.8 }}
+                                            transition={{ duration: 0.15 }}
+                                            className="fixed pointer-events-none flex items-center justify-center"
+                                            style={{
+                                                zIndex: 99999, // Asegurar un z-index extremadamente alto
+                                                left: mousePos.x,
+                                                top: mousePos.y - 15, // Ligero offset hacia arriba
+                                                transform: 'translate(-50%, -100%)', // Centrado horizontalmente y anclado por su borde inferior
+                                                whiteSpace: 'nowrap'
+                                            }}
+                                        >
+                                            <span className="bg-slate-800/90 dark:bg-slate-700/90 backdrop-blur-sm text-white text-[11px] font-bold px-3 py-1.5 rounded-lg shadow-xl text-center leading-tight drop-shadow-2xl">
+                                                {DENTAL_TYPES.find(t => t.id === hoveredMenuItem)?.label || hoveredMenuItem}
+                                            </span>
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
+                            </div>
+                        </div>
+                    </motion.div>
                 )}
             </AnimatePresence>
         </motion.div>

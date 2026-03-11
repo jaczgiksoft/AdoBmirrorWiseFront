@@ -331,3 +331,83 @@ input[type="number"]::-webkit-inner-spin-button {
 input[type="number"] {
     -moz-appearance: textfield;
 }
+
+/* ================================
+   REACT RADIAL MENU STYLES
+================================ */
+.menu-wrapper {
+    --__reactRadialMenu__menu-bgColor: #ffffff;
+    --__reactRadialMenu__separator-color: #474952;
+    --__reactRadialMenu__item-color: #000000;
+    --__reactRadialMenu__activeItem-color: #ffffff;
+    --__reactRadialMenu__activeItem-bgColor: #2087cb;
+    --__reactRadialMenu__arrow-color: #ffffff;
+    --__reactRadialMenu__activeArrow-color: #ffffff;
+}
+
+.dark .menu-wrapper {
+    --__reactRadialMenu__menu-bgColor: var(--color-dark);
+    --__reactRadialMenu__separator-color: #474952;
+    /* Puedes ajustar los colores para dark mode aquí si lo deseas */
+    --__reactRadialMenu__item-color: #ffffff;
+}
+
+/* ================================
+   REACT RADIAL MENU HOVER FX
+================================ */
+/* Cambiar el color del separador (stroke) cuando el ítem activo tiene el mouse encima (hover) */
+
+@keyframes heartbeatInner {
+    0% {
+        transform: scale(1);
+        stroke-width: 1px;
+        filter: drop-shadow(0 0 2px rgba(32, 135, 203, 0.5));
+    }
+
+    25% {
+        transform: scale(0.97);
+        /* Se contrae ligeramente */
+        stroke-width: 1.2px;
+        filter: drop-shadow(0 0 5px rgba(32, 135, 203, 0.6));
+    }
+
+    50% {
+        transform: scale(1);
+        stroke-width: 1px;
+        filter: drop-shadow(0 0 2px rgba(32, 135, 203, 0.4));
+    }
+
+    75% {
+        transform: scale(0.985);
+        /* pequeño rebote interno */
+        stroke-width: 1.1px;
+        filter: drop-shadow(0 0 4px rgba(32, 135, 203, 0.5));
+    }
+
+    100% {
+        transform: scale(1);
+        stroke-width: 1px;
+        filter: drop-shadow(0 0 2px rgba(32, 135, 203, 0.5));
+    }
+}
+
+/* 
+  z-index es necesario para que el escalado no se esconda debajo de los otros ítems.
+  transform-origin: center asegura que crezca desde su propio centroide. 
+*/
+.menu-wrapper g {
+    transform-origin: 50% 50%;
+    /* Intento de centrado por defecto en SVG */
+    transition: transform 0.2s ease;
+}
+
+.menu-wrapper g:hover {
+    z-index: 50 !important;
+    animation: heartbeatInner 2s infinite ease-in-out;
+    stroke: #2087cb !important;
+}
+
+/* Opcional: Para evitar conflictos en path */
+.menu-wrapper g:hover>path {
+    stroke: #2087cb !important;
+}
