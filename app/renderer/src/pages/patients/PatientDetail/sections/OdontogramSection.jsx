@@ -1,4 +1,5 @@
 import React, { useState, useRef, useLayoutEffect, useCallback, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import bracketImg from '@/assets/images/odontogram/bracket.svg';
 import tadImg from '@/assets/images/odontogram/tad.svg';
@@ -1868,7 +1869,7 @@ function ActionPanel({
                     value={selectedToothType}
                     onChange={(e) => setSelectedToothType(e.target.value)}
                 >
-                    {DENTAL_TYPES.map(t => (
+                    {DENTAL_TYPES.filter(t => t.id !== 'extraction').map(t => (
                         <option key={t.id} value={t.id}>{t.label}</option>
                     ))}
                 </select>
@@ -1893,25 +1894,7 @@ function ActionPanel({
             </div>
             <div className="hidden md:block w-px h-8 bg-slate-400 dark:bg-slate-700 mx-1"></div>
             <div className="flex items-center gap-2 md:gap-4 w-full md:w-auto justify-between md:justify-end flex-wrap md:flex-wrap lg:flex-nowrap">
-                <div className="flex items-center gap-2">
-                    <ModeCheckbox label="Bolsas Periodontales" checked={isPeriodontalMode} onChange={(e) => setPeriodontalMode(e.target.checked)} color="red" />
-                    <ModeCheckbox label="Colocar TADs" checked={isTadMode} onChange={(e) => setTadMode(e.target.checked)} color="sky" />
-                    <ModeCheckbox label="Colocar Brackets" checked={isBracketMode} onChange={(e) => setBracketMode(e.target.checked)} color="blue" />
-                </div>
-                <AnimatePresence>
-                    {isBracketMode && (
-                        <motion.button
-                            initial={{ opacity: 0, scale: 0.9, width: 0 }}
-                            animate={{ opacity: 1, scale: 1, width: 'auto' }}
-                            exit={{ opacity: 0, scale: 0.9, width: 0 }}
-                            onClick={onApplyAll}
-                            type="button"
-                            className="btn btn-sm btn-secondary shadow-sm ml-2 overflow-hidden whitespace-nowrap"
-                        >
-                            Aplicar a todos
-                        </motion.button>
-                    )}
-                </AnimatePresence>
+                {/* Contenido movido a la parte superior */}
             </div>
         </div>
     );
@@ -3368,6 +3351,33 @@ export default function OdontogramSection() {
 
     return (
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="p-1 space-y-6">
+            {/* BLUR OVERLAY PARA TODA LA PAGINA CUANDO EL MENU ESTA ABIERTO */}
+            {typeof document !== 'undefined' && createPortal(
+                <AnimatePresence>
+                    {radialState && (() => {
+                        const customSize = RADIAL_MENU_CUSTOM_SIZES[radialState.toothId] || null;
+                        const finalOffsetX = customSize?.offsetX || 0;
+                        const finalOffsetY = customSize?.offsetY || 0;
+                        const centerX = radialState.x + finalOffsetX;
+                        const centerY = radialState.y + finalOffsetY;
+
+                        return (
+                            <motion.div
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                className="fixed inset-0 z-[9990] backdrop-blur-[6px] bg-white/30 dark:bg-slate-900/40 pointer-events-none"
+                                style={{
+                                    maskImage: `radial-gradient(circle at ${centerX}px ${centerY}px, transparent 170px, black 65px)`,
+                                    WebkitMaskImage: `radial-gradient(circle at ${centerX}px ${centerY}px, transparent 170px, black 65px)`
+                                }}
+                            />
+                        );
+                    })()}
+                </AnimatePresence>,
+                document.body
+            )}
+
             {/* 1. Summary Section */}
             <DentalSummary toothStates={toothStates} />
 
@@ -3380,47 +3390,73 @@ export default function OdontogramSection() {
                 <div className="w-full mb-4 flex items-start justify-between z-10 relative gap-4">
                     <div>
                         <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
-                            Odontograma Actual
+                            {!isBracketMode && "Odontograma Actual"}
                             {isBracketMode && <span className="badge badge-sm badge-info gap-1 font-normal">Modo Ortodoncia (Brackets)</span>}
                             {isTadMode && <span className="badge badge-sm badge-info gap-1 font-normal">Modo Ortodoncia (TADs)</span>}
                             {isPeriodontalMode && <span className="badge badge-sm badge-error gap-1 font-normal">Bolsas Periodontales</span>}
                         </h2>
-                        <p className="text-sm text-slate-500 dark:text-slate-400">Vista general del estado dental del paciente.</p>
+                        {!isBracketMode && <p className="text-sm text-slate-500 dark:text-slate-400">Vista general del estado dental del paciente.</p>}
                     </div>
 
-                    {/* --- PANEL DE CONTROL UNDO/REDO --- */}
-                    <div className="flex flex-shrink-0 items-center bg-slate-100 dark:bg-slate-800/50 rounded-lg p-1 border border-slate-200 dark:border-slate-700 shadow-sm">
-                        <button
-                            type="button"
-                            onClick={handleUndo}
-                            disabled={historyState.past.length === 0}
-                            className={`px-3 py-1.5 rounded-md flex items-center gap-1.5 text-xs font-semibold transition-colors ${historyState.past.length === 0
-                                ? 'text-slate-400 dark:text-slate-600 cursor-not-allowed opacity-50'
-                                : 'text-slate-700 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700 hover:shadow-sm'
-                                }`}
-                            title="Deshacer (Ctrl + Z)"
-                        >
-                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" />
-                            </svg>
-                            Deshacer
-                        </button>
-                        <div className="w-px h-5 bg-slate-300 dark:bg-slate-600 mx-1"></div>
-                        <button
-                            type="button"
-                            onClick={handleRedo}
-                            disabled={historyState.future.length === 0}
-                            className={`px-3 py-1.5 rounded-md flex items-center gap-1.5 text-xs font-semibold transition-colors ${historyState.future.length === 0
-                                ? 'text-slate-400 dark:text-slate-600 cursor-not-allowed opacity-50'
-                                : 'text-slate-700 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700 hover:shadow-sm'
-                                }`}
-                            title="Rehacer (Ctrl + Y)"
-                        >
-                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M15 15l6-6m0 0l-6-6m6 6H9a6 6 0 000 12h3" />
-                            </svg>
-                            Rehacer
-                        </button>
+                    {/* --- CONTROLES SUPERIORES (Checkboxes + Undo/Redo) --- */}
+                    <div className="flex items-center gap-3 md:gap-4 flex-wrap justify-end relative z-10 w-full md:w-auto">
+
+                        {/* Checkboxes de Modos y Botón Aplicar a Todos */}
+                        <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800/50 rounded-lg p-1 border border-slate-200 dark:border-slate-700 shadow-sm">
+                            <ModeCheckbox label="Bolsas Periodontales" checked={isPeriodontalMode} onChange={(e) => setPeriodontalMode(e.target.checked)} color="red" />
+                            <ModeCheckbox label="Colocar TADs" checked={isTadMode} onChange={(e) => setTadMode(e.target.checked)} color="sky" />
+                            <ModeCheckbox label="Colocar Brackets" checked={isBracketMode} onChange={(e) => setBracketMode(e.target.checked)} color="blue" />
+
+                            <AnimatePresence>
+                                {isBracketMode && (
+                                    <motion.button
+                                        initial={{ opacity: 0, scale: 0.9, width: 0 }}
+                                        animate={{ opacity: 1, scale: 1, width: 'auto' }}
+                                        exit={{ opacity: 0, scale: 0.9, width: 0 }}
+                                        onClick={handleApplyAllBrackets}
+                                        type="button"
+                                        className="px-3 py-1.5 rounded-md flex items-center gap-1.5 text-xs font-semibold transition-colors bg-white dark:bg-slate-700 hover:bg-slate-50 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-600 shadow-sm ml-1 overflow-hidden whitespace-nowrap"
+                                    >
+                                        Aplicar a todos
+                                    </motion.button>
+                                )}
+                            </AnimatePresence>
+                        </div>
+
+                        {/* --- PANEL DE CONTROL UNDO/REDO --- */}
+                        <div className="flex flex-shrink-0 items-center bg-slate-100 dark:bg-slate-800/50 rounded-lg p-1 border border-slate-200 dark:border-slate-700 shadow-sm">
+                            <button
+                                type="button"
+                                onClick={handleUndo}
+                                disabled={historyState.past.length === 0}
+                                className={`px-3 py-1.5 rounded-md flex items-center gap-1.5 text-xs font-semibold transition-colors ${historyState.past.length === 0
+                                    ? 'text-slate-400 dark:text-slate-600 cursor-not-allowed opacity-50'
+                                    : 'text-slate-700 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700 hover:shadow-sm'
+                                    }`}
+                                title="Deshacer (Ctrl + Z)"
+                            >
+                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" />
+                                </svg>
+                                Deshacer
+                            </button>
+                            <div className="w-px h-5 bg-slate-300 dark:bg-slate-600 mx-1"></div>
+                            <button
+                                type="button"
+                                onClick={handleRedo}
+                                disabled={historyState.future.length === 0}
+                                className={`px-3 py-1.5 rounded-md flex items-center gap-1.5 text-xs font-semibold transition-colors ${historyState.future.length === 0
+                                    ? 'text-slate-400 dark:text-slate-600 cursor-not-allowed opacity-50'
+                                    : 'text-slate-700 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700 hover:shadow-sm'
+                                    }`}
+                                title="Rehacer (Ctrl + Y)"
+                            >
+                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 15l6-6m0 0l-6-6m6 6H9a6 6 0 000 12h3" />
+                                </svg>
+                                Rehacer
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -3428,7 +3464,7 @@ export default function OdontogramSection() {
 
                 {/* COORDINATE BASED LAYOUT CONTAINER */}
                 {/* We use min-w-[950px] to ensure the fixed coordinates fit without wrapping, adding x-scroll if needed on small screens */}
-                <div className="relative z-0 scale-100 xl:scale-110 transition-transform origin-top mt-4 mb-4 overflow-x-auto w-full flex justify-center">
+                <div className={`relative ${radialState ? 'z-[50]' : 'z-0'} scale-100 xl:scale-110 transition-transform origin-top mt-4 mb-4 overflow-x-auto w-full flex justify-center`}>
                     <div className="relative min-w-[1000px] pb-4 isolate select-none">
 
                         {/* Labels */}
@@ -3443,7 +3479,7 @@ export default function OdontogramSection() {
                                     initial={{ opacity: 0 }}
                                     animate={{ opacity: 1 }}
                                     exit={{ opacity: 0 }}
-                                    className="absolute -inset-10 z-[50] backdrop-blur-[6px] bg-white/20 dark:bg-slate-900/40 rounded-3xl pointer-events-none"
+                                    className="absolute -inset-10 z-[50] backdrop-blur-[6px] pointer-events-none"
                                 />
                             )}
                         </AnimatePresence>
