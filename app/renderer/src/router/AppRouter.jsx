@@ -49,6 +49,8 @@ import { Header, QuickAccessBar } from "@/components/layout";
 import RepresentativesSection from "@/pages/patients/PatientDetail/sections/RepresentativesSection";
 import BillingSection from "@/pages/patients/PatientDetail/sections/BillingSection";
 
+import InventoryPage from "@/pages/inventory/InventoryPage";
+
 /* ──────────────────────────────────────────────
  🔒 RUTA PRIVADA
  Protege las rutas que requieren autenticación.
@@ -312,6 +314,18 @@ export default function AppRouter() {
                         <PrivateRoute>
                             <PrivateLayout>
                                 <CashRegisterDetail />
+                            </PrivateLayout>
+                        </PrivateRoute>
+                    }
+                />
+
+                {/* 📦 Inventario (Mocked Frontend Version) */}
+                <Route
+                    path="/inventory"
+                    element={
+                        <PrivateRoute>
+                            <PrivateLayout>
+                                <InventoryPage />
                             </PrivateLayout>
                         </PrivateRoute>
                     }

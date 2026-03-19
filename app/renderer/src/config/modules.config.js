@@ -6,7 +6,8 @@ import {
     Settings,
     FileText,
     Briefcase,
-    Layout
+    Layout,
+    Package
 } from "lucide-react";
 
 export const MODULE_CONFIG = {
@@ -73,5 +74,13 @@ export const MODULE_CONFIG = {
         color: "#6b7280",
         path: "/reports",
         key: null,
+    },
+    inventory: {
+        order: 8,
+        label: "Inventario",
+        icon: Package,
+        color: "#a855f7",
+        path: "/inventory",
+        key: "F5",
     },
 };
