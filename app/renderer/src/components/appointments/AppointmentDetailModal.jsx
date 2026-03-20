@@ -3,16 +3,22 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
     X, Calendar, Clock, User, Stethoscope, FileText, Edit2, ArrowRight,
     AlertCircle, CheckCircle, Activity, Lock, Phone, Mail, CreditCard,
-    History, MapPin, Star
+    History, MapPin, Star, Receipt, BadgeCheck
 } from "lucide-react";
 import { API_BASE } from "@/utils/apiBase";
 import PatientEvaluationModal from "./PatientEvaluationModal";
+import AppointmentCheckoutModal from "./AppointmentCheckoutModal";
+import ChargeBreakdown from "./checkout/ChargeBreakdown";
 
 export default function AppointmentDetailModal({ appointment, open, onClose, onEdit }) {
     // 1. Hooks (MUST be top level and unconditional)
     const [activeTab, setActiveTab] = useState('details');
     const [evaluations, setEvaluations] = useState([]);
     const [showEvaluationModal, setShowEvaluationModal] = useState(false);
+
+    // Checkout state
+    const [showCheckout, setShowCheckout] = useState(false);
+    const [checkoutResult, setCheckoutResult] = useState(null);
 
     const hasEvaluation = evaluations.some(e => e.appointmentId === appointment?.id);
 
@@ -101,9 +107,21 @@ export default function AppointmentDetailModal({ appointment, open, onClose, onE
         return addressParts.join(", ");
     };
 
-    // Calculate Totals form Services
+    // Calculate Totals from Services (informational only — does NOT drive checkout cost)
     const services = appointment.services || [];
     const totalServiceCost = services.reduce((acc, s) => acc + (parseFloat(s.price) || 0), 0);
+
+    // Base amount for checkout comes from appointment.base_amount (patient budget/monthly payment)
+    // Falls back to total_amount from the form, then services total as last resort
+    const checkoutBaseAmount = parseFloat(appointment.base_amount)
+        || parseFloat(appointment.total_amount)
+        || totalServiceCost
+        || 0;
+
+    // Payment status helpers
+    const isPaid = checkoutResult?.payment_status === 'paid' || checkoutResult?.payment_status === 'credited';
+    const isPartiallyPaid = checkoutResult?.payment_status === 'partial';
+    const canCheckout = ['en_tratamiento', 'finalizada'].includes(appointment.status);
 
     // Process Snapshot Logic
     const snapshot = appointment.process_snapshot;
@@ -385,40 +403,125 @@ export default function AppointmentDetailModal({ appointment, open, onClose, onE
 
                                         {activeTab === 'payments' && (
                                             <div className="space-y-6 animate-in fade-in zoom-in-95 duration-200">
-                                                <div className="bg-slate-50 dark:bg-slate-800/40 p-6 rounded-2xl border border-slate-100 dark:border-slate-700 text-center">
-                                                    <CreditCard className="mx-auto text-slate-300 mb-2" size={32} />
-                                                    <h3 className="text-slate-800 dark:text-white font-bold mb-1">Pagos y Facturación</h3>
-                                                    <p className="text-sm text-slate-500">Estado de cuenta de la cita (Mock Data)</p>
-                                                </div>
-
-                                                <div className="grid grid-cols-2 gap-4">
-                                                    <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm">
-                                                        <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Total a Pagar</div>
-                                                        <div className="text-2xl font-bold text-slate-800 dark:text-white">$ {totalServiceCost.toFixed(2)}</div>
+                                                {!checkoutResult ? (
+                                                    /* ── No payment yet ── */
+                                                    <div className="flex flex-col items-center justify-center py-16 gap-4">
+                                                        <div className="w-20 h-20 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+                                                            <Receipt className="text-slate-300 dark:text-slate-600" size={36} />
+                                                        </div>
+                                                        <div className="text-center">
+                                                            <h3 className="font-bold text-slate-700 dark:text-slate-200 mb-1">Pendiente de cobro</h3>
+                                                            <p className="text-sm text-slate-400">No se ha registrado ningún pago para esta cita.</p>
+                                                        </div>
+                                                        {canCheckout && (
+                                                            <button
+                                                                onClick={() => setShowCheckout(true)}
+                                                                className="flex items-center gap-2 px-6 py-3 rounded-xl font-bold bg-emerald-600 text-white shadow-lg shadow-emerald-500/20 hover:bg-emerald-700 transition active:scale-95"
+                                                            >
+                                                                <Receipt size={18} />
+                                                                Ir a Checkout
+                                                            </button>
+                                                        )}
                                                     </div>
-                                                    <div className="p-4 rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/20 shadow-sm">
-                                                        <div className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider mb-1">Pagado</div>
-                                                        <div className="text-2xl font-bold text-emerald-700 dark:text-emerald-300">$ 0.00</div>
-                                                    </div>
-                                                </div>
+                                                ) : (
+                                                    /* ── Payment registered ── */
+                                                    <div className="space-y-5">
+                                                        {/* Status badge */}
+                                                        <div className={`flex items-center gap-3 p-4 rounded-2xl border ${
+                                                            isPaid
+                                                                ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800'
+                                                                : isPartiallyPaid
+                                                                    ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800'
+                                                                    : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700'
+                                                        }`}>
+                                                            {isPaid
+                                                                ? <BadgeCheck className="text-emerald-500" size={24} />
+                                                                : <AlertCircle className="text-amber-500" size={24} />
+                                                            }
+                                                            <div>
+                                                                <p className={`font-bold ${ isPaid ? 'text-emerald-700 dark:text-emerald-300' : 'text-amber-700 dark:text-amber-300'}`}>
+                                                                    {isPaid ? 'Pago completo' : isPartiallyPaid ? 'Pago parcial' : 'Sin pago'}
+                                                                </p>
+                                                                <p className="text-xs text-slate-400 mt-0.5">
+                                                                    {checkoutResult.paid_at
+                                                                        ? `Registrado el ${new Date(checkoutResult.paid_at).toLocaleString('es-MX')}`
+                                                                        : ''}
+                                                                </p>
+                                                            </div>
+                                                        </div>
 
-                                                <div className="rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
-                                                    <table className="w-full text-sm text-left">
-                                                        <thead className="bg-slate-50 dark:bg-slate-800 text-slate-500 font-medium border-b border-slate-200 dark:border-slate-700">
-                                                            <tr>
-                                                                <th className="p-3">Concepto</th>
-                                                                <th className="p-3">Método</th>
-                                                                <th className="p-3 text-right">Monto</th>
-                                                                <th className="p-3 text-center">Estado</th>
-                                                            </tr>
-                                                        </thead>
-                                                        <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
-                                                            <tr>
-                                                                <td className="p-8 text-center text-slate-400 italic" colSpan={4}>No hay pagos registrados.</td>
-                                                            </tr>
-                                                        </tbody>
-                                                    </table>
-                                                </div>
+                                                        {/* Charge breakdown (read-only) */}
+                                                        <ChargeBreakdown
+                                                            baseAmount={checkoutResult.base_amount}
+                                                            includedServices={services}
+                                                            extras={checkoutResult.extras}
+                                                            patientBalance={checkoutResult.patient_balance_included}
+                                                            compact={true}
+                                                        />
+
+                                                        {/* Payment history row */}
+                                                        <div className="rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+                                                            <table className="w-full text-sm text-left">
+                                                                <thead className="bg-slate-50 dark:bg-slate-800 text-slate-500 font-medium border-b border-slate-200 dark:border-slate-700">
+                                                                    <tr>
+                                                                        <th className="p-3">Concepto</th>
+                                                                        <th className="p-3">Método</th>
+                                                                        <th className="p-3 text-right">Monto</th>
+                                                                        <th className="p-3 text-center">Estado</th>
+                                                                    </tr>
+                                                                </thead>
+                                                                <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                                                                    <tr>
+                                                                        <td className="p-3 text-slate-700 dark:text-slate-300">Pago de cita</td>
+                                                                        <td className="p-3 text-slate-500 capitalize">{checkoutResult.payment_method}</td>
+                                                                        <td className="p-3 text-right font-bold text-slate-800 dark:text-white">
+                                                                            ${parseFloat(checkoutResult.paid_amount).toFixed(2)}
+                                                                        </td>
+                                                                        <td className="p-3 text-center">
+                                                                            <span className={`text-xs font-bold px-2 py-1 rounded-full ${
+                                                                                isPaid
+                                                                                    ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+                                                                                    : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+                                                                            }`}>
+                                                                                {isPaid ? 'Pagado' : 'Parcial'}
+                                                                            </span>
+                                                                        </td>
+                                                                    </tr>
+                                                                    {checkoutResult.remaining_debt > 0 && (
+                                                                        <tr className="bg-red-50 dark:bg-red-900/10">
+                                                                            <td className="p-3 text-red-600 dark:text-red-400 font-medium" colSpan={2}>
+                                                                                Saldo pendiente
+                                                                            </td>
+                                                                            <td className="p-3 text-right font-bold text-red-700 dark:text-red-400">
+                                                                                ${parseFloat(checkoutResult.remaining_debt).toFixed(2)}
+                                                                            </td>
+                                                                            <td className="p-3 text-center">
+                                                                                <span className="text-xs font-bold px-2 py-1 rounded-full bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
+                                                                                    Pendiente
+                                                                                </span>
+                                                                            </td>
+                                                                        </tr>
+                                                                    )}
+                                                                    {checkoutResult.credit_applied > 0 && (
+                                                                        <tr className="bg-sky-50 dark:bg-sky-900/10">
+                                                                            <td className="p-3 text-sky-600 dark:text-sky-400 font-medium" colSpan={2}>
+                                                                                Crédito aplicado a cuenta
+                                                                            </td>
+                                                                            <td className="p-3 text-right font-bold text-sky-700 dark:text-sky-400">
+                                                                                +${parseFloat(checkoutResult.credit_applied).toFixed(2)}
+                                                                            </td>
+                                                                            <td className="p-3 text-center">
+                                                                                <span className="text-xs font-bold px-2 py-1 rounded-full bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400">
+                                                                                    Crédito
+                                                                                </span>
+                                                                            </td>
+                                                                        </tr>
+                                                                    )}
+                                                                </tbody>
+                                                            </table>
+                                                        </div>
+                                                    </div>
+                                                )}
                                             </div>
                                         )}
                                     </div>
@@ -473,6 +576,26 @@ export default function AppointmentDetailModal({ appointment, open, onClose, onE
                                                 </button>
                                             )}
 
+                                            {/* Checkout / Cobrar Button */}
+                                            {canCheckout && (
+                                                <button
+                                                    onClick={() => {
+                                                        setShowCheckout(true);
+                                                        setActiveTab('payments');
+                                                    }}
+                                                    disabled={isPaid}
+                                                    className={`flex items-center gap-2 px-8 py-3 rounded-xl font-bold shadow-lg transition active:scale-95 ${
+                                                        isPaid
+                                                            ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 cursor-default border border-emerald-200 dark:border-emerald-800 shadow-none'
+                                                            : 'bg-emerald-600 text-white shadow-emerald-500/20 hover:bg-emerald-700'
+                                                    }`}
+                                                >
+                                                    {isPaid
+                                                        ? <><BadgeCheck size={18} /> Cobrado</>
+                                                        : <><Receipt size={18} /> Cobrar</>}
+                                                </button>
+                                            )}
+
                                             {appointment.status === 'confirmada' && !isEditable && (
                                                 <div className="flex items-center gap-2 text-slate-400 text-sm font-medium bg-slate-100 dark:bg-slate-800 px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700">
                                                     <Lock size={16} />
@@ -493,6 +616,24 @@ export default function AppointmentDetailModal({ appointment, open, onClose, onE
                 onClose={() => setShowEvaluationModal(false)}
                 appointment={appointment}
                 onSave={(evaluation) => setEvaluations(prev => [...prev, evaluation])}
+            />
+
+            <AppointmentCheckoutModal
+                open={showCheckout}
+                appointment={{
+                    ...appointment,
+                    base_amount: checkoutBaseAmount,
+                }}
+                onClose={() => setShowCheckout(false)}
+                onComplete={(result) => {
+                    setCheckoutResult(result);
+                    setShowCheckout(false);
+                    setActiveTab('payments');
+                }}
+                onScheduleNext={() => {
+                    // Placeholder: caller (AppointmentList) can handle via an onScheduleNext prop if needed
+                    setShowCheckout(false);
+                }}
             />
         </>
     );
