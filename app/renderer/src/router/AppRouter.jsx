@@ -15,6 +15,7 @@ import DepartmentList from "@/pages/settings/departments/DepartmentList";
 import UserList from "@/pages/users/UserList";
 import StoreList from "@/pages/stores/StoreList";
 import StoreDetail from "@/pages/stores/StoreDetail";
+import EmployeeList from "@/pages/employees/EmployeeList";
 import CashRegisterList from "@/pages/cashRegisters/CashRegisterList";
 import CashRegisterDetail from "@/pages/cashRegisters/CashRegisterDetail";
 import ServiceList from "@/pages/services/ServiceList"; // ➕ Nuevo componente
@@ -280,6 +281,18 @@ export default function AppRouter() {
                         <PrivateRoute>
                             <PrivateLayout>
                                 <ClinicAreaList />
+                            </PrivateLayout>
+                        </PrivateRoute>
+                    }
+                />
+
+                {/* 👷 Empleados (Nuevo) */}
+                <Route
+                    path="/employees"
+                    element={
+                        <PrivateRoute>
+                            <PrivateLayout>
+                                <EmployeeList />
                             </PrivateLayout>
                         </PrivateRoute>
                     }

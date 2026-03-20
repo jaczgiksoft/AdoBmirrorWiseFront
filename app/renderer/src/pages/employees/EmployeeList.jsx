@@ -1,0 +1,359 @@
+import { useState, useEffect } from "react";
+import { motion } from "framer-motion";
+import { useNavigate } from "react-router-dom";
+import { Home, ChevronLeft, PlusCircle, Edit2, Trash2, User, Search } from "lucide-react";
+import { useToastStore } from "@/store/useToastStore";
+import { ConfirmDialog } from "@/components/feedback";
+import { Table, Pagination } from "@/components/ui";
+import { employeesStorage } from "@/utils/employeesStorage";
+import EmployeeFormModal from "./EmployeeFormModal";
+
+const MOCK_EMPLOYEES = [
+    {
+        id: 1,
+        first_name: "Adolfo",
+        last_name: "Castro",
+        second_last_name: "García",
+        email: "adolfo@example.com",
+        phone: "5551234567",
+        position: "Administrador",
+        is_appointment_eligible: false,
+        status: "active",
+        profile_image: null,
+    },
+    {
+        id: 2,
+        first_name: "Ana",
+        last_name: "López",
+        second_last_name: "Pérez",
+        email: "ana.lopez@example.com",
+        phone: "5559876543",
+        position: "Odontóloga",
+        is_appointment_eligible: true,
+        status: "active",
+        profile_image: null,
+    },
+    {
+        id: 3,
+        first_name: "Carlos",
+        last_name: "Ruiz",
+        second_last_name: "",
+        email: "cruiz@example.com",
+        phone: "5551112233",
+        position: "Asistente",
+        is_appointment_eligible: false,
+        status: "inactive",
+        profile_image: null,
+    }
+];
+
+export default function EmployeeList() {
+    const navigate = useNavigate();
+    const { addToast } = useToastStore();
+
+    /**
+     * ⚠️ TEMPORAL - MOCK STORAGE
+     * Esta implementación usa localStorage para simular persistencia de datos.
+     * 
+     * 📌 IMPORTANTE:
+     * - Esto es un MOCK temporal para desarrollo.
+     * - Debe eliminarse completamente cuando se conecte a un backend real (API).
+     * - Reemplazar por llamadas a servicios (GET, POST, PUT, DELETE).
+     * - Diseñado para ser removido fácilmente sin afectar la lógica de los componentes.
+     */
+    const [employees, setEmployees] = useState(() => employeesStorage.get(MOCK_EMPLOYEES));
+    
+    // Sincronizar cambios a localStorage cada vez que la lista se modifique
+    useEffect(() => {
+        employeesStorage.save(employees);
+    }, [employees]);
+    
+    const [searchTerm, setSearchTerm] = useState("");
+    const [statusFilter, setStatusFilter] = useState("all");
+    const [currentPage, setCurrentPage] = useState(1);
+    const [sortConfig, setSortConfig] = useState({ key: "first_name", direction: "asc" });
+    const ITEMS_PER_PAGE = 10;
+    
+    // Reset page when filters change
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchTerm, statusFilter]);
+    
+    // Modal states
+    const [showForm, setShowForm] = useState(false);
+    const [selectedEmployee, setSelectedEmployee] = useState(null);
+    
+    // Delete states
+    const [confirmOpen, setConfirmOpen] = useState(false);
+    const [employeeToDelete, setEmployeeToDelete] = useState(null);
+
+    // Actions
+    const handleAddClick = () => {
+        setSelectedEmployee(null);
+        setShowForm(true);
+    };
+
+    const handleEditClick = (employee) => {
+        setSelectedEmployee(employee);
+        setShowForm(true);
+    };
+
+    const handleDeleteClick = (employee) => {
+        setEmployeeToDelete(employee);
+        setConfirmOpen(true);
+    };
+
+    const handleConfirmDelete = () => {
+        if (!employeeToDelete) return;
+        
+        setEmployees(employees.filter(emp => emp.id !== employeeToDelete.id));
+        setConfirmOpen(false);
+        setEmployeeToDelete(null);
+
+        addToast({
+            type: "success",
+            title: "Empleado eliminado",
+            message: `${employeeToDelete.first_name} ${employeeToDelete.last_name} fue eliminado.`,
+        });
+    };
+
+    const handleSaveEmployee = (employeeData) => {
+        if (selectedEmployee) {
+            // Update
+            setEmployees(employees.map(emp => emp.id === employeeData.id ? employeeData : emp));
+        } else {
+            // Create
+            setEmployees([employeeData, ...employees]);
+        }
+    };
+
+    // Filter logic
+    const filteredEmployees = employees.filter((emp) => {
+        const matchesSearch = (() => {
+            if (!searchTerm) return true;
+            const term = searchTerm.toLowerCase();
+            return (
+                emp.first_name.toLowerCase().includes(term) ||
+                emp.last_name.toLowerCase().includes(term) ||
+                (emp.email || "").toLowerCase().includes(term) ||
+                (emp.position || "").toLowerCase().includes(term)
+            );
+        })();
+
+        const matchesStatus = statusFilter === "all" || emp.status === statusFilter;
+
+        return matchesSearch && matchesStatus;
+    });
+
+    // Sorting Logic
+    const sortedEmployees = [...filteredEmployees].sort((a, b) => {
+        if (!sortConfig.key) return 0;
+        
+        const aValue = (a[sortConfig.key] || "").toString().toLowerCase();
+        const bValue = (b[sortConfig.key] || "").toString().toLowerCase();
+
+        if (aValue < bValue) return sortConfig.direction === "asc" ? -1 : 1;
+        if (aValue > bValue) return sortConfig.direction === "asc" ? 1 : -1;
+        return 0;
+    });
+
+    // Pagination Logic
+    const totalPages = Math.ceil(sortedEmployees.length / ITEMS_PER_PAGE);
+    const paginatedEmployees = sortedEmployees.slice(
+        (currentPage - 1) * ITEMS_PER_PAGE,
+        currentPage * ITEMS_PER_PAGE
+    );
+
+    // Actions
+    const handleSort = (key) => {
+        let direction = "asc";
+        if (sortConfig.key === key && sortConfig.direction === "asc") {
+            direction = "desc";
+        }
+        setSortConfig({ key, direction });
+    };
+
+    // Table Columns Configuration
+    const columns = [
+        {
+            header: "Empleado",
+            accessor: "first_name",
+            sortable: true,
+            render: (row) => (
+                <div className="flex items-center gap-3">
+                    {row.profile_image ? (
+                        <img src={row.profile_image} alt="" className="w-10 h-10 rounded-full object-cover border border-slate-700 bg-slate-800" />
+                    ) : (
+                        <div className="w-10 h-10 flex items-center justify-center rounded-full bg-slate-800 border border-slate-700 text-primary">
+                            <User size={20} />
+                        </div>
+                    )}
+                    <div>
+                        <p className="font-semibold text-slate-100">
+                            {row.first_name} {row.last_name} {row.second_last_name}
+                        </p>
+                        <p className="text-xs text-slate-400">{row.email || "Sin correo"}</p>
+                    </div>
+                </div>
+            )
+        },
+        {
+            header: "Puesto",
+            accessor: "position",
+            sortable: true,
+            render: (row) => (
+                <div className="flex flex-col">
+                    <span className="text-sm">{row.position || "N/A"}</span>
+                    {row.is_appointment_eligible && (
+                        <span className="text-[10px] text-sky-400">Atiende citas</span>
+                    )}
+                </div>
+            )
+        },
+        {
+            header: "Teléfono",
+            accessor: "phone",
+            sortable: true,
+            render: (row) => <span className="text-slate-300">{row.phone || "N/A"}</span>
+        },
+        {
+            header: "Estado",
+            accessor: "status",
+            sortable: true,
+            render: (row) => {
+                const isActive = row.status === "active";
+                return (
+                    <span className={`text-xs px-2 py-1 rounded inline-block ${isActive ? "bg-green-500/20 text-green-400" : "bg-red-500/20 text-red-400"}`}>
+                        {isActive ? "Activo" : "Inactivo"}
+                    </span>
+                );
+            }
+        },
+        {
+            header: "Acciones",
+            accessor: "actions",
+            render: (row) => (
+                <div className="flex items-center gap-3 text-slate-400">
+                    <button 
+                        onClick={() => handleEditClick(row)}
+                        className="hover:text-primary transition-colors cursor-pointer"
+                        title="Editar"
+                    >
+                        <Edit2 size={18} />
+                    </button>
+                    <button 
+                        onClick={() => handleDeleteClick(row)}
+                        className="hover:text-error transition-colors cursor-pointer"
+                        title="Eliminar"
+                    >
+                        <Trash2 size={18} />
+                    </button>
+                </div>
+            )
+        }
+    ];
+
+    return (
+        <div className="bg-dark min-h-screen flex flex-col font-sans text-slate-50">
+            <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3 }}
+                className="w-full max-w-6xl mx-auto px-6 mt-6 pb-20"
+            >
+                {/* Header Actions */}
+                <div className="flex items-center gap-4 mb-6 flex-wrap">
+                    <button
+                        onClick={() => navigate("/dashboard")}
+                        className="relative group flex items-center gap-1 text-slate-400 hover:text-white transition cursor-pointer"
+                    >
+                        <Home size={18} className="relative top-[1px]" />
+                        <ChevronLeft size={16} className="relative top-[1px]" />
+                        <span className="absolute left-full ml-3 whitespace-nowrap px-3 py-1.5 text-xs bg-black/85 text-white rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-all duration-200">
+                            Ir al panel principal
+                        </span>
+                    </button>
+
+                    <h1 className="text-2xl font-semibold text-primary leading-none flex-1">
+                        Gestión de Empleados
+                    </h1>
+
+                    {/* 🔍 Buscar y Filtros */}
+                    <div className="flex items-center gap-2">
+                        <div className="relative flex items-center bg-secondary rounded-lg border border-slate-700">
+                            <Search size={16} className="absolute left-2 text-slate-400" />
+                            <input
+                                type="text"
+                                placeholder="Buscar empleado..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="pl-7 pr-4 py-1.5 bg-transparent text-slate-200 text-sm outline-none placeholder:text-slate-500"
+                            />
+                        </div>
+                        
+                        <select
+                            value={statusFilter}
+                            onChange={(e) => setStatusFilter(e.target.value)}
+                            className="bg-secondary text-slate-200 text-sm border border-slate-700 rounded-lg py-1.5 px-3 outline-none focus:border-primary transition cursor-pointer"
+                        >
+                            <option value="all">Todos los estados</option>
+                            <option value="active">Activos</option>
+                            <option value="inactive">Inactivos</option>
+                        </select>
+                    </div>
+
+                    <motion.button
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.97 }}
+                        onClick={handleAddClick}
+                        className="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-sky-500 transition shadow-lg shadow-primary/20 cursor-pointer"
+                    >
+                        <PlusCircle size={18} />
+                        <span>Agregar empleado</span>
+                    </motion.button>
+                </div>
+
+                {/* Table View */}
+                <Table 
+                    columns={columns} 
+                    data={paginatedEmployees} 
+                    sortConfig={sortConfig}
+                    onSort={handleSort}
+                    emptyMessage="No se encontraron empleados que coincidan con la búsqueda." 
+                />
+
+                {/* Pagination Controls */}
+                <Pagination 
+                    page={currentPage} 
+                    totalPages={totalPages} 
+                    onPageChange={setCurrentPage} 
+                />
+
+            </motion.div>
+
+            {/* Modal de Formulario */}
+            <EmployeeFormModal 
+                open={showForm} 
+                onClose={() => setShowForm(false)} 
+                employee={selectedEmployee} 
+                onSave={handleSaveEmployee} 
+            />
+
+            {/* Modal de Confirmación de Eliminación */}
+            <ConfirmDialog
+                open={confirmOpen}
+                title="Eliminar empleado"
+                message={
+                    employeeToDelete
+                        ? `¿Deseas eliminar a "${employeeToDelete.first_name} ${employeeToDelete.last_name}"?`
+                        : ""
+                }
+                onConfirm={handleConfirmDelete}
+                onCancel={() => setConfirmOpen(false)}
+                confirmLabel="Eliminar"
+                cancelLabel="Cancelar"
+                confirmVariant="error"
+            />
+        </div>
+    );
+}

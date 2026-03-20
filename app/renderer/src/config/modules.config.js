@@ -7,10 +7,19 @@ import {
     FileText,
     Briefcase,
     Layout,
-    Package
+    Package,
+    Users
 } from "lucide-react";
 
 export const MODULE_CONFIG = {
+    employees: {
+        order: 9,
+        label: "Empleados",
+        icon: Users,
+        color: "#10b981",
+        path: "/employees",
+        key: "F7",
+    },
     clinic_areas: {
         order: 3.5,
         label: "Áreas Clínicas",
