@@ -15,6 +15,7 @@ import DepartmentList from "@/pages/settings/departments/DepartmentList";
 import UserList from "@/pages/users/UserList";
 import StoreList from "@/pages/stores/StoreList";
 import StoreDetail from "@/pages/stores/StoreDetail";
+import EmployeeList from "@/pages/employees/EmployeeList";
 import CashRegisterList from "@/pages/cashRegisters/CashRegisterList";
 import CashRegisterDetail from "@/pages/cashRegisters/CashRegisterDetail";
 import ServiceList from "@/pages/services/ServiceList"; // ➕ Nuevo componente
@@ -48,6 +49,8 @@ import ToastContainer from "@/components/ui/ToastContainer";
 import { Header, QuickAccessBar } from "@/components/layout";
 import RepresentativesSection from "@/pages/patients/PatientDetail/sections/RepresentativesSection";
 import BillingSection from "@/pages/patients/PatientDetail/sections/BillingSection";
+
+import InventoryPage from "@/pages/inventory/InventoryPage";
 
 /* ──────────────────────────────────────────────
  🔒 RUTA PRIVADA
@@ -283,6 +286,18 @@ export default function AppRouter() {
                     }
                 />
 
+                {/* 👷 Empleados (Nuevo) */}
+                <Route
+                    path="/employees"
+                    element={
+                        <PrivateRoute>
+                            <PrivateLayout>
+                                <EmployeeList />
+                            </PrivateLayout>
+                        </PrivateRoute>
+                    }
+                />
+
                 {/* 📅 Citas (Appointments) */}
                 <Route
                     path="/appointments"
@@ -312,6 +327,18 @@ export default function AppRouter() {
                         <PrivateRoute>
                             <PrivateLayout>
                                 <CashRegisterDetail />
+                            </PrivateLayout>
+                        </PrivateRoute>
+                    }
+                />
+
+                {/* 📦 Inventario (Mocked Frontend Version) */}
+                <Route
+                    path="/inventory"
+                    element={
+                        <PrivateRoute>
+                            <PrivateLayout>
+                                <InventoryPage />
                             </PrivateLayout>
                         </PrivateRoute>
                     }
