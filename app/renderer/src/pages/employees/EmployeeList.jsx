@@ -20,6 +20,8 @@ const MOCK_EMPLOYEES = [
         is_appointment_eligible: false,
         status: "active",
         profile_image: null,
+        hiring_date: "2023-01-10",
+        roleIds: [1]
     },
     {
         id: 2,
@@ -32,6 +34,8 @@ const MOCK_EMPLOYEES = [
         is_appointment_eligible: true,
         status: "active",
         profile_image: null,
+        hiring_date: "2023-05-20",
+        roleIds: [2]
     },
     {
         id: 3,
@@ -44,6 +48,8 @@ const MOCK_EMPLOYEES = [
         is_appointment_eligible: false,
         status: "inactive",
         profile_image: null,
+        hiring_date: "2024-02-15",
+        roleIds: []
     }
 ];
 
@@ -215,6 +221,16 @@ export default function EmployeeList() {
             accessor: "phone",
             sortable: true,
             render: (row) => <span className="text-slate-300">{row.phone || "N/A"}</span>
+        },
+        {
+            header: "Contratación",
+            accessor: "hiring_date",
+            sortable: true,
+            render: (row) => (
+                <span className="text-slate-300">
+                    {row.hiring_date ? new Date(row.hiring_date).toLocaleDateString("es-MX") : "N/A"}
+                </span>
+            )
         },
         {
             header: "Estado",

@@ -3,6 +3,7 @@ import { useToastStore } from "@/store/useToastStore";
 import { X, UploadCloud } from "lucide-react";
 import { Modal } from "@/components/ui";
 import { ConfirmDialog } from "@/components/feedback";
+import api from "@/services/api";
 
 /**
  * ⚠️ TEMPORAL - MOCK FORM LOGIC
@@ -23,6 +24,8 @@ const initialForm = {
     is_appointment_eligible: false,
     status: "active",
     profile_image: null,
+    hiring_date: "",
+    roleIds: [],
 };
 
 export default function EmployeeFormModal({ open, onClose, employee, onSave }) {
@@ -31,21 +34,45 @@ export default function EmployeeFormModal({ open, onClose, employee, onSave }) {
     const [errors, setErrors] = useState({});
     const [preview, setPreview] = useState(null);
     const [confirmCancel, setConfirmCancel] = useState(false);
+    const [rolesList, setRolesList] = useState([]);
+    const [loadingRoles, setLoadingRoles] = useState(false);
     const firstRef = useRef(null);
 
     // Initialize form with employee data if editing
     useEffect(() => {
         if (open) {
             if (employee) {
-                setForm(employee);
+                // Si viene de mock storage, podría no tener roleIds
+                setForm({
+                    ...employee,
+                    roleIds: employee.roleIds || (employee.roles ? employee.roles.map(r => r.id) : [])
+                });
                 setPreview(employee.profile_image);
             } else {
                 setForm(initialForm);
                 setPreview(null);
             }
+            fetchRoles();
             setTimeout(() => firstRef.current?.focus(), 100);
         }
     }, [open, employee]);
+
+    const fetchRoles = async () => {
+        setLoadingRoles(true);
+        try {
+            const response = await api.get("/roles");
+            setRolesList(response.data);
+        } catch (error) {
+            console.error("Error fetching roles:", error);
+            addToast({
+                type: "error",
+                title: "Error",
+                message: "No se pudieron cargar los roles.",
+            });
+        } finally {
+            setLoadingRoles(false);
+        }
+    };
 
     const hasFormChanges = () => {
         if (!employee) {
@@ -84,6 +111,16 @@ export default function EmployeeFormModal({ open, onClose, employee, onSave }) {
                 delete newErrors[name];
             }
             return newErrors;
+        });
+    };
+
+    const handleRoleChange = (roleId) => {
+        setForm(prev => {
+            const currentRoleIds = prev.roleIds || [];
+            const newRoleIds = currentRoleIds.includes(roleId)
+                ? currentRoleIds.filter(id => id !== roleId)
+                : [...currentRoleIds, roleId];
+            return { ...prev, roleIds: newRoleIds };
         });
     };
 
@@ -236,6 +273,18 @@ export default function EmployeeFormModal({ open, onClose, employee, onSave }) {
                         </div>
                     </div>
 
+                    {/* Fecha de Contratación */}
+                    <div>
+                        <label className="block text-sm mb-2 text-slate-300">Fecha de contratación</label>
+                        <input
+                            name="hiring_date"
+                            type="date"
+                            value={form.hiring_date || ""}
+                            onChange={handleChange}
+                            className="input"
+                        />
+                    </div>
+
                     {/* Imagen de Perfil */}
                     <div className="flex flex-col items-center gap-3 py-2 bg-slate-800/30 rounded-xl border border-dashed border-slate-700">
                         <div className="relative group">
@@ -262,6 +311,35 @@ export default function EmployeeFormModal({ open, onClose, employee, onSave }) {
                             </label>
                         </div>
                         <p className="text-[11px] text-slate-400">Imagen de perfil (opcional)</p>
+                    </div>
+
+                    {/* Roles del Empleado */}
+                    <div className="p-4 bg-slate-800/20 rounded-xl border border-slate-700/50">
+                        <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                            Roles del empleado
+                            {loadingRoles && <span className="loading loading-spinner loading-xs text-primary"></span>}
+                        </h4>
+                        
+                        {rolesList.length > 0 ? (
+                            <div className="grid grid-cols-2 gap-y-2 gap-x-4">
+                                {rolesList.map((role) => (
+                                    <div key={role.id} className="flex items-center gap-2">
+                                        <input
+                                            type="checkbox"
+                                            id={`role-${role.id}`}
+                                            checked={form.roleIds?.includes(role.id)}
+                                            onChange={() => handleRoleChange(role.id)}
+                                            className="w-4 h-4 rounded border-slate-700 bg-secondary text-primary accent-primary cursor-pointer"
+                                        />
+                                        <label htmlFor={`role-${role.id}`} className="text-sm text-slate-300 cursor-pointer select-none">
+                                            {role.name}
+                                        </label>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : !loadingRoles && (
+                            <p className="text-xs text-slate-500 italic">No hay roles disponibles.</p>
+                        )}
                     </div>
 
                     {/* Citas */}
