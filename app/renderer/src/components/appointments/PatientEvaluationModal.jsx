@@ -27,7 +27,7 @@ export function CategorySelector({ title, value, onChange, options }) {
                                 }
                             `}
                         >
-                            <Icon size={22} className={isSelected ? "text-primary mb-1" : "text-slate-400 dark:text-slate-500 mb-1"} />
+                            <Icon size={28} className={isSelected ? "text-primary mb-1" : "text-slate-400 dark:text-slate-500 mb-1"} />
                             <span className="text-sm font-semibold">{option.label}</span>
 
                             {isSelected && (
@@ -122,7 +122,7 @@ export default function PatientEvaluationModal({ open, onClose, appointment, onS
                         {/* Header */}
                         <div className="flex items-start justify-between p-6 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/20">
                             <div>
-                                <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-1">Calificar Paciente</h2>
+                                <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-1">Evaluación de cita</h2>
                                 <p className="text-slate-600 dark:text-slate-300 font-medium">{patientName}</p>
                                 <div className="flex items-center gap-2 mt-1 text-xs text-slate-400 dark:text-slate-500">
                                     {appointment.patient?.medical_record_number && (

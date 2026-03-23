@@ -64,9 +64,12 @@ export default function Dashboard() {
     }
 
     // 🧭 Módulos visibles según permisos y configuración global
-    const shortcuts = (user.modules || [])
+    // 💡 NOTA: Agregamos "employees" manualmente para que aparezca mientras se actualiza la DB
+    const userModules = [...new Set([...(user.modules || []), "employees"])];
+
+    const shortcuts = userModules
         .filter((m) => MODULE_CONFIG[m]) // Existe en config
-        .filter((m) => user.is_superadmin || user.permissions[m]?.read) // Tiene permiso
+        .filter((m) => user.is_superadmin || user.permissions[m]?.read || m === "employees") // Tiene permiso
         .map((m) => MODULE_CONFIG[m]) // Mapear a objeto config
         .sort((a, b) => a.order - b.order); // Ordenar
 
