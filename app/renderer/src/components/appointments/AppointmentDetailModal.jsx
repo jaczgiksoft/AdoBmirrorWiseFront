@@ -427,19 +427,18 @@ export default function AppointmentDetailModal({ appointment, open, onClose, onE
                                                     /* ── Payment registered ── */
                                                     <div className="space-y-5">
                                                         {/* Status badge */}
-                                                        <div className={`flex items-center gap-3 p-4 rounded-2xl border ${
-                                                            isPaid
-                                                                ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800'
-                                                                : isPartiallyPaid
-                                                                    ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800'
-                                                                    : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700'
-                                                        }`}>
+                                                        <div className={`flex items-center gap-3 p-4 rounded-2xl border ${isPaid
+                                                            ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800'
+                                                            : isPartiallyPaid
+                                                                ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800'
+                                                                : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700'
+                                                            }`}>
                                                             {isPaid
                                                                 ? <BadgeCheck className="text-emerald-500" size={24} />
                                                                 : <AlertCircle className="text-amber-500" size={24} />
                                                             }
                                                             <div>
-                                                                <p className={`font-bold ${ isPaid ? 'text-emerald-700 dark:text-emerald-300' : 'text-amber-700 dark:text-amber-300'}`}>
+                                                                <p className={`font-bold ${isPaid ? 'text-emerald-700 dark:text-emerald-300' : 'text-amber-700 dark:text-amber-300'}`}>
                                                                     {isPaid ? 'Pago completo' : isPartiallyPaid ? 'Pago parcial' : 'Sin pago'}
                                                                 </p>
                                                                 <p className="text-xs text-slate-400 mt-0.5">
@@ -478,11 +477,10 @@ export default function AppointmentDetailModal({ appointment, open, onClose, onE
                                                                             ${parseFloat(checkoutResult.paid_amount).toFixed(2)}
                                                                         </td>
                                                                         <td className="p-3 text-center">
-                                                                            <span className={`text-xs font-bold px-2 py-1 rounded-full ${
-                                                                                isPaid
-                                                                                    ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
-                                                                                    : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
-                                                                            }`}>
+                                                                            <span className={`text-xs font-bold px-2 py-1 rounded-full ${isPaid
+                                                                                ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+                                                                                : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+                                                                                }`}>
                                                                                 {isPaid ? 'Pagado' : 'Parcial'}
                                                                             </span>
                                                                         </td>
@@ -540,8 +538,8 @@ export default function AppointmentDetailModal({ appointment, open, onClose, onE
                                         onClick={() => setShowEvaluationModal(true)}
                                         disabled={hasEvaluation}
                                         className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition active:scale-95 ${hasEvaluation
-                                                ? 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 cursor-not-allowed border border-slate-200 dark:border-slate-700'
-                                                : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 shadow-sm'
+                                            ? 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 cursor-not-allowed border border-slate-200 dark:border-slate-700'
+                                            : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 shadow-sm'
                                             }`}
                                     >
                                         <Star size={18} className={hasEvaluation ? "" : "text-amber-400"} />
@@ -584,15 +582,15 @@ export default function AppointmentDetailModal({ appointment, open, onClose, onE
                                                         setActiveTab('payments');
                                                     }}
                                                     disabled={isPaid}
-                                                    className={`flex items-center gap-2 px-8 py-3 rounded-xl font-bold shadow-lg transition active:scale-95 ${
-                                                        isPaid
-                                                            ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 cursor-default border border-emerald-200 dark:border-emerald-800 shadow-none'
-                                                            : 'bg-emerald-600 text-white shadow-emerald-500/20 hover:bg-emerald-700'
-                                                    }`}
+                                                    className={`flex items-center gap-2 px-8 py-3 rounded-xl font-bold shadow-lg transition active:scale-95 ${isPaid
+                                                        ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 cursor-default border border-emerald-200 dark:border-emerald-800 shadow-none'
+                                                        : 'bg-emerald-600 text-white shadow-emerald-500/20 hover:bg-emerald-700'
+                                                        }`}
                                                 >
                                                     {isPaid
-                                                        ? <><BadgeCheck size={18} /> Cobrado</>
-                                                        : <><Receipt size={18} /> Cobrar</>}
+                                                        ? <><BadgeCheck size={18} /> Cita completada</>
+                                                        : <><Receipt size={18} /> Completar cita</>
+                                                    }
                                                 </button>
                                             )}
 
@@ -728,20 +726,10 @@ function StatusStepper({ appointment }) {
     }
 
     // Unified Timeline Nodes
-    // 1. Prepend Status as the first node
-    const timelineNodes = [
-        {
-            id: 'status_node',
-            label: statusConfig.label,
-            icon: statusConfig.icon,
-            state: 'status_active', // Special state for the status node
-            config: statusConfig
-        },
-        ...journeySteps.map(step => ({
-            ...step,
-            state: journeyState[step.id]
-        }))
-    ];
+    const timelineNodes = journeySteps.map(step => ({
+        ...step,
+        state: journeyState[step.id]
+    }));
 
     return (
         <div className="flex items-center w-full max-w-5xl mx-auto px-4">
