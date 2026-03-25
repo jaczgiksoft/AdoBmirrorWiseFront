@@ -297,7 +297,7 @@ export default function AppointmentList() {
                         />
                     </div>
                 ) : (
-                    <div className="flex-1 overflow-y-auto pr-1">
+                    <div className="flex-1 overflow-y-auto p-1">
                         {loading ? (
                             <div className="flex h-64 items-center justify-center text-slate-500">Cargando citas...</div>
                         ) : error ? (

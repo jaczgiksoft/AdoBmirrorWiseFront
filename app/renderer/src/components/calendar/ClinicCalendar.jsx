@@ -85,7 +85,11 @@ export default function ClinicCalendar({ appointments, onEditAppointment, monthE
 
     useEffect(() => {
         const calendarApi = calendarRef.current?.getApi();
-        if (calendarApi) {
+        if (!calendarApi) return;
+
+        if (view === 'day') {
+            calendarApi.gotoDate(new Date()); // 👈 FORZAR HOY
+        } else {
             calendarApi.gotoDate(currentDate);
         }
     }, [view]); // When swapping view, ref attaches to new instance, we might need to set date.

@@ -411,3 +411,156 @@ input[type="number"] {
 .menu-wrapper g:hover>path {
     stroke: #2087cb !important;
 }
+
+/* ──────────────────────────────── */
+/* 📅 FULLCALENDAR CUSTOM STYLES   */
+/* ──────────────────────────────── */
+
+/* ====================================================
+   FULLCALENDAR — DAY VIEW COLUMN HEADERS
+==================================================== */
+
+/* Ocultar la celda de la esquina superior izquierda (donde está el "All Day" por defecto) */
+.fc-col-header-cushion {
+    display: none;
+}
+
+/* Estilo para los encabezados de los días (Jue, Vie, Sáb...) */
+.fc-col-header-cell-cushion {
+    display: block;
+    padding: 8px 12px;
+    font-weight: 600;
+    text-align: center;
+    color: #64748b;
+    /* slate-500 */
+}
+
+/* Dark mode */
+.dark .fc-col-header-cell-cushion {
+    color: #94a3b8;
+    /* slate-300 */
+}
+
+/* ====================================================
+   FULLCALENDAR — DAY VIEW RESOURCE COLUMN
+==================================================== */
+
+/* Ocultar el encabezado de la columna de recursos (donde dice "Recursos") */
+.fc-resource-group-label {
+    display: none;
+}
+
+/* Ocultar la celda de la esquina superior izquierda en la vista de día */
+.fc-daygrid-col.fc-col-header {
+    display: none;
+}
+
+/* ====================================================
+   FULLCALENDAR — DAY VIEW HEADER (FECHA)
+==================================================== */
+
+/* Asegurar que el header de la fecha sea visible y centrado */
+.fc-header-toolbar {
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    padding: 1rem;
+    background: #f8fafc;
+    /* slate-50 */
+    border-bottom: 1px solid #e2e8f0;
+    /* slate-200 */
+}
+
+.dark .fc-header-toolbar {
+    background: #0f172a;
+    /* dark slate */
+    border-bottom-color: #1e293b;
+    /* dark slate-800 */
+}
+
+/* Ocultar los botones de navegación en la vista de día (los manejamos nosotros) */
+.fc-header-toolbar .fc-button-group:first-child {
+    display: none;
+}
+
+/* ====================================================
+   FULLCALENDAR — DAY VIEW GRID
+==================================================== */
+
+/* Ajustar el ancho de las columnas para que se adapten al contenido */
+.fc-daygrid-body {
+    width: 100% !important;
+}
+
+.fc-daygrid-col {
+    width: 100% !important;
+    min-width: 120px !important;
+}
+
+/* ====================================================
+   FULLCALENDAR — DAY VIEW TIME SLOTS
+==================================================== */
+
+/* Asegurar que las filas de tiempo tengan altura suficiente */
+.fc-timegrid-slot {
+    min-height: 50px !important;
+    height: 50px !important;
+}
+
+/* ====================================================
+   FULLCALENDAR — DAY VIEW EVENTS
+==================================================== */
+
+/* Estilo para los eventos en la vista de día */
+.fc-timegrid-event {
+    border-radius: 15px;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.dark .fc-timegrid-event {
+    border-color: rgba(255, 255, 255, 0.2);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* ================================
+   FULLCALENDAR — NOW INDICATOR PRO
+================================ */
+
+/* 🔴 Línea más gruesa y extendida hasta la flecha */
+.fc-timegrid-now-indicator-line {
+    border-top: 2px solid var(--color-primary) !important;
+    box-shadow: 0 0 10px color-mix(in srgb, var(--color-primary) 70%, transparent);
+    opacity: 1;
+
+    margin-left: -80px;
+    /* 👈 conecta con la flecha */
+    z-index: 20;
+}
+
+/* 🔺 Triángulo grande y apuntando correctamente */
+.fc .fc-timegrid-now-indicator-arrow {
+    border-width: 10px 0 10px 20px !important;
+
+    border-top-color: transparent !important;
+    border-bottom-color: transparent !important;
+    border-left-color: var(--color-primary) !important;
+
+    margin-left: -2px;
+
+    position: relative;
+    /* 👈 para layering */
+    z-index: 30;
+    /* 👈 encima de la línea */
+
+    filter: drop-shadow(0 0 6px color-mix(in srgb, var(--color-primary) 70%, transparent));
+}
+
+/* 🌙 Dark mode */
+.dark .fc-timegrid-now-indicator-line {
+    box-shadow: 0 0 12px color-mix(in srgb, var(--color-primary) 80%, transparent);
+}
+
+.dark .fc .fc-timegrid-now-indicator-arrow {
+    filter: drop-shadow(0 0 8px color-mix(in srgb, var(--color-primary) 80%, transparent));
+}
