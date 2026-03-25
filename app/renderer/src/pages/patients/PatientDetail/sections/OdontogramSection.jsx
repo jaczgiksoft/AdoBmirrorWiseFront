@@ -332,11 +332,22 @@ const TEETH_TO_SCALE = [
 // ==========================================
 const BRACKET_HOOK_CONFIG = {
     // Dientes que usarán el bracket-gancho.svg en lugar del tradicional
-    teethIds: [18, 28, 38, 48],
+    teethIds: [17, 18, 27, 28, 37, 38, 47, 48],
     // Clases CSS de Tailwind para el tamaño del bracket especial (móvil y escritorio)
     sizeClasses: 'w-4 h-4 md:w-8 md:h-8',
     // Clases CSS de Tailwind para el tamaño del bracket normal
-    defaultSizeClasses: 'w-2.5 h-2.5 md:w-5 md:h-5'
+    defaultSizeClasses: 'w-2.5 h-2.5 md:w-5 md:h-5',
+    // Micro ajustes para rotar (grados), voltear (espejo scaleX/scaleY), o trasladar (offsetX/offsetY en píxeles)
+    adjustments: {
+        17: { rotate: 180, scaleX: 1, scaleY: 1, offsetX: 0, offsetY: -12 },
+        18: { rotate: 180, scaleX: 1, scaleY: 1, offsetX: 0, offsetY: -10 },
+        27: { rotate: 180, scaleX: -1, scaleY: 1, offsetX: 0, offsetY: -12 }, // Volteado horizontalmente
+        28: { rotate: 180, scaleX: -1, scaleY: 1, offsetX: 0, offsetY: -10 },
+        37: { rotate: 0, scaleX: 1, scaleY: 1, offsetX: 0, offsetY: -3 }, // Rotado
+        38: { rotate: 0, scaleX: 1, scaleY: 1, offsetX: 0, offsetY: -6 },
+        47: { rotate: 0, scaleX: -1, scaleY: 1, offsetX: 0, offsetY: -3 }, // Rotado y volteado
+        48: { rotate: 0, scaleX: -1, scaleY: 1, offsetX: 0, offsetY: -6 }
+    }
 };
 const INACTIVE_TYPES = ['extraction', 'missing', 'unerupted'];
 const DENTAL_TYPES = [
@@ -979,6 +990,13 @@ function Tooth({ id, type, hasBracket, isSelectedBracket, isBracketMode, onTooth
                                 src={BRACKET_HOOK_CONFIG.teethIds.includes(parseInt(id, 10)) ? bracketGanchoImg : bracketImg}
                                 alt="Bracket"
                                 className={`object-contain opacity-90 drop-shadow-sm transition-transform duration-200 ${BRACKET_HOOK_CONFIG.teethIds.includes(parseInt(id, 10)) ? BRACKET_HOOK_CONFIG.sizeClasses : BRACKET_HOOK_CONFIG.defaultSizeClasses} ${isSelectedBracket ? 'scale-125' : ''}`}
+                                style={
+                                    BRACKET_HOOK_CONFIG.teethIds.includes(parseInt(id, 10)) && BRACKET_HOOK_CONFIG.adjustments && BRACKET_HOOK_CONFIG.adjustments[id]
+                                        ? {
+                                            transform: `translate(${BRACKET_HOOK_CONFIG.adjustments[id].offsetX || 0}px, ${BRACKET_HOOK_CONFIG.adjustments[id].offsetY || 0}px) rotate(${BRACKET_HOOK_CONFIG.adjustments[id].rotate || 0}deg) scaleX(${BRACKET_HOOK_CONFIG.adjustments[id].scaleX || 1}) scaleY(${BRACKET_HOOK_CONFIG.adjustments[id].scaleY || 1}) ${isSelectedBracket ? 'scale(1.25)' : ''}`
+                                        }
+                                        : {}
+                                }
                             />
                         </motion.div>
                     )}
@@ -1909,7 +1927,7 @@ function ActionPanel({
     isBracketMode, setBracketMode,
     isTadMode, setTadMode,
     isPeriodontalMode, setPeriodontalMode,
-    onApplyAll, selectedToothType, setSelectedToothType, onReset, onOpenVoiceSettings
+    onApplyAll, selectedToothType, setSelectedToothType, onReset, onOpenVoiceSettings, hasVoiceSupport
 }) {
     return (
         <div className="bg-white dark:bg-[var(--color-secondary)] p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm mt-6 flex flex-col md:flex-row items-center justify-between gap-4">
@@ -1950,17 +1968,19 @@ function ActionPanel({
             <div className="hidden md:block w-px h-8 bg-slate-400 dark:bg-slate-700 mx-1"></div>
             <div className="flex items-center gap-2 md:gap-4 w-full md:w-auto justify-between md:justify-end flex-wrap md:flex-wrap lg:flex-nowrap">
                 {/* Contenido movido a la parte superior */}
-                <button
-                    type="button"
-                    onClick={onOpenVoiceSettings}
-                    className="btn btn-sm md:btn-md bg-white dark:bg-slate-700 hover:bg-slate-50 dark:hover:bg-slate-600/80 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-600 shadow-sm transition-colors whitespace-nowrap flex items-center gap-2"
-                    title="Configuración de Voz"
-                >
-                    <svg className="w-4 h-4 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
-                    </svg>
-                    Ajustes de Voz
-                </button>
+                {hasVoiceSupport && (
+                    <button
+                        type="button"
+                        onClick={onOpenVoiceSettings}
+                        className="btn btn-sm md:btn-md bg-white dark:bg-slate-700 hover:bg-slate-50 dark:hover:bg-slate-600/80 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-600 shadow-sm transition-colors whitespace-nowrap flex items-center gap-2"
+                        title="Configuración de Voz"
+                    >
+                        <svg className="w-4 h-4 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                        </svg>
+                        Ajustes de Voz
+                    </button>
+                )}
             </div>
         </div>
     );
@@ -1993,6 +2013,24 @@ export default function OdontogramSection() {
 
     const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false);
     const [voiceSettings, setVoiceSettings] = useState({ isMuted: false, selectedVoiceURI: '' });
+    const [hasVoiceSupport, setHasVoiceSupport] = useState(false);
+
+    useEffect(() => {
+        const checkVoices = () => {
+            if ('speechSynthesis' in window) {
+                const voices = window.speechSynthesis.getVoices();
+                const spanishVoices = voices.filter(v => v.lang.startsWith('es'));
+                setHasVoiceSupport(spanishVoices.length > 0);
+            } else {
+                setHasVoiceSupport(false);
+            }
+        };
+
+        checkVoices();
+        if ('speechSynthesis' in window && window.speechSynthesis.onvoiceschanged !== undefined) {
+            window.speechSynthesis.onvoiceschanged = checkVoices;
+        }
+    }, []);
 
     useEffect(() => {
         const savedSettingsStr = localStorage.getItem('odontogram_voice_settings');
@@ -3635,7 +3673,7 @@ export default function OdontogramSection() {
                             {!isBracketMode && "Odontograma Actual"}
                             {isBracketMode && <span className="badge badge-sm badge-info gap-1 font-normal">Modo Ortodoncia (Brackets)</span>}
                             {isTadMode && <span className="badge badge-sm badge-info gap-1 font-normal">Modo Ortodoncia (TADs)</span>}
-                            {isPeriodontalMode && <span className="badge badge-sm badge-error gap-1 font-normal">Bolsas Periodontales</span>}
+                            {/* {isPeriodontalMode && <span className="badge badge-sm badge-error gap-1 font-normal">Bolsas Periodontales</span>} */}
                         </h2>
                         {!isBracketMode && <p className="text-sm text-slate-500 dark:text-slate-400">Vista general del estado dental del paciente.</p>}
                     </div>
@@ -3645,7 +3683,9 @@ export default function OdontogramSection() {
 
                         {/* Checkboxes de Modos y Botón Aplicar a Todos */}
                         <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800/50 rounded-lg p-1 border border-slate-200 dark:border-slate-700 shadow-sm">
-                            <ModeCheckbox label="Bolsas Periodontales" checked={isPeriodontalMode} onChange={(e) => setPeriodontalMode(e.target.checked)} color="red" />
+                            {/*  desactivado temporalmente jhasta quese tenga el priocedimiento bien
+                            <ModeCheckbox label="Bolsas Periodontales" checked={isPeriodontalMode} onChange={(e) => setPeriodontalMode(e.target.checked)} color="red" /> 
+                            */}
                             <ModeCheckbox label="Colocar TADs" checked={isTadMode} onChange={(e) => setTadMode(e.target.checked)} color="sky" />
                             <ModeCheckbox label="Colocar Brackets" checked={isBracketMode} onChange={(e) => setBracketMode(e.target.checked)} color="blue" />
 
@@ -3857,6 +3897,7 @@ export default function OdontogramSection() {
                     setIsResetDialogOpen(true);
                 }}
                 onOpenVoiceSettings={() => setIsVoiceModalOpen(true)}
+                hasVoiceSupport={hasVoiceSupport}
             />
 
             <ClinicalActionModal
@@ -4056,11 +4097,13 @@ export default function OdontogramSection() {
             </AnimatePresence>
 
             {/* Voice Settings Modal */}
-            <VoiceSettingsModal
-                isOpen={isVoiceModalOpen}
-                onClose={() => setIsVoiceModalOpen(false)}
-                onSettingsChange={(settings) => setVoiceSettings(settings)}
-            />
+            {hasVoiceSupport && (
+                <VoiceSettingsModal
+                    isOpen={isVoiceModalOpen}
+                    onClose={() => setIsVoiceModalOpen(false)}
+                    onSettingsChange={(settings) => setVoiceSettings(settings)}
+                />
+            )}
         </motion.div>
     );
 }

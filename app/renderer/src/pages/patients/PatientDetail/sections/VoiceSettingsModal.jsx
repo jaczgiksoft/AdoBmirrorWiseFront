@@ -14,13 +14,13 @@ export default function VoiceSettingsModal({ isOpen, onClose, onSettingsChange }
         const loadVoices = () => {
             if ('speechSynthesis' in window) {
                 const availableVoices = window.speechSynthesis.getVoices();
-                if (availableVoices.length > 0) {
-                    setVoices(availableVoices);
+                const spanishVoices = availableVoices.filter(v => v.lang.startsWith('es'));
+                
+                if (spanishVoices.length > 0) {
+                    setVoices(spanishVoices);
                     
-                    // Fallback to Spanish or default browser voice if no selection exists
                     if (!selectedVoiceURI) {
-                        const defaultVoice = availableVoices.find(v => v.lang.startsWith('es')) || availableVoices[0];
-                        if (defaultVoice) setSelectedVoiceURI(defaultVoice.voiceURI);
+                        setSelectedVoiceURI(spanishVoices[0].voiceURI);
                     }
                 }
             }
