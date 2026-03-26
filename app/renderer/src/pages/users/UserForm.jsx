@@ -433,9 +433,8 @@ export default function UserForm({ open, onClose, onCreated }) {
                         {/* Barra de fuerza */}
                         <div className="h-1 rounded bg-slate-700 overflow-hidden mb-2">
                             <div
-                                className={`h-full transition-all duration-300 ${
-                                    ["bg-red-500", "bg-orange-500", "bg-yellow-400", "bg-green-500", "bg-emerald-600"][passwordStrength]
-                                }`}
+                                className={`h-full transition-all duration-300 ${["bg-red-500", "bg-orange-500", "bg-yellow-400", "bg-green-500", "bg-emerald-600"][passwordStrength]
+                                    }`}
                                 style={{ width: `${(passwordStrength / 4) * 100}%` }}
                             ></div>
                         </div>

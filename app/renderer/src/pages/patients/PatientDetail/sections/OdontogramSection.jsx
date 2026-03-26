@@ -332,19 +332,23 @@ const TEETH_TO_SCALE = [
 // ==========================================
 const BRACKET_HOOK_CONFIG = {
     // Dientes que usarán el bracket-gancho.svg en lugar del tradicional
-    teethIds: [17, 18, 27, 28, 37, 38, 47, 48],
+    teethIds: [16, 17, 18, 26, 27, 28, 36, 37, 38, 46, 47, 48],
     // Clases CSS de Tailwind para el tamaño del bracket especial (móvil y escritorio)
     sizeClasses: 'w-4 h-4 md:w-8 md:h-8',
     // Clases CSS de Tailwind para el tamaño del bracket normal
     defaultSizeClasses: 'w-2.5 h-2.5 md:w-5 md:h-5',
     // Micro ajustes para rotar (grados), voltear (espejo scaleX/scaleY), o trasladar (offsetX/offsetY en píxeles)
     adjustments: {
+        16: { rotate: 180, scaleX: 1, scaleY: 1, offsetX: 0, offsetY: -12 },
         17: { rotate: 180, scaleX: 1, scaleY: 1, offsetX: 0, offsetY: -12 },
         18: { rotate: 180, scaleX: 1, scaleY: 1, offsetX: 0, offsetY: -10 },
+        26: { rotate: 180, scaleX: -1, scaleY: 1, offsetX: 0, offsetY: -12 },
         27: { rotate: 180, scaleX: -1, scaleY: 1, offsetX: 0, offsetY: -12 }, // Volteado horizontalmente
         28: { rotate: 180, scaleX: -1, scaleY: 1, offsetX: 0, offsetY: -10 },
+        36: { rotate: 0, scaleX: 1, scaleY: 1, offsetX: 0, offsetY: -1 },
         37: { rotate: 0, scaleX: 1, scaleY: 1, offsetX: 0, offsetY: -3 }, // Rotado
         38: { rotate: 0, scaleX: 1, scaleY: 1, offsetX: 0, offsetY: -6 },
+        46: { rotate: 0, scaleX: -1, scaleY: 1, offsetX: 0, offsetY: -1 },
         47: { rotate: 0, scaleX: -1, scaleY: 1, offsetX: 0, offsetY: -3 }, // Rotado y volteado
         48: { rotate: 0, scaleX: -1, scaleY: 1, offsetX: 0, offsetY: -6 }
     }

@@ -7,6 +7,7 @@ import { ConfirmDialog } from "@/components/feedback";
 import { Table, Pagination } from "@/components/ui";
 import { employeesStorage } from "@/utils/employeesStorage";
 import EmployeeFormModal from "./EmployeeFormModal";
+import EmployeeUserModal from "./EmployeeUserModal";
 
 const MOCK_EMPLOYEES = [
     {
@@ -21,7 +22,8 @@ const MOCK_EMPLOYEES = [
         status: "active",
         profile_image: null,
         hiring_date: "2023-01-10",
-        roleIds: [1]
+        roleIds: [1],
+        has_user: true
     },
     {
         id: 2,
@@ -35,7 +37,8 @@ const MOCK_EMPLOYEES = [
         status: "active",
         profile_image: null,
         hiring_date: "2023-05-20",
-        roleIds: [2]
+        roleIds: [2],
+        has_user: true
     },
     {
         id: 3,
@@ -49,7 +52,8 @@ const MOCK_EMPLOYEES = [
         status: "inactive",
         profile_image: null,
         hiring_date: "2024-02-15",
-        roleIds: []
+        roleIds: [],
+        has_user: false
     }
 ];
 
@@ -68,27 +72,28 @@ export default function EmployeeList() {
      * - Diseñado para ser removido fácilmente sin afectar la lógica de los componentes.
      */
     const [employees, setEmployees] = useState(() => employeesStorage.get(MOCK_EMPLOYEES));
-    
+
     // Sincronizar cambios a localStorage cada vez que la lista se modifique
     useEffect(() => {
         employeesStorage.save(employees);
     }, [employees]);
-    
+
     const [searchTerm, setSearchTerm] = useState("");
     const [statusFilter, setStatusFilter] = useState("all");
+    const [userFilter, setUserFilter] = useState("all"); // New filter
     const [currentPage, setCurrentPage] = useState(1);
     const [sortConfig, setSortConfig] = useState({ key: "first_name", direction: "asc" });
     const ITEMS_PER_PAGE = 10;
-    
+
     // Reset page when filters change
     useEffect(() => {
         setCurrentPage(1);
-    }, [searchTerm, statusFilter]);
-    
+    }, [searchTerm, statusFilter, userFilter]);
+
     // Modal states
     const [showForm, setShowForm] = useState(false);
     const [selectedEmployee, setSelectedEmployee] = useState(null);
-    
+
     // Delete states
     const [confirmOpen, setConfirmOpen] = useState(false);
     const [employeeToDelete, setEmployeeToDelete] = useState(null);
@@ -109,9 +114,27 @@ export default function EmployeeList() {
         setConfirmOpen(true);
     };
 
+    // --- User Account Modal ---
+    const [showUserModal, setShowUserModal] = useState(false);
+    const [selectedUserEmployee, setSelectedUserEmployee] = useState(null);
+
+    const handleUserClick = (employee) => {
+        setSelectedUserEmployee(employee);
+        setShowUserModal(true);
+    };
+
+    const handleSaveUserAccount = (userAccount) => {
+        const updatedEmployees = employees.map(emp =>
+            emp.id === selectedUserEmployee.id
+                ? { ...emp, has_user: true, user_account: userAccount }
+                : emp
+        );
+        setEmployees(updatedEmployees);
+    };
+
     const handleConfirmDelete = () => {
         if (!employeeToDelete) return;
-        
+
         setEmployees(employees.filter(emp => emp.id !== employeeToDelete.id));
         setConfirmOpen(false);
         setEmployeeToDelete(null);
@@ -147,14 +170,17 @@ export default function EmployeeList() {
         })();
 
         const matchesStatus = statusFilter === "all" || emp.status === statusFilter;
+        const matchesUser = userFilter === "all" ||
+            (userFilter === "with_user" && emp.has_user) ||
+            (userFilter === "without_user" && !emp.has_user);
 
-        return matchesSearch && matchesStatus;
+        return matchesSearch && matchesStatus && matchesUser;
     });
 
     // Sorting Logic
     const sortedEmployees = [...filteredEmployees].sort((a, b) => {
         if (!sortConfig.key) return 0;
-        
+
         const aValue = (a[sortConfig.key] || "").toString().toLowerCase();
         const bValue = (b[sortConfig.key] || "").toString().toLowerCase();
 
@@ -190,7 +216,7 @@ export default function EmployeeList() {
                     {row.profile_image ? (
                         <img src={row.profile_image} alt="" className="w-10 h-10 rounded-full object-cover border border-slate-700 bg-slate-800" />
                     ) : (
-                        <div className="w-10 h-10 flex items-center justify-center rounded-full bg-slate-800 border border-slate-700 text-primary">
+                        <div className={`w-10 h-10 flex items-center justify-center rounded-full border border-slate-700 text-primary ${row.has_user ? "bg-primary/10 shadow-[0_0_10px_rgba(14,165,233,0.3)]" : "bg-slate-800"}`}>
                             <User size={20} />
                         </div>
                     )}
@@ -250,14 +276,21 @@ export default function EmployeeList() {
             accessor: "actions",
             render: (row) => (
                 <div className="flex items-center gap-3 text-slate-400">
-                    <button 
+                    <button
+                        onClick={() => handleUserClick(row)}
+                        className={`transition-colors cursor-pointer ${row.has_user ? "text-green-500 hover:text-green-400" : "text-slate-500 hover:text-primary"}`}
+                        title={row.has_user ? "Ver / editar usuario" : "Crear usuario"}
+                    >
+                        <User size={18} />
+                    </button>
+                    <button
                         onClick={() => handleEditClick(row)}
                         className="hover:text-primary transition-colors cursor-pointer"
                         title="Editar"
                     >
                         <Edit2 size={18} />
                     </button>
-                    <button 
+                    <button
                         onClick={() => handleDeleteClick(row)}
                         className="hover:text-error transition-colors cursor-pointer"
                         title="Eliminar"
@@ -306,7 +339,7 @@ export default function EmployeeList() {
                                 className="pl-7 pr-4 py-1.5 bg-transparent text-slate-200 text-sm outline-none placeholder:text-slate-500"
                             />
                         </div>
-                        
+
                         <select
                             value={statusFilter}
                             onChange={(e) => setStatusFilter(e.target.value)}
@@ -315,6 +348,16 @@ export default function EmployeeList() {
                             <option value="all">Todos los estados</option>
                             <option value="active">Activos</option>
                             <option value="inactive">Inactivos</option>
+                        </select>
+
+                        <select
+                            value={userFilter}
+                            onChange={(e) => setUserFilter(e.target.value)}
+                            className="bg-secondary text-slate-200 text-sm border border-slate-700 rounded-lg py-1.5 px-3 outline-none focus:border-primary transition cursor-pointer"
+                        >
+                            <option value="all">Filtro de usuario</option>
+                            <option value="with_user">Con usuario</option>
+                            <option value="without_user">Sin usuario</option>
                         </select>
                     </div>
 
@@ -330,29 +373,37 @@ export default function EmployeeList() {
                 </div>
 
                 {/* Table View */}
-                <Table 
-                    columns={columns} 
-                    data={paginatedEmployees} 
+                <Table
+                    columns={columns}
+                    data={paginatedEmployees}
                     sortConfig={sortConfig}
                     onSort={handleSort}
-                    emptyMessage="No se encontraron empleados que coincidan con la búsqueda." 
+                    emptyMessage="No se encontraron empleados que coincidan con la búsqueda."
                 />
 
                 {/* Pagination Controls */}
-                <Pagination 
-                    page={currentPage} 
-                    totalPages={totalPages} 
-                    onPageChange={setCurrentPage} 
+                <Pagination
+                    page={currentPage}
+                    totalPages={totalPages}
+                    onPageChange={setCurrentPage}
                 />
 
             </motion.div>
 
             {/* Modal de Formulario */}
-            <EmployeeFormModal 
-                open={showForm} 
-                onClose={() => setShowForm(false)} 
-                employee={selectedEmployee} 
-                onSave={handleSaveEmployee} 
+            <EmployeeFormModal
+                open={showForm}
+                onClose={() => setShowForm(false)}
+                employee={selectedEmployee}
+                onSave={handleSaveEmployee}
+            />
+
+            {/* Modal de Usuario */}
+            <EmployeeUserModal
+                open={showUserModal}
+                onClose={() => setShowUserModal(false)}
+                employee={selectedUserEmployee}
+                onSave={handleSaveUserAccount}
             />
 
             {/* Modal de Confirmación de Eliminación */}

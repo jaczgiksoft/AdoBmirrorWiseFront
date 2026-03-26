@@ -29,14 +29,14 @@ export default function Dashboard() {
                 if (user.permissions?.patients?.read) navigate("/patients");
                 return "prevent";
             },
-            f2: () => {
-                if (user.permissions?.patient_alerts?.read) navigate("/patient-alerts");
-                return "prevent";
-            },
 
             // 🔥 NUEVOS
-            f5: () => {
+            f3: () => {
                 if (user.permissions?.inventory?.read) navigate("/inventory");
+                return "prevent";
+            },
+            f7: () => {
+                if (user.permissions?.employees?.read) navigate("/employees");
                 return "prevent";
             },
             f12: () => {
@@ -44,10 +44,7 @@ export default function Dashboard() {
                 return "prevent";
             },
 
-            f8: () => {
-                if (user.permissions?.users?.read) navigate("/users");
-                return "prevent";
-            },
+
             f10: () => {
                 if (user.permissions?.notifications?.read) navigate("/notifications");
                 return "prevent";

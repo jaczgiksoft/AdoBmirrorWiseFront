@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { useHotkeys } from "@/hooks/useHotkeys";
 import { useAuthStore } from "@/store/useAuthStore";
-import { Wrench, UserCog, Database, Shield, Bell, ChevronLeft } from "lucide-react";
+import { Wrench, UserCog, Database, Shield, Bell, ChevronLeft, Briefcase, Layout } from "lucide-react";
 
 export default function Settings() {
     const navigate = useNavigate();
@@ -46,6 +46,18 @@ export default function Settings() {
             label: "Preferencias del Sistema",
             description: "Tema, idioma, formato de fecha y apariencia.",
             path: "/configuracion/preferencias",
+        },
+        {
+            icon: <Briefcase size={28} />,
+            label: "Servicios",
+            description: "Gestiona los servicios y tratamientos ofrecidos.",
+            path: "/services",
+        },
+        {
+            icon: <Layout size={28} />,
+            label: "Áreas Clínicas",
+            description: "Configura los consultorios y áreas de atención.",
+            path: "/clinic-areas",
         },
     ];
 
@@ -138,9 +150,9 @@ export default function Settings() {
                                 onClick={() => navigate(item.path)}
                                 className={`bg-secondary rounded-2xl p-5 cursor-pointer border transition-all shadow-soft
                                     ${isSelected
-                                    ? "border-primary shadow-hard ring-2 ring-primary/40"
-                                    : "border-slate-700 hover:border-primary"
-                                }`}
+                                        ? "border-primary shadow-hard ring-2 ring-primary/40"
+                                        : "border-slate-700 hover:border-primary"
+                                    }`}
                             >
                                 <div className="flex items-center gap-3 mb-2">
                                     <div className="text-primary">{item.icon}</div>

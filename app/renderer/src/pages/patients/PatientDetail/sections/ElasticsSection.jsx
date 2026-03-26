@@ -1,6 +1,8 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { Layers, Plus, X, Calendar, Clock, Undo2, Redo2, Trash2, Loader2 } from 'lucide-react';
 import bracketImg from '@/assets/images/odontogram/bracket.svg';
+import bracketGanchoImg from '@/assets/images/odontogram/bracket-gancho.svg';
+import tadImg from '@/assets/images/odontogram/tad.svg';
 
 // 1. Asset Loading (Copied from OdontogramSection)
 const toothImages = import.meta.glob('@/assets/images/odontogram/original/*.svg', {
@@ -30,6 +32,96 @@ const MOLARS = [18, 17, 16, 26, 27, 28, 48, 47, 46, 36, 37, 38];
 
 const getToothDimensions = (id) => {
     return MOLARS.includes(id) ? TOOTH_CONFIG.molar : TOOTH_CONFIG.base;
+};
+
+// =========================================================================
+// MICRO-AJUSTES PARA BRACKETS DE GANCHO (TAMAÑO, POSICIÓN Y ROTACIÓN)
+// =========================================================================
+export const HOOK_BRACKET_CONFIG = {
+    // Cuadrante Superior Derecho (Rotación base 0 si quieres que bajen igual)
+    18: { scale: 1.45, offsetX: 0, offsetY: -8, rotate: 180 },
+    17: { scale: 1.45, offsetX: 0, offsetY: -10, rotate: 180 },
+    16: { scale: 1.45, offsetX: 0, offsetY: -11, rotate: 180 },
+
+    // Cuadrante Superior Izquierdo
+    26: { scale: 1.45, offsetX: 0, offsetY: -11, rotate: 180 },
+    27: { scale: 1.45, offsetX: 0, offsetY: -10, rotate: 180 },
+    28: { scale: 1.45, offsetX: 0, offsetY: -8, rotate: 180 },
+
+    // Cuadrante Inferior Derecho (A los de abajo a veces se les invierte el gancho)
+    48: { scale: 1.45, offsetX: 0, offsetY: -3, rotate: 0 },
+    47: { scale: 1.45, offsetX: 0, offsetY: 4, rotate: 0 },
+    46: { scale: 1.45, offsetX: 0, offsetY: 8, rotate: 0 },
+
+    // Cuadrante Inferior Izquierdo
+    36: { scale: 1.45, offsetX: 0, offsetY: 8, rotate: 0 },
+    37: { scale: 1.45, offsetX: 0, offsetY: 4, rotate: 0 },
+    38: { scale: 1.45, offsetX: 0, offsetY: -3, rotate: 0 },
+};
+
+// Configuración base de la línea Y para TADs (separada por maxilar y mandíbula)
+export const TAD_BASE_Y_CONFIG = {
+    upperY: 60,   // Sube o baja toda la fila superior
+    lowerY: -90   // Sube o baja toda la fila inferior
+};
+
+export const TAD_MICRO_ADJUSTMENTS = {
+    // UPPER RIGHT (Q1)
+    "16-17": { offsetX: -2, offsetY: 0 },
+    "15-16": { offsetX: 6, offsetY: 0 },
+    "14-15": { offsetX: -2, offsetY: 0 },
+    "13-14": { offsetX: -2, offsetY: 0 },
+    "12-13": { offsetX: 2, offsetY: 0 },
+    "11-12": { offsetX: -1, offsetY: 0 },
+
+    // UPPER LEFT (Q2)
+    "21-22": { offsetX: 0, offsetY: 0 },
+    "22-23": { offsetX: -2, offsetY: 0 },
+    "23-24": { offsetX: 1, offsetY: 0 },
+    "24-25": { offsetX: 2, offsetY: 0 },
+    "25-26": { offsetX: -6, offsetY: 0 },
+    "26-27": { offsetX: 2, offsetY: 0 },
+
+    // LOWER RIGHT (Q4)
+    "46-47": { offsetX: -7.5, offsetY: 10 },
+    "45-46": { offsetX: 4.5, offsetY: 10 },
+    "44-45": { offsetX: -1, offsetY: 0 },
+    "43-44": { offsetX: -1, offsetY: 0 },
+    "42-43": { offsetX: 2, offsetY: 0 },
+    "41-42": { offsetX: 0, offsetY: 0 },
+
+    // LOWER LEFT (Q3)
+    "31-32": { offsetX: -1, offsetY: 0 },
+    "32-33": { offsetX: -2, offsetY: 0 },
+    "33-34": { offsetX: 1, offsetY: 0 },
+    "34-35": { offsetX: 0, offsetY: 0 },
+    "35-36": { offsetX: -5, offsetY: 0 },
+    "36-37": { offsetX: 7.5, offsetY: 10 }, // Ajustado para que quede a -80 (-90 + 10)
+};
+
+// =========================================================================
+// MICRO-AJUSTES PARA IMÁGENES DE DIENTES (POSICIÓN X)
+// =========================================================================
+export const TOOTH_IMAGE_MICRO_ADJUSTMENTS = {
+    // Ejemplo: 16: { offsetX: 5 },
+    // Añade aquí los ajustes por ID de diente si es necesario
+    48: { offsetX: 16 },
+    47: { offsetX: 16 },
+    46: { offsetX: 16 },
+    45: { offsetX: 16 },
+    44: { offsetX: 16 },
+    43: { offsetX: 16 },
+    42: { offsetX: 16 },
+    41: { offsetX: 16 },
+
+    31: { offsetX: -16 },
+    32: { offsetX: -16 },
+    33: { offsetX: -16 },
+    34: { offsetX: -16 },
+    35: { offsetX: -16 },
+    36: { offsetX: -16 },
+    37: { offsetX: -16 },
+    38: { offsetX: -16 },
 };
 
 const ELASTIC_TYPES = [
@@ -72,6 +164,9 @@ export default function ElasticsSection() {
     // Sequential Selection State
     // Segment-based State
     // activeChain: { typeId: string, segments: Array<{from, to, config}>, lastPoint: number | null, startPoint: number | null }
+    const [actionType, setActionType] = useState('elastics');
+    const [tads, setTads] = useState({});
+    const [brackets, setBrackets] = useState({}); // New state for brackets
     const [activeChain, setActiveChain] = useState({ segments: [], lastPoint: null, startPoint: null });
 
     // completedChains: Array<{ typeId: string, segments: Array<{from, to, config}> }>
@@ -122,9 +217,11 @@ export default function ElasticsSection() {
             let currentX = startX;
             ids.forEach(id => {
                 const dim = getToothDimensions(id);
+                const toothAdj = TOOTH_IMAGE_MICRO_ADJUSTMENTS[id] || { offsetX: 0 };
+
                 teeth.push({
                     id,
-                    x: currentX,
+                    x: currentX + (toothAdj.offsetX || 0),
                     y: startY,
                     width: dim.width,
                     height: dim.height,
@@ -196,19 +293,41 @@ export default function ElasticsSection() {
     }, [teethData]);
 
     const getBracketCenter = (id) => {
+        // Is it a TAD?
+        if (typeof id === 'string' && id.includes('-')) {
+            const [t1, t2] = id.split('-').map(Number);
+            const tooth1 = toothMap[t1];
+            const tooth2 = toothMap[t2];
+            if (!tooth1 || !tooth2) return { x: 0, y: 0 };
+
+            const baseMidX = (tooth1.x + tooth1.width + tooth2.x) / 2;
+            const config = TAD_MICRO_ADJUSTMENTS[id] || { offsetX: 0, offsetY: 0 };
+            const offsetX = typeof config === 'number' ? config : (config.offsetX || 0);
+            const offsetY = typeof config === 'number' ? 0 : (config.offsetY || 0);
+
+            const archBaseY = tooth1.isUpper ? TAD_BASE_Y_CONFIG.upperY : TAD_BASE_Y_CONFIG.lowerY;
+
+            const midX = baseMidX + offsetX;
+            const yPos = (tooth1.isUpper ? tooth1.y + 15 : tooth1.y + tooth1.height - 35) + archBaseY + offsetY;
+            return { x: midX, y: yPos + 10 };
+        }
+
         const tooth = toothMap[id];
         if (!tooth) return { x: 0, y: 0 };
 
         // Dynamic Calculation based on THIS tooth's dimensions
         const bracketYOffset = tooth.isUpper ? (tooth.height * 0.75) : (tooth.height * 0.15);
-
-        // Center horizontally in the tooth's specific width
         const bracketXOffset = (tooth.width - 20) / 2;
 
-        // Center of the 20x20 bracket is +10
+        // Apply Micro-adjustments if it's a hook bracket
+        const hookConfig = HOOK_BRACKET_CONFIG[id];
+        const customOffsetX = hookConfig ? (hookConfig.offsetX || 0) : 0;
+        const customOffsetY = hookConfig ? (hookConfig.offsetY || 0) : 0;
+
+        // Center of the 20x20 bracket is +10 + custom offsets
         return {
-            x: tooth.x + bracketXOffset + 10,
-            y: tooth.y + bracketYOffset + 10
+            x: tooth.x + bracketXOffset + 10 + customOffsetX,
+            y: tooth.y + bracketYOffset + 10 + customOffsetY
         };
     };
 
@@ -216,9 +335,13 @@ export default function ElasticsSection() {
     const renderElasticChain = (chain, isCompleted = false, isPreview = false) => {
         if (!chain || !chain.segments || chain.segments.length === 0) return null;
 
-        const type = ELASTIC_TYPES.find(t => t.id === chain.typeId) || ELASTIC_TYPES.find(t => t.id === selectedElasticTypeId);
-        const color = type?.color || "#3b82f6";
-        const strokeWidth = type?.strokeWidth || "3";
+        // Si es completado y no es el preview temporal, usa su tipo persistido
+        // Si es la cadena activa o el preview, usa el tipo seleccionado actualmente
+        const effectiveTypeId = (isCompleted && !isPreview) ? chain.typeId : selectedElasticTypeId;
+        const type = ELASTIC_TYPES.find(t => t.id === effectiveTypeId) || ELASTIC_TYPES[0];
+        
+        const color = type.color;
+        const strokeWidth = type.strokeWidth;
         const opacity = isPreview ? 0.4 : (isCompleted ? 0.8 : 1);
 
         return (
@@ -257,7 +380,128 @@ export default function ElasticsSection() {
         setHistoryIndex(prev => prev + 1);
     };
 
+    const handleTadClick = (pairId) => {
+        if (actionType === 'elastics') {
+            handleBracketClick(pairId);
+            return;
+        }
+        if (actionType !== 'tad') return;
+
+        const isRemoving = !!tads[pairId];
+
+        setTads(prev => {
+            const newTads = { ...prev };
+            if (newTads[pairId]) delete newTads[pairId];
+            else newTads[pairId] = true;
+            return newTads;
+        });
+
+        // 🎯 Si se elimina un TAD, truncamos los elásticos asociados (mantenemos los anteriores)
+        if (isRemoving) {
+            // 1. Truncar cadena activa
+            const activeSegments = [...activeChain.segments];
+            const activeBrokenIdx = activeSegments.findIndex(s => s.from === pairId || s.to === pairId);
+            const isOriginBroken = activeChain.startPoint === pairId;
+
+            let newActive = activeChain;
+            if (isOriginBroken || activeBrokenIdx !== -1) {
+                const truncated = isOriginBroken ? [] : activeSegments.slice(0, activeBrokenIdx);
+                newActive = truncated.length > 0 ? {
+                    ...activeChain,
+                    segments: truncated,
+                    lastPoint: truncated[truncated.length - 1].to
+                } : { segments: [], lastPoint: null, startPoint: null };
+
+                setActiveChain(newActive);
+            }
+
+            // 2. Truncar cadenas completadas
+            const newCompleted = completedChains.map(chain => {
+                const segments = [...chain.segments];
+                const brokenIdx = segments.findIndex(s => s.from === pairId || s.to === pairId);
+                if (brokenIdx === -1) return chain;
+
+                const truncated = segments.slice(0, brokenIdx);
+                if (truncated.length === 0) return null;
+
+                return {
+                    ...chain,
+                    segments: truncated,
+                    lastPoint: truncated[truncated.length - 1].to
+                };
+            }).filter(Boolean);
+
+            if (newCompleted.some((c, idx) => c !== completedChains[idx]) || newActive !== activeChain) {
+                setCompletedChains(newCompleted);
+                pushToHistory(newActive, newCompleted);
+            }
+        }
+    };
+
     const handleBracketClick = (id, overrideRouting = null) => {
+        // --- ARCADO DE BRACKETS (PLACEMENT/REMOVAL) ---
+        if (actionType === 'bracket') {
+            const isRemoving = !!brackets[id];
+
+            setBrackets(prev => {
+                const newBrackets = { ...prev };
+                if (newBrackets[id]) delete newBrackets[id];
+                else newBrackets[id] = true;
+                return newBrackets;
+            });
+
+            // Si se elimina un bracket, truncamos los elásticos asociados
+            if (isRemoving) {
+                // 1. Truncar cadena activa
+                const activeSegments = [...activeChain.segments];
+                const activeBrokenIdx = activeSegments.findIndex(s => s.from === id || s.to === id);
+                const isOriginBroken = activeChain.startPoint === id;
+
+                let newActive = activeChain;
+                if (isOriginBroken || activeBrokenIdx !== -1) {
+                    const truncated = isOriginBroken ? [] : activeSegments.slice(0, activeBrokenIdx);
+                    newActive = truncated.length > 0 ? {
+                        ...activeChain,
+                        segments: truncated,
+                        lastPoint: truncated[truncated.length - 1].to
+                    } : { segments: [], lastPoint: null, startPoint: null };
+
+                    setActiveChain(newActive);
+                }
+
+                // 2. Truncar cadenas completadas
+                const newCompleted = completedChains.map(chain => {
+                    const segments = [...chain.segments];
+                    const brokenIdx = segments.findIndex(s => s.from === id || s.to === id);
+                    if (brokenIdx === -1) return chain;
+
+                    const truncated = segments.slice(0, brokenIdx);
+                    if (truncated.length === 0) return null;
+
+                    return {
+                        ...chain,
+                        segments: truncated,
+                        lastPoint: truncated[truncated.length - 1].to
+                    };
+                }).filter(Boolean);
+
+                if (newCompleted.some((c, idx) => c !== completedChains[idx]) || newActive !== activeChain) {
+                    setCompletedChains(newCompleted);
+                    pushToHistory(newActive, newCompleted);
+                }
+            }
+            return;
+        }
+
+        // --- ARCADO DE ELÁSTICOS ---
+        if (actionType !== 'elastics') return;
+
+        // Solo permitir elásticos en dientes que tengan BRACKET o TAD
+        const hasAnchor = brackets[id] || tads[id] || (typeof id === 'string' && id.includes('-') && tads[id]);
+        if (!hasAnchor) {
+            return;
+        }
+
         // 1. Start new chain if empty
         if (activeChain.segments.length === 0 && !activeChain.lastPoint) {
             const newActive = {
@@ -295,8 +539,11 @@ export default function ElasticsSection() {
 
         // 4. Check if this segment closes the loop
         if (id === activeChain.startPoint) {
+            // "Bake-in" the currently selected type at the moment of closing
+            const finalChain = { ...updatedChain, typeId: selectedElasticTypeId };
+            
             // If it closes, commit to completed chains
-            const newCompleted = [...completedChains, updatedChain];
+            const newCompleted = [...completedChains, finalChain];
             const newActive = { segments: [], lastPoint: null, startPoint: null };
             setCompletedChains(newCompleted);
             setActiveChain(newActive);
@@ -312,6 +559,14 @@ export default function ElasticsSection() {
         e.preventDefault();
         const oppositeRouting = elasticRouting === 'external' ? 'internal' : 'external';
         handleBracketClick(id, oppositeRouting);
+    };
+
+    const handleRightClickTad = (e, pairId) => {
+        e.preventDefault();
+        if (actionType === 'elastics') {
+            const oppositeRouting = elasticRouting === 'external' ? 'internal' : 'external';
+            handleBracketClick(pairId, oppositeRouting);
+        }
     };
 
     const handleUndo = useCallback(() => {
@@ -605,7 +860,7 @@ export default function ElasticsSection() {
                                                     {renderElasticChain(activeChain, false)}
 
                                                     {/* Render Preview Segment */}
-                                                    {activeChain.lastPoint && previewBracket && activeChain.lastPoint !== previewBracket && (
+                                                    {activeChain.lastPoint && previewBracket && activeChain.lastPoint !== previewBracket && (brackets[previewBracket] || tads[previewBracket]) && (
                                                         renderElasticChain({
                                                             typeId: selectedElasticTypeId,
                                                             segments: [{
@@ -615,6 +870,67 @@ export default function ElasticsSection() {
                                                             }]
                                                         }, false, true)
                                                     )}
+                                                </g>
+
+                                                {/* LAYER 2.5: TADs */}
+                                                <g id="tad-layer">
+                                                    {teethData.map((tooth, idx) => {
+                                                        if (idx === teethData.length - 1) return null;
+
+                                                        const nextTooth = teethData[idx + 1];
+
+                                                        const q1 = parseInt(String(tooth.id)[0]);
+                                                        const q2 = parseInt(String(nextTooth.id)[0]);
+                                                        if (q1 !== q2) return null;
+
+                                                        const pos1 = parseInt(String(tooth.id)[1]);
+                                                        const pos2 = parseInt(String(nextTooth.id)[1]);
+                                                        if (pos1 === 8 || pos2 === 8) return null;
+
+                                                        const pairId = [tooth.id, nextTooth.id].sort((a, b) => a - b).join('-');
+                                                        if (pairId === '11-21' || pairId === '31-41') return null;
+
+                                                        const hasTad = !!tads[pairId];
+                                                        const config = TAD_MICRO_ADJUSTMENTS[pairId] || { offsetX: 0, offsetY: 0 };
+                                                        const offsetX = typeof config === 'number' ? config : (config.offsetX || 0);
+                                                        const offsetY = typeof config === 'number' ? 0 : (config.offsetY || 0);
+
+                                                        const archBaseY = tooth.isUpper ? TAD_BASE_Y_CONFIG.upperY : TAD_BASE_Y_CONFIG.lowerY;
+
+                                                        const baseMidX = (tooth.x + tooth.width + nextTooth.x) / 2;
+                                                        const midX = baseMidX + offsetX;
+
+                                                        const yPos = (tooth.isUpper ? tooth.y + 15 : tooth.y + tooth.height - 35) + archBaseY + offsetY;
+
+                                                        // Logic Identical to Brackets
+                                                        const isActive = activeChain.lastPoint === pairId || activeChain.segments.some(s => s.from === pairId || s.to === pairId);
+                                                        const isOrigin = activeChain.startPoint === pairId;
+                                                        const isCompleted = completedChains.some(chain => chain.segments.some(s => s.from === pairId || s.to === pairId));
+
+                                                        return (
+                                                            <g key={`tad-${pairId}`} transform={`translate(${midX - 10}, ${yPos})`}
+                                                                onClick={() => handleTadClick(pairId)}
+                                                                onContextMenu={(e) => handleRightClickTad(e, pairId)}
+                                                                onMouseEnter={() => setPreviewBracket(pairId)}
+                                                                onMouseLeave={() => setPreviewBracket(null)}
+                                                                className={actionType === 'tad' || actionType === 'elastics' ? "cursor-pointer" : ""}>
+                                                                <rect x="-10" y="-120" width="40" height="240" fill="transparent" />
+                                                                {hasTad ? (
+                                                                    <image
+                                                                        href={tadImg}
+                                                                        width="20"
+                                                                        height="20"
+                                                                        style={{ transformOrigin: '10px 10px', transform: tooth.isUpper ? 'none' : 'rotate(180deg)' }}
+                                                                        className={`transition-all duration-200 ${isOrigin ? 'drop-shadow-[0_0_8px_rgba(34,197,94,0.9)] brightness-125 scale-125' : isActive ? 'drop-shadow-[0_0_5px_rgba(59,130,246,0.9)] brightness-125 scale-110' : isCompleted ? 'opacity-100 drop-shadow-sm brightness-90' : 'opacity-80 hover:opacity-100 hover:scale-110'}`}
+                                                                    />
+                                                                ) : (
+                                                                    actionType === 'tad' && (
+                                                                        <rect x="-10" y="-120" width="40" height="240" fill="rgba(59, 130, 246, 0.2)" className="opacity-0 hover:opacity-100 transition-opacity" />
+                                                                    )
+                                                                )}
+                                                            </g>
+                                                        );
+                                                    })}
                                                 </g>
 
                                                 {/* LAYER 3: Brackets & Interactivity (Top) */}
@@ -628,23 +944,55 @@ export default function ElasticsSection() {
                                                         const isOrigin = activeChain.startPoint === tooth.id;
                                                         const isCompleted = completedChains.some(chain => chain.segments.some(s => s.from === tooth.id || s.to === tooth.id));
 
+                                                        // Micro-Adjustments Configuration
+                                                        const hookConfig = HOOK_BRACKET_CONFIG[tooth.id];
+                                                        const useHookBracket = !!hookConfig;
+                                                        const currentBracketImg = useHookBracket ? bracketGanchoImg : bracketImg;
+
+                                                        const scale = hookConfig ? (hookConfig.scale || 1) : 1;
+                                                        const offsetX = hookConfig ? (hookConfig.offsetX || 0) : 0;
+                                                        const offsetY = hookConfig ? (hookConfig.offsetY || 0) : 0;
+                                                        const rotate = hookConfig ? (hookConfig.rotate || 0) : 0;
+
+                                                        const baseSize = 28;
+                                                        const sizeW = baseSize * scale;
+                                                        const sizeH = baseSize * scale;
+
+                                                        // Center adjustment when scaling to keep it centered on the tooth
+                                                        const scaleOffsetX = (baseSize - sizeW) / 2;
+                                                        const scaleOffsetY = (baseSize - sizeH) / 2;
+                                                        const hasBracket = !!brackets[tooth.id];
+
                                                         return (
                                                             <g key={`bracket-${tooth.id}`} transform={`translate(${tooth.x}, ${tooth.y})`}>
                                                                 <g
-                                                                    transform={`translate(${bracketXOffset}, ${bracketYOffset})`}
+                                                                    transform={`translate(${bracketXOffset + offsetX}, ${bracketYOffset + offsetY})`}
                                                                     className="cursor-pointer"
                                                                     onClick={() => handleBracketClick(tooth.id)}
                                                                     onContextMenu={(e) => handleRightClickElastic(e, tooth.id)}
                                                                     onMouseEnter={() => setPreviewBracket(tooth.id)}
                                                                     onMouseLeave={() => setPreviewBracket(null)}
                                                                 >
-                                                                    <rect x="-6" y="-6" width="32" height="32" fill="transparent" />
-                                                                    <image
-                                                                        href={bracketImg}
-                                                                        width={28}
-                                                                        height={28}
-                                                                        className={`transition-all duration-200 ${isOrigin ? 'drop-shadow-[0_0_8px_rgba(34,197,94,0.9)] brightness-125 scale-125' : isActive ? 'drop-shadow-[0_0_5px_rgba(59,130,246,0.9)] brightness-125 scale-110' : isCompleted ? 'opacity-100 drop-shadow-sm brightness-90' : 'opacity-80 hover:opacity-100 hover:scale-105'}`}
-                                                                    />
+                                                                    {/* Click Area expansion */}
+                                                                    <rect x={-10} y={-10} width={sizeW + 20} height={sizeH + 20} fill="transparent" />
+
+                                                                    {hasBracket ? (
+                                                                        <g transform={`rotate(${rotate}, 14, 14)`}>
+                                                                            <image
+                                                                                href={currentBracketImg}
+                                                                                x={scaleOffsetX}
+                                                                                y={scaleOffsetY}
+                                                                                width={sizeW}
+                                                                                height={sizeH}
+                                                                                style={{ transformOrigin: '14px 14px' }}
+                                                                                className={`transition-all duration-200 ${isOrigin ? 'drop-shadow-[0_0_8px_rgba(34,197,94,0.9)] brightness-125 scale-125' : isActive ? 'drop-shadow-[0_0_5px_rgba(59,130,246,0.9)] brightness-125 scale-110' : isCompleted ? 'opacity-100 drop-shadow-sm brightness-90' : 'opacity-80 hover:opacity-100 hover:scale-105'}`}
+                                                                            />
+                                                                        </g>
+                                                                    ) : (
+                                                                        actionType === 'bracket' && (
+                                                                            <circle cx="14" cy="14" r="10" fill="rgba(59, 130, 246, 0.2)" className="opacity-0 hover:opacity-100 transition-opacity" />
+                                                                        )
+                                                                    )}
                                                                 </g>
                                                             </g>
                                                         );
@@ -667,15 +1015,15 @@ export default function ElasticsSection() {
                                 </label>
                                 <div className="flex flex-wrap items-center gap-4">
                                     <label className="flex items-center gap-2 cursor-pointer">
-                                        <input type="radio" name="actionType" value="bracket" className="w-4 h-4 text-primary focus:ring-primary" />
+                                        <input type="radio" name="actionType" value="bracket" checked={actionType === 'bracket'} onChange={() => setActionType('bracket')} className="w-4 h-4 text-primary focus:ring-primary" />
                                         <span className="text-sm text-slate-700 dark:text-slate-300">Colocar Bracket</span>
                                     </label>
-                                    <label className="flex items-center gap-2 cursor-not-allowed opacity-50">
-                                        <input type="radio" name="actionType" value="tad" disabled className="w-4 h-4 text-primary focus:ring-primary" />
+                                    <label className="flex items-center gap-2 cursor-pointer">
+                                        <input type="radio" name="actionType" value="tad" checked={actionType === 'tad'} onChange={() => setActionType('tad')} className="w-4 h-4 text-primary focus:ring-primary" />
                                         <span className="text-sm text-slate-700 dark:text-slate-300">Colocar Microimplant</span>
                                     </label>
                                     <label className="flex items-center gap-2 cursor-pointer pr-4 border-r border-slate-200 dark:border-slate-700">
-                                        <input type="radio" name="actionType" value="elastics" defaultChecked className="w-4 h-4 text-primary focus:ring-primary" />
+                                        <input type="radio" name="actionType" value="elastics" checked={actionType === 'elastics'} onChange={() => setActionType('elastics')} className="w-4 h-4 text-primary focus:ring-primary" />
                                         <span className="text-sm text-slate-700 dark:text-slate-300">Colocar Elásticos</span>
                                     </label>
 

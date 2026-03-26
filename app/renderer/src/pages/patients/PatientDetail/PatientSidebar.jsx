@@ -19,7 +19,9 @@ import {
     Scan,
     Orbit,
     ShieldUser,
-    FileUser
+    FileUser,
+    Smile,
+    Meh
 } from "lucide-react";
 
 const links = [
@@ -76,8 +78,13 @@ export default function PatientSidebar({ id, profile }) {
                     </div>
                 )}
 
-                <h2 className="mt-4 font-semibold text-center text-base leading-tight">
+                <h2 className="mt-4 font-semibold text-center text-base leading-tight flex items-center justify-center gap-2">
                     {profile.first_name} {profile.last_name}
+                    {Array.isArray(profile.billing_data) && profile.billing_data.length > 0 ? (
+                        <Meh size={18} className="text-yellow-500" />
+                    ) : (
+                        <Smile size={18} className="text-green-500" />
+                    )}
                 </h2>
             </div>
 
