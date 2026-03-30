@@ -1,5 +1,6 @@
 import React, { useState, useRef, useLayoutEffect, useCallback, useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import bracketImg from '@/assets/images/odontogram/bracket.svg';
 import bracketGanchoImg from '@/assets/images/odontogram/bracket-gancho.svg';
@@ -13,231 +14,14 @@ import VoiceSettingsModal from './VoiceSettingsModal';
 // 1. Asset Loading & Helpers
 // ==========================================
 
-// Load all tooth SVGs from all subfolders (original, root-canal, etc.) as image URLs
-const toothImages = import.meta.glob('@/assets/images/odontogram/**/*.svg', {
-    eager: true,
-    as: 'url'
-});
-
-// Load the raw SVG string for generating dynamic custom SVGs without CSS conflicts
-const toothRawSvgs = import.meta.glob('@/assets/images/odontogram/**/*.svg', {
-    eager: true,
-    query: '?raw',
-    import: 'default'
-});
-
-// Helper to get image src by Tooth ID and Type
-// const getToothSrc = (id, type) => {
-//     // Try to find the specific type first
-//     const specificTypeEntry = Object.entries(toothImages).find(([path]) =>
-//         path.includes(`/odontogram/${type}/tooth-${id}.svg`)
-//     );
-
-//     if (specificTypeEntry) return specificTypeEntry[1];
-
-//     // Fallback to original if not found
-//     const originalEntry = Object.entries(toothImages).find(([path]) =>
-//         path.includes(`/odontogram/original/tooth-${id}.svg`)
-//     );
-
-//     return originalEntry ? originalEntry[1] : null;
-// };
-
-// Helper to get raw SVG strings
-const getToothRaw = (id, type) => {
-    const specificTypeEntry = Object.entries(toothRawSvgs).find(([path]) =>
-        path.includes(`/odontogram/${type}/tooth-${id}.svg`)
-    );
-    if (specificTypeEntry) return specificTypeEntry[1];
-
-    const originalEntry = Object.entries(toothRawSvgs).find(([path]) =>
-        path.includes(`/odontogram/original/tooth-${id}.svg`)
-    );
-    return originalEntry ? originalEntry[1] : null;
-};
-
-// Helper to get image src by Tooth ID and Type
-const getToothSrc = (id, type) => {
-    // Try to find the specific type first
-    const specificTypeEntry = Object.entries(toothImages).find(([path]) =>
-        path.includes(`/odontogram/${type}/tooth-${id}.svg`)
-    );
-
-    if (specificTypeEntry) return specificTypeEntry[1];
-
-    // Fallback to original if not found
-    const originalEntry = Object.entries(toothImages).find(([path]) =>
-        path.includes(`/odontogram/original/tooth-${id}.svg`)
-    );
-
-    return originalEntry ? originalEntry[1] : null;
-};
-
-const getBaseSvgType = (types) => {
-
-    const priority = [
-        'crown',
-        'root-canal',
-        'fissure-root',
-        'fissure-crown',
-        'fissure-full',
-        'implant'
-    ];
-
-    for (const type of priority) {
-        if (types.includes(type)) {
-            return type;
-        }
-    }
-
-    return types[0];
-};
-
-// Encapsulated function to create a Combined SVG data URL containing BOTH implant and crown
-const generateCombinedSvgDataUrl = (id, types = []) => {
-
-    if (!types || types.length === 0) {
-        types = ['implant', 'crown'];
-    }
-
-    types = [...new Set(types)];
-
-    try {
-        const parser = new DOMParser();
-        const serializer = new XMLSerializer();
-        const docs = {};
-
-        // Parse all requested SVGs
-        types.forEach(type => {
-            const raw = getToothRaw(id, type);
-            if (raw) {
-                docs[type] = parser.parseFromString(raw, "image/svg+xml");
-            }
-        });
-
-        const baseType = getBaseSvgType(types);
-        const baseDoc = docs[baseType];
-        if (!baseDoc) return getToothSrc(id, baseType);
-
-        // 🔥 CLAVE: usar el SVG base real
-        const newSvg = baseDoc.documentElement.cloneNode(true);
-
-        // Buscar el grupo principal
-        const mainGroup = newSvg.querySelector('g');
-        if (!mainGroup) return getToothSrc(id, baseType);
-
-        // Limpiar contenido interno (pero mantener estructura)
-        mainGroup.innerHTML = '';
-
-        // Helper
-        const getEl = (doc, selector) =>
-            doc?.querySelector(selector)?.cloneNode(true);
-
-        const extractCrownElements = (crownDoc) => {
-            const group = crownDoc.querySelector('g[id="crown"], g[id="Crown"]');
-            let elements = [];
-
-            if (group) {
-                elements = Array.from(group.children).filter(el => {
-                    const tagId = (el.getAttribute('id') || '').toLowerCase();
-                    return el.tagName.toLowerCase() !== 'metadata' &&
-                        !tagId.includes('root') &&
-                        !tagId.includes('outline');
-                });
-            }
-
-            if (elements.length === 0) {
-                elements = Array.from(crownDoc.querySelectorAll('*')).filter(el => {
-                    const tagId = (el.getAttribute('id') || '').toLowerCase();
-                    return /^crown[_\d]*$/.test(tagId) &&
-                        el.tagName.toLowerCase() !== 'g' &&
-                        el.tagName.toLowerCase() !== 'metadata';
-                });
-            }
-
-            return elements.map(el => el.cloneNode(true));
-        };
-
-        const hasImplant = types.includes('implant');
-        const hasRootCanal = types.includes('root-canal');
-        const hasCrown = types.includes('crown');
-        const hasFissureRoot = types.includes('fissure-root');
-        const hasFissureFull = types.includes('fissure-full');
-        const hasFissureCrown = types.includes('fissure-crown');
-
-        // =====================================================
-        // DIRECT ASSET LOADING FOR SPECIFIC COMBINATIONS
-        // =====================================================
-        if (hasImplant && hasCrown) {
-            return getToothSrc(id, 'combinations/implant+crown');
-        } else if (hasRootCanal && hasFissureCrown) {
-            return getToothSrc(id, 'combinations/root-canal+fissure-crown');
-        } else if (hasRootCanal && hasCrown) {
-            return getToothSrc(id, 'combinations/root-canal+crown');
-        }
-
-        // =====================================================
-        // CONSTRUCCIÓN DINÁMICA DE SVG
-        // =====================================================
-
-        // 2. crown + fissure-root
-        // root → crown → fil2
-        else if (hasCrown && hasFissureRoot) {
-
-            const root = getEl(docs['fissure-root'], '#root');
-            const crownElements = extractCrownElements(docs['crown']);
-            const outline = getEl(docs['fissure-root'], '.fil2') ||
-                getEl(docs['fissure-root'], '#outline');
-
-            root && mainGroup.appendChild(root);
-            crownElements.forEach(el => mainGroup.appendChild(el));
-            outline && mainGroup.appendChild(outline);
-        }
-
-        // =====================================================
-        // crown + fissure-full o fissure-crown
-        // root → crown → outline
-        // =====================================================
-        else if (hasCrown && (hasFissureFull || hasFissureCrown)) {
-
-            const fissureType = hasFissureFull ? 'fissure-full' : 'fissure-crown';
-
-            const root = getEl(docs[fissureType], '#root') || getEl(docs[fissureType], '#Root');
-            const crownElements = extractCrownElements(docs['crown']);
-            const outline = getEl(docs[fissureType], '#outline') || getEl(docs[fissureType], '#Outline') || getEl(docs[fissureType], '.fil2');
-
-            root && mainGroup.appendChild(root);
-            crownElements.forEach(el => mainGroup.appendChild(el));
-            outline && mainGroup.appendChild(outline);
-        }
-
-        // =====================================================
-        // Fallback
-        // =====================================================
-        else {
-            const originalChildren = Array.from(
-                docs[baseType].querySelector('g').children
-            );
-
-            originalChildren.forEach(el => {
-                mainGroup.appendChild(el.cloneNode(true));
-            });
-        }
-
-        let svgString = serializer.serializeToString(newSvg);
-        svgString = svgString.replace(/xmlns:xmlns="[^"]+"/g, '');
-
-        const encoded = encodeURIComponent(svgString)
-            .replace(/'/g, "%27")
-            .replace(/"/g, "%22");
-
-        return `data:image/svg+xml;utf8,${encoded}`;
-
-    } catch (err) {
-        console.error("Error formatting combined SVG:", err);
-        return getToothSrc(id, types[0] || 'implant');
-    }
-};
+import { 
+    toothImages, 
+    toothRawSvgs, 
+    getToothRaw, 
+    getToothSrc, 
+    getBaseSvgType, 
+    generateCombinedSvgDataUrl 
+} from './components/toothSvgHelpers';
 
 // Helper to handle combined state toggling
 const getToggledToothState = (currentType, newType) => {
@@ -1931,7 +1715,9 @@ function ActionPanel({
     isBracketMode, setBracketMode,
     isTadMode, setTadMode,
     isPeriodontalMode, setPeriodontalMode,
-    onApplyAll, selectedToothType, setSelectedToothType, onReset, onOpenVoiceSettings, hasVoiceSupport
+    onApplyAll, selectedToothType, setSelectedToothType, onReset,
+    onOpenVoiceSettings, hasVoiceSupport,
+    onSaveToElastics, savedToElastics
 }) {
     return (
         <div className="bg-white dark:bg-[var(--color-secondary)] p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm mt-6 flex flex-col md:flex-row items-center justify-between gap-4">
@@ -1971,7 +1757,27 @@ function ActionPanel({
             </div>
             <div className="hidden md:block w-px h-8 bg-slate-400 dark:bg-slate-700 mx-1"></div>
             <div className="flex items-center gap-2 md:gap-4 w-full md:w-auto justify-between md:justify-end flex-wrap md:flex-wrap lg:flex-nowrap">
-                {/* Contenido movido a la parte superior */}
+                {/* Botón guardar diseño para Elásticos y persistencia general */}
+                <div className="relative">
+                    <button
+                        type="button"
+                        onClick={onSaveToElastics}
+                        className="btn btn-sm md:btn-md bg-white dark:bg-slate-700 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-700 shadow-sm transition-colors whitespace-nowrap flex items-center gap-2"
+                        title="Guardar diseño actual del odontograma para este paciente"
+                    >
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                        </svg>
+                        Guardar Odontograma
+                    </button>
+                    {/* Feedback de guardado exitoso */}
+                    {savedToElastics && (
+                        <span className="absolute -top-6 left-1/2 -translate-x-1/2 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/50 border border-emerald-200 dark:border-emerald-700 rounded px-2 py-0.5 whitespace-nowrap shadow-sm animate-bounce">
+                            ✓ ¡Guardado!
+                        </span>
+                    )}
+                </div>
+
                 {hasVoiceSupport && (
                     <button
                         type="button"
@@ -1990,11 +1796,15 @@ function ActionPanel({
     );
 }
 
+
 // ==========================================
 // 6. Main Component
 // ==========================================
 
 export default function OdontogramSection() {
+    // Obtener ID del paciente actual para aislar los datos en localStorage
+    const { id: patientId } = useParams();
+
     // Initial State: All teeth are 'original'
     const [toothStates, setToothStates] = useState(buildInitialToothStates);
     const [radialState, setRadialState] = useState(null);
@@ -2003,6 +1813,9 @@ export default function OdontogramSection() {
     const [hoveredMenuItem, setHoveredMenuItem] = useState(null);
     const [hoveredPreviewType, setHoveredPreviewType] = useState(null);
     const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+
+    // Feedback temporal al guardar para Elásticos
+    const [savedToElastics, setSavedToElastics] = useState(false);
 
     const [brackets, setBrackets] = useState({});
     const [bracketWires, setBracketWires] = useState({});
@@ -2186,9 +1999,61 @@ export default function OdontogramSection() {
         future: []
     }));
     const isUndoRedoAction = useRef(false);
+    const isInitialLoad = useRef(true);
+
+    // ==========================================
+    // Carga inicial del estado persistido (localStorage)
+    // ==========================================
+    useEffect(() => {
+        if (!patientId) return;
+        const STORAGE_KEY = `odontogram_data_${patientId}`;
+        try {
+            const raw = localStorage.getItem(STORAGE_KEY);
+            if (!raw) {
+                isInitialLoad.current = false;
+                return;
+            }
+
+            const parsed = JSON.parse(raw);
+            isUndoRedoAction.current = true; // Evitar que el historial guarde este paso inicial
+            isInitialLoad.current = true;
+
+            // Actualizar todos los estados clínicos
+            if (parsed.toothStates) setToothStates(parsed.toothStates);
+            if (parsed.brackets) setBrackets(parsed.brackets);
+            if (parsed.bracketWires) setBracketWires(parsed.bracketWires);
+            if (parsed.tads) setTads(parsed.tads);
+            if (parsed.tadWires) setTadWires(parsed.tadWires);
+            if (parsed.surfaceStates) setSurfaceStates(parsed.surfaceStates);
+            if (parsed.periodontalData) setPeriodontalData(parsed.periodontalData);
+
+            // Sincronizar historial con los datos cargados
+            setHistoryState({
+                past: [],
+                present: {
+                    toothStates: parsed.toothStates || buildInitialToothStates(),
+                    brackets: parsed.brackets || {},
+                    bracketWires: parsed.bracketWires || {},
+                    tads: parsed.tads || {},
+                    tadWires: parsed.tadWires || {},
+                    surfaceStates: parsed.surfaceStates || {},
+                    periodontalData: parsed.periodontalData || {}
+                },
+                future: []
+            });
+
+            setTimeout(() => {
+                isInitialLoad.current = false;
+            }, 100);
+
+        } catch (err) {
+            console.error('[OdontogramSection] Error al cargar datos persistidos:', err);
+            isInitialLoad.current = false;
+        }
+    }, [patientId]);
 
     useEffect(() => {
-        if (isUndoRedoAction.current) {
+        if (isUndoRedoAction.current || isInitialLoad.current) {
             isUndoRedoAction.current = false;
             return;
         }
@@ -2257,9 +2122,42 @@ export default function OdontogramSection() {
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [handleUndo, handleRedo]);
 
+    // ==========================================
+    // Guardar diseño del odontograma en localStorage para la sección de Elásticos
+    // La clave incluye el patientId para evitar cruce de datos entre pacientes
+    // ==========================================
+    const STORAGE_KEY = patientId ? `odontogram_data_${patientId}` : 'odontogram_data_unknown';
+
+    const handleSaveToElastics = useCallback(() => {
+        try {
+            // Guardamos el estado COMPLETO del odontograma
+            const dataToSave = {
+                toothStates:     historyState.present.toothStates,
+                brackets:        historyState.present.brackets,
+                bracketWires:    historyState.present.bracketWires,
+                tads:            historyState.present.tads,
+                tadWires:        historyState.present.tadWires,
+                surfaceStates:   historyState.present.surfaceStates,
+                periodontalData: historyState.present.periodontalData,
+            };
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
+            setSavedToElastics(true);
+        } catch (err) {
+            console.error('[OdontogramSection] Error al guardar en localStorage:', err);
+        }
+    }, [STORAGE_KEY, historyState.present]);
+
+    // Limpiar el badge "¡Guardado!" después de 2.5 segundos
+    useEffect(() => {
+        if (!savedToElastics) return;
+        const timer = setTimeout(() => setSavedToElastics(false), 2500);
+        return () => clearTimeout(timer);
+    }, [savedToElastics]);
+
     // Store measured widths of frontal teeth
     const [toothWidths, setToothWidths] = useState({});
     const [baseToothWidths, setBaseToothWidths] = useState({});
+
     const handleToothResize = useCallback((id, width) => {
         setToothWidths(prev => {
             if (prev[id] === width) return prev;
@@ -3902,6 +3800,8 @@ export default function OdontogramSection() {
                 }}
                 onOpenVoiceSettings={() => setIsVoiceModalOpen(true)}
                 hasVoiceSupport={hasVoiceSupport}
+                onSaveToElastics={handleSaveToElastics}
+                savedToElastics={savedToElastics}
             />
 
             <ClinicalActionModal

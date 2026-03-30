@@ -166,7 +166,7 @@ export default function ChargeBreakdown({
             {/* ─── Grand Total ─── */}
             <div className={`flex items-center justify-between px-4 py-4 rounded-xl font-bold ${compact ? "bg-slate-100 dark:bg-slate-800" : "bg-slate-900 dark:bg-white"}`}>
                 <span className={compact ? "text-slate-700 dark:text-slate-200 text-base" : "text-white dark:text-slate-900 text-base"}>
-                    Total a Cobrar
+                    Total
                 </span>
                 <span className={compact ? "text-slate-900 dark:text-white text-xl" : "text-white dark:text-slate-900 text-2xl"}>
                     {fmt(grandTotal)}

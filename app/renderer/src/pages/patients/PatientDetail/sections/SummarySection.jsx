@@ -10,7 +10,8 @@ import {
     PackageOpen,
     ChevronRight,
     Smile,
-    Meh
+    Meh,
+    Cake
 } from "lucide-react";
 import HeaderInfo from "./components/HeaderInfo";
 import { API_BASE } from "@/utils/apiBase";
@@ -87,9 +88,9 @@ export default function SummarySection() {
                         <div className="flex gap-2 mt-2 flex-wrap items-center">
                             {/* FACTURACIÓN */}
                             {Array.isArray(profile.billing_data) && profile.billing_data.length > 0 ? (
-                                <Meh size={18} className="text-yellow-500" />
+                                <Meh size={24} className="text-yellow-500" />
                             ) : (
-                                <Smile size={18} className="text-green-500" />
+                                <Smile size={24} className="text-green-500" />
                             )}
 
                             {/* TIPOS (se muestran después) */}
@@ -153,7 +154,7 @@ export default function SummarySection() {
             ============================================================ */}
             <div className="grid grid-cols-3 gap-3">
                 <KPI
-                    icon={Activity}
+                    icon={Cake}
                     label="Edad"
                     value={getReadableAge(profile.birth_date)}
                 />

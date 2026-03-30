@@ -1,21 +1,11 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import { useParams } from 'react-router-dom';
 import { Layers, Plus, X, Calendar, Clock, Undo2, Redo2, Trash2, Loader2 } from 'lucide-react';
 import bracketImg from '@/assets/images/odontogram/bracket.svg';
 import bracketGanchoImg from '@/assets/images/odontogram/bracket-gancho.svg';
 import tadImg from '@/assets/images/odontogram/tad.svg';
 
-// 1. Asset Loading (Copied from OdontogramSection)
-const toothImages = import.meta.glob('@/assets/images/odontogram/original/*.svg', {
-    eager: true,
-    as: 'url'
-});
-
-const getToothSrc = (id) => {
-    const entry = Object.entries(toothImages).find(([path]) =>
-        path.includes(`/tooth-${id}.svg`)
-    );
-    return entry ? entry[1] : null;
-};
+import { getToothSrc, generateCombinedSvgDataUrl } from './components/toothSvgHelpers';
 
 // 2. Constants & Helper Data - DYNAMIC LAYOUT CONFIG
 const TOOTH_CONFIG = {
@@ -39,30 +29,35 @@ const getToothDimensions = (id) => {
 // =========================================================================
 export const HOOK_BRACKET_CONFIG = {
     // Cuadrante Superior Derecho (Rotación base 0 si quieres que bajen igual)
-    18: { scale: 1.45, offsetX: 0, offsetY: -8, rotate: 180 },
-    17: { scale: 1.45, offsetX: 0, offsetY: -10, rotate: 180 },
-    16: { scale: 1.45, offsetX: 0, offsetY: -11, rotate: 180 },
+    18: { scale: 1.45, offsetX: 0, offsetY: -8, rotate: 180, flipX: false },
+    17: { scale: 1.45, offsetX: 0, offsetY: -10, rotate: 180, flipX: false },
+    16: { scale: 1.45, offsetX: 0, offsetY: -11, rotate: 180, flipX: false },
 
     // Cuadrante Superior Izquierdo
-    26: { scale: 1.45, offsetX: 0, offsetY: -11, rotate: 180 },
-    27: { scale: 1.45, offsetX: 0, offsetY: -10, rotate: 180 },
-    28: { scale: 1.45, offsetX: 0, offsetY: -8, rotate: 180 },
+    26: { scale: 1.45, offsetX: 0, offsetY: -11, rotate: 180, flipX: true },
+    27: { scale: 1.45, offsetX: 0, offsetY: -10, rotate: 180, flipX: true },
+    28: { scale: 1.45, offsetX: 0, offsetY: -8, rotate: 180, flipX: true },
 
     // Cuadrante Inferior Derecho (A los de abajo a veces se les invierte el gancho)
-    48: { scale: 1.45, offsetX: 0, offsetY: -3, rotate: 0 },
-    47: { scale: 1.45, offsetX: 0, offsetY: 4, rotate: 0 },
-    46: { scale: 1.45, offsetX: 0, offsetY: 8, rotate: 0 },
+    48: { scale: 1.45, offsetX: 0, offsetY: -3, rotate: 0, flipX: true },
+    47: { scale: 1.45, offsetX: 0, offsetY: 4, rotate: 0, flipX: true },
+    46: { scale: 1.45, offsetX: 0, offsetY: 8, rotate: 0, flipX: true },
 
     // Cuadrante Inferior Izquierdo
-    36: { scale: 1.45, offsetX: 0, offsetY: 8, rotate: 0 },
-    37: { scale: 1.45, offsetX: 0, offsetY: 4, rotate: 0 },
-    38: { scale: 1.45, offsetX: 0, offsetY: -3, rotate: 0 },
+    36: { scale: 1.45, offsetX: 0, offsetY: 8, rotate: 0, flipX: false },
+    37: { scale: 1.45, offsetX: 0, offsetY: 4, rotate: 0, flipX: false },
+    38: { scale: 1.45, offsetX: 0, offsetY: -3, rotate: 0, flipX: false },
 };
 
 // Configuración base de la línea Y para TADs (separada por maxilar y mandíbula)
 export const TAD_BASE_Y_CONFIG = {
     upperY: 60,   // Sube o baja toda la fila superior
     lowerY: -90   // Sube o baja toda la fila inferior
+};
+
+// CONFIGURACIÓN GLOBAL DE TAMAÑO PARA TADs
+export const TAD_GLOBAL_CONFIG = {
+    size: 27   // Tamaño base (ancho y alto)
 };
 
 export const TAD_MICRO_ADJUSTMENTS = {
@@ -95,7 +90,7 @@ export const TAD_MICRO_ADJUSTMENTS = {
     "32-33": { offsetX: -2, offsetY: 0 },
     "33-34": { offsetX: 1, offsetY: 0 },
     "34-35": { offsetX: 0, offsetY: 0 },
-    "35-36": { offsetX: -5, offsetY: 0 },
+    "35-36": { offsetX: -1, offsetY: 0 },
     "36-37": { offsetX: 7.5, offsetY: 10 }, // Ajustado para que quede a -80 (-90 + 10)
 };
 
@@ -157,7 +152,13 @@ const MOCK_INSTRUCTIONS = [
     }
 ];
 
+// Tipos de diente que se consideran "inactivos" (sin participación en elásticos)
+const INACTIVE_TYPES = ['extraction', 'missing', 'unerupted'];
+
 export default function ElasticsSection() {
+    // Leer el ID del paciente de la URL para aislar datos en localStorage
+    const { id: patientId } = useParams();
+
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
 
@@ -168,6 +169,9 @@ export default function ElasticsSection() {
     const [tads, setTads] = useState({});
     const [brackets, setBrackets] = useState({}); // New state for brackets
     const [activeChain, setActiveChain] = useState({ segments: [], lastPoint: null, startPoint: null });
+
+    // Estado de dientes cargado desde el odontograma (para reflejar dientes inactivos)
+    const [toothStates, setToothStates] = useState({});
 
     // completedChains: Array<{ typeId: string, segments: Array<{from, to, config}> }>
     const [completedChains, setCompletedChains] = useState([]);
@@ -182,6 +186,35 @@ export default function ElasticsSection() {
 
     // Preview state for hovering
     const [previewBracket, setPreviewBracket] = useState(null);
+
+    // ==========================================
+    // Cargar datos guardados desde el Odontograma (localStorage)
+    // Se ejecuta al montar el componente y cada vez que cambia el patientId
+    // ==========================================
+    useEffect(() => {
+        if (!patientId) return;
+        const STORAGE_KEY = `odontogram_data_${patientId}`;
+        try {
+            const raw = localStorage.getItem(STORAGE_KEY);
+            if (!raw) return; // No hay datos guardados aún → no hacer nada
+
+            const parsed = JSON.parse(raw);
+
+            if (parsed.brackets && typeof parsed.brackets === 'object') {
+                setBrackets(parsed.brackets);
+            }
+            if (parsed.tads && typeof parsed.tads === 'object') {
+                setTads(parsed.tads);
+            }
+            if (parsed.toothStates && typeof parsed.toothStates === 'object') {
+                setToothStates(parsed.toothStates);
+            }
+        } catch (err) {
+            console.error('[ElasticsSection] Error al cargar datos del odontograma desde localStorage:', err);
+        }
+    }, [patientId]);
+
+
 
     // Calculate Teeth Coordinates - FLOW LAYOUT
     const teethData = useMemo(() => {
@@ -219,6 +252,16 @@ export default function ElasticsSection() {
                 const dim = getToothDimensions(id);
                 const toothAdj = TOOTH_IMAGE_MICRO_ADJUSTMENTS[id] || { offsetX: 0 };
 
+                const currentType = toothStates[id] || 'original';
+                const isImplantCrown = currentType === 'implant-crown';
+                const activeTypes = isImplantCrown ? ['implant', 'crown'] : currentType.split('+');
+                const isCombined = activeTypes.length > 1 || isImplantCrown;
+                const baseType = activeTypes[0] || 'original';
+
+                let src = null;
+                // Obtenemos el SVG exacto (simple o combinado)
+                src = !isCombined ? getToothSrc(id, baseType) : generateCombinedSvgDataUrl(id, activeTypes);
+
                 teeth.push({
                     id,
                     x: currentX + (toothAdj.offsetX || 0),
@@ -226,7 +269,7 @@ export default function ElasticsSection() {
                     width: dim.width,
                     height: dim.height,
                     isUpper,
-                    src: getToothSrc(id)
+                    src
                 });
                 currentX += dim.width + TOOTH_CONFIG.gap;
             });
@@ -243,7 +286,7 @@ export default function ElasticsSection() {
         positionSegment(LOWER_LEFT, nextX + TOOTH_CONFIG.midlineGap, LOWER_Y, false);
 
         return teeth;
-    }, []);
+    }, [toothStates]);
 
     // Efecto para precargar las imágenes SVG y manejar el estado de carga
     useEffect(() => {
@@ -309,7 +352,9 @@ export default function ElasticsSection() {
 
             const midX = baseMidX + offsetX;
             const yPos = (tooth1.isUpper ? tooth1.y + 15 : tooth1.y + tooth1.height - 35) + archBaseY + offsetY;
-            return { x: midX, y: yPos + 10 };
+
+            const tadSize = TAD_GLOBAL_CONFIG.size;
+            return { x: midX, y: yPos + (tadSize / 2) };
         }
 
         const tooth = toothMap[id];
@@ -339,7 +384,7 @@ export default function ElasticsSection() {
         // Si es la cadena activa o el preview, usa el tipo seleccionado actualmente
         const effectiveTypeId = (isCompleted && !isPreview) ? chain.typeId : selectedElasticTypeId;
         const type = ELASTIC_TYPES.find(t => t.id === effectiveTypeId) || ELASTIC_TYPES[0];
-        
+
         const color = type.color;
         const strokeWidth = type.strokeWidth;
         const opacity = isPreview ? 0.4 : (isCompleted ? 0.8 : 1);
@@ -441,6 +486,8 @@ export default function ElasticsSection() {
     const handleBracketClick = (id, overrideRouting = null) => {
         // --- ARCADO DE BRACKETS (PLACEMENT/REMOVAL) ---
         if (actionType === 'bracket') {
+            if (INACTIVE_TYPES.includes(toothStates[id])) return;
+
             const isRemoving = !!brackets[id];
 
             setBrackets(prev => {
@@ -541,7 +588,7 @@ export default function ElasticsSection() {
         if (id === activeChain.startPoint) {
             // "Bake-in" the currently selected type at the moment of closing
             const finalChain = { ...updatedChain, typeId: selectedElasticTypeId };
-            
+
             // If it closes, commit to completed chains
             const newCompleted = [...completedChains, finalChain];
             const newActive = { segments: [], lastPoint: null, startPoint: null };
@@ -825,29 +872,36 @@ export default function ElasticsSection() {
 
                                                 {/* LAYER 1: Teeth (Base) */}
                                                 <g id="teeth-layer">
-                                                    {teethData.map((tooth) => (
-                                                        <g key={`tooth-${tooth.id}`} transform={`translate(${tooth.x}, ${tooth.y})`}>
-                                                            {tooth.src ? (
-                                                                <image
-                                                                    href={tooth.src}
-                                                                    width={tooth.width}
-                                                                    height={tooth.height}
-                                                                    className="transition-opacity"
-                                                                />
-                                                            ) : (
-                                                                <rect width={tooth.width} height={tooth.height} fill="#ccc" rx="4" />
-                                                            )}
-                                                            <text
-                                                                x={tooth.width / 2}
-                                                                y={tooth.isUpper ? -15 : tooth.height + 25}
-                                                                textAnchor="middle"
-                                                                className="fill-slate-500 text-xl font-sans font-bold"
+                                                    {teethData.map((tooth) => {
+                                                        const isInactive = INACTIVE_TYPES.includes(toothStates[tooth.id]);
+                                                        return (
+                                                            <g
+                                                                key={`tooth-${tooth.id}`}
+                                                                transform={`translate(${tooth.x}, ${tooth.y})`}
                                                             >
-                                                                {tooth.id}
-                                                            </text>
-                                                        </g>
-                                                    ))}
+                                                                {tooth.src ? (
+                                                                    <image
+                                                                        href={tooth.src}
+                                                                        width={tooth.width}
+                                                                        height={tooth.height}
+                                                                        className="transition-opacity"
+                                                                    />
+                                                                ) : (
+                                                                    <rect width={tooth.width} height={tooth.height} fill="#ccc" rx="4" />
+                                                                )}
+                                                                <text
+                                                                    x={tooth.width / 2}
+                                                                    y={tooth.isUpper ? -15 : tooth.height + 25}
+                                                                    textAnchor="middle"
+                                                                    className="fill-slate-500 text-xl font-sans font-bold"
+                                                                >
+                                                                    {tooth.id}
+                                                                </text>
+                                                            </g>
+                                                        );
+                                                    })}
                                                 </g>
+
 
                                                 {/* LAYER 2: Elastics (Middle) */}
                                                 <g id="elastic-layer" className="pointer-events-none">
@@ -907,20 +961,23 @@ export default function ElasticsSection() {
                                                         const isOrigin = activeChain.startPoint === pairId;
                                                         const isCompleted = completedChains.some(chain => chain.segments.some(s => s.from === pairId || s.to === pairId));
 
+                                                        const tadSize = TAD_GLOBAL_CONFIG.size;
+                                                        const tadHalfSize = tadSize / 2;
+
                                                         return (
-                                                            <g key={`tad-${pairId}`} transform={`translate(${midX - 10}, ${yPos})`}
+                                                            <g key={`tad-${pairId}`} transform={`translate(${midX - tadHalfSize}, ${yPos})`}
                                                                 onClick={() => handleTadClick(pairId)}
                                                                 onContextMenu={(e) => handleRightClickTad(e, pairId)}
                                                                 onMouseEnter={() => setPreviewBracket(pairId)}
                                                                 onMouseLeave={() => setPreviewBracket(null)}
                                                                 className={actionType === 'tad' || actionType === 'elastics' ? "cursor-pointer" : ""}>
-                                                                <rect x="-10" y="-120" width="40" height="240" fill="transparent" />
+                                                                <rect x={-tadHalfSize} y={-120} width={tadSize * 2} height={240} fill="transparent" />
                                                                 {hasTad ? (
                                                                     <image
                                                                         href={tadImg}
-                                                                        width="20"
-                                                                        height="20"
-                                                                        style={{ transformOrigin: '10px 10px', transform: tooth.isUpper ? 'none' : 'rotate(180deg)' }}
+                                                                        width={tadSize}
+                                                                        height={tadSize}
+                                                                        style={{ transformOrigin: `${tadHalfSize}px ${tadHalfSize}px`, transform: tooth.isUpper ? 'none' : 'rotate(180deg)' }}
                                                                         className={`transition-all duration-200 ${isOrigin ? 'drop-shadow-[0_0_8px_rgba(34,197,94,0.9)] brightness-125 scale-125' : isActive ? 'drop-shadow-[0_0_5px_rgba(59,130,246,0.9)] brightness-125 scale-110' : isCompleted ? 'opacity-100 drop-shadow-sm brightness-90' : 'opacity-80 hover:opacity-100 hover:scale-110'}`}
                                                                     />
                                                                 ) : (
@@ -953,6 +1010,7 @@ export default function ElasticsSection() {
                                                         const offsetX = hookConfig ? (hookConfig.offsetX || 0) : 0;
                                                         const offsetY = hookConfig ? (hookConfig.offsetY || 0) : 0;
                                                         const rotate = hookConfig ? (hookConfig.rotate || 0) : 0;
+                                                        const flipX = hookConfig ? !!hookConfig.flipX : false;
 
                                                         const baseSize = 28;
                                                         const sizeW = baseSize * scale;
@@ -977,16 +1035,18 @@ export default function ElasticsSection() {
                                                                     <rect x={-10} y={-10} width={sizeW + 20} height={sizeH + 20} fill="transparent" />
 
                                                                     {hasBracket ? (
-                                                                        <g transform={`rotate(${rotate}, 14, 14)`}>
-                                                                            <image
-                                                                                href={currentBracketImg}
-                                                                                x={scaleOffsetX}
-                                                                                y={scaleOffsetY}
-                                                                                width={sizeW}
-                                                                                height={sizeH}
-                                                                                style={{ transformOrigin: '14px 14px' }}
-                                                                                className={`transition-all duration-200 ${isOrigin ? 'drop-shadow-[0_0_8px_rgba(34,197,94,0.9)] brightness-125 scale-125' : isActive ? 'drop-shadow-[0_0_5px_rgba(59,130,246,0.9)] brightness-125 scale-110' : isCompleted ? 'opacity-100 drop-shadow-sm brightness-90' : 'opacity-80 hover:opacity-100 hover:scale-105'}`}
-                                                                            />
+                                                                        <g transform={`scale(${flipX ? -1 : 1}, 1) translate(${flipX ? -28 : 0}, 0)`}>
+                                                                            <g transform={`rotate(${rotate}, 14, 14)`}>
+                                                                                <image
+                                                                                    href={currentBracketImg}
+                                                                                    x={scaleOffsetX}
+                                                                                    y={scaleOffsetY}
+                                                                                    width={sizeW}
+                                                                                    height={sizeH}
+                                                                                    style={{ transformOrigin: '14px 14px' }}
+                                                                                    className={`transition-all duration-200 ${isOrigin ? 'drop-shadow-[0_0_8px_rgba(34,197,94,0.9)] brightness-125 scale-125' : isActive ? 'drop-shadow-[0_0_5px_rgba(59,130,246,0.9)] brightness-125 scale-110' : isCompleted ? 'opacity-100 drop-shadow-sm brightness-90' : 'opacity-80 hover:opacity-100 hover:scale-105'}`}
+                                                                                />
+                                                                            </g>
                                                                         </g>
                                                                     ) : (
                                                                         actionType === 'bracket' && (

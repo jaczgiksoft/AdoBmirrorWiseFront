@@ -5,9 +5,11 @@ import { Home, ChevronLeft, PlusCircle, Edit2, Trash2, User, Search } from "luci
 import { useToastStore } from "@/store/useToastStore";
 import { ConfirmDialog } from "@/components/feedback";
 import { Table, Pagination } from "@/components/ui";
+import { PageHeader } from "@/components/layout";
 import { employeesStorage } from "@/utils/employeesStorage";
 import EmployeeFormModal from "./EmployeeFormModal";
 import EmployeeUserModal from "./EmployeeUserModal";
+import EmployeeFilterDropdown from "./components/EmployeeFilterDropdown";
 
 const MOCK_EMPLOYEES = [
     {
@@ -310,66 +312,46 @@ export default function EmployeeList() {
                 transition={{ duration: 0.3 }}
                 className="w-full max-w-6xl mx-auto px-6 mt-6 pb-20"
             >
-                {/* Header Actions */}
-                <div className="flex items-center gap-4 mb-6 flex-wrap">
-                    <button
-                        onClick={() => navigate("/dashboard")}
-                        className="relative group flex items-center gap-1 text-slate-400 hover:text-white transition cursor-pointer"
-                    >
-                        <Home size={18} className="relative top-[1px]" />
-                        <ChevronLeft size={16} className="relative top-[1px]" />
-                        <span className="absolute left-full ml-3 whitespace-nowrap px-3 py-1.5 text-xs bg-black/85 text-white rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-all duration-200">
-                            Ir al panel principal
-                        </span>
-                    </button>
+                {/* Header Actions Row */}
+                <div className="flex items-center justify-between gap-4 mb-6 flex-wrap">
+                    <PageHeader
+                        title="Gestión de Empleados"
+                        subtitle="Administra el personal y cuentas de usuario"
+                        onBack={() => navigate("/dashboard")}
+                    />
 
-                    <h1 className="text-2xl font-semibold text-primary leading-none flex-1">
-                        Gestión de Empleados
-                    </h1>
-
-                    {/* 🔍 Buscar y Filtros */}
-                    <div className="flex items-center gap-2">
-                        <div className="relative flex items-center bg-secondary rounded-lg border border-slate-700">
-                            <Search size={16} className="absolute left-2 text-slate-400" />
+                    <div className="flex items-center gap-3">
+                        {/* 🔍 Buscar y Filtros Group */}
+                        <div className="relative flex items-center bg-secondary rounded-lg border border-slate-700 transition-all focus-within:ring-2 focus-within:ring-primary/50">
+                            <Search size={16} className="absolute left-3 text-slate-500" />
                             <input
                                 type="text"
                                 placeholder="Buscar empleado..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className="pl-7 pr-4 py-1.5 bg-transparent text-slate-200 text-sm outline-none placeholder:text-slate-500"
+                                className="pl-10 pr-20 py-2.5 bg-transparent text-slate-200 text-sm outline-none placeholder:text-slate-500 w-48 md:w-64"
                             />
+                            <div className="absolute right-1">
+                                <EmployeeFilterDropdown 
+                                    filters={{ statusFilter, userFilter }}
+                                    onApply={(f) => {
+                                        setStatusFilter(f.statusFilter);
+                                        setUserFilter(f.userFilter);
+                                    }}
+                                />
+                            </div>
                         </div>
 
-                        <select
-                            value={statusFilter}
-                            onChange={(e) => setStatusFilter(e.target.value)}
-                            className="bg-secondary text-slate-200 text-sm border border-slate-700 rounded-lg py-1.5 px-3 outline-none focus:border-primary transition cursor-pointer"
+                        <motion.button
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.97 }}
+                            onClick={handleAddClick}
+                            className="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-sky-500 transition shadow-lg shadow-primary/20 cursor-pointer"
                         >
-                            <option value="all">Todos los estados</option>
-                            <option value="active">Activos</option>
-                            <option value="inactive">Inactivos</option>
-                        </select>
-
-                        <select
-                            value={userFilter}
-                            onChange={(e) => setUserFilter(e.target.value)}
-                            className="bg-secondary text-slate-200 text-sm border border-slate-700 rounded-lg py-1.5 px-3 outline-none focus:border-primary transition cursor-pointer"
-                        >
-                            <option value="all">Filtro de usuario</option>
-                            <option value="with_user">Con usuario</option>
-                            <option value="without_user">Sin usuario</option>
-                        </select>
+                            <PlusCircle size={18} />
+                            <span>Agregar empleado</span>
+                        </motion.button>
                     </div>
-
-                    <motion.button
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.97 }}
-                        onClick={handleAddClick}
-                        className="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-sky-500 transition shadow-lg shadow-primary/20 cursor-pointer"
-                    >
-                        <PlusCircle size={18} />
-                        <span>Agregar empleado</span>
-                    </motion.button>
                 </div>
 
                 {/* Table View */}

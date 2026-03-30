@@ -2,9 +2,10 @@
 import React, { useState } from "react";
 import { X, ArrowDown, ArrowUp } from "lucide-react";
 
-export default function AdjustStockModal({ item, onClose, onSave }) {
+export default function AdjustStockModal({ item, movementTypes = [], onClose, onSave }) {
     const [amount, setAmount] = useState("");
-    const [reason, setReason] = useState("");
+    const [reason, setReason] = useState(movementTypes[0] || "Entrada");
+    const [reference, setReference] = useState("");
 
     const parsedAmount = parseInt(amount, 10) || 0;
     const newStock = Number(item.quantity) + parsedAmount;
@@ -12,7 +13,7 @@ export default function AdjustStockModal({ item, onClose, onSave }) {
     const handleSubmit = (e) => {
         e.preventDefault();
         if (parsedAmount !== 0) {
-            onSave(parsedAmount, reason);
+            onSave(parsedAmount, reason, reference);
         }
     };
 
@@ -93,12 +94,26 @@ export default function AdjustStockModal({ item, onClose, onSave }) {
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Motivo (Opcional)</label>
-                        <input 
-                            type="text" 
-                            placeholder="Ej. Recepción de compra, Mermas..."
+                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Motivo <span className="text-red-500">*</span></label>
+                        <select 
+                            required
                             value={reason} 
                             onChange={(e) => setReason(e.target.value)} 
+                            className="w-full px-4 py-2 bg-slate-50 dark:bg-secondary rounded-lg border border-slate-300 dark:border-slate-700 outline-none focus:ring-2 focus:ring-cyan-500 text-slate-900 dark:text-white"
+                        >
+                            {movementTypes.map(type => (
+                                <option key={type} value={type}>{type}</option>
+                            ))}
+                        </select>
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Referencia (Opcional)</label>
+                        <input 
+                            type="text" 
+                            placeholder="Ej. Factura F-102, Lote dañado..."
+                            value={reference} 
+                            onChange={(e) => setReference(e.target.value)} 
                             className="w-full px-4 py-2 bg-slate-50 dark:bg-secondary rounded-lg border border-slate-300 dark:border-slate-700 outline-none focus:ring-2 focus:ring-cyan-500 text-slate-900 dark:text-white"
                         />
                     </div>
@@ -106,7 +121,7 @@ export default function AdjustStockModal({ item, onClose, onSave }) {
                     <div className="pt-2">
                         <button 
                             type="submit" 
-                            disabled={!amount || amount === "+" || amount === "-" || parsedAmount === 0 || newStock < 0}
+                            disabled={!amount || amount === "+" || amount === "-" || parsedAmount === 0 || newStock < 0 || !reason}
                             className="w-full py-2.5 rounded-lg font-medium bg-indigo-600 hover:bg-indigo-700 text-white transition disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             Confirmar Ajuste

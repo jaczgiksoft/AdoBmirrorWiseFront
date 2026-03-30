@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState } from "react";
+import { useRef, useEffect, useState, useCallback } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { useHotkeys } from "@/hooks/useHotkeys";
@@ -62,43 +62,43 @@ export default function PatientList() {
     }, [searchTerm]);
 
     // Load patients
-    useEffect(() => {
-        async function loadPatients() {
-            try {
-                if (patients.length === 0 && page === 1 && !debouncedSearch) {
-                    setLoading(true);
-                }
-
-                const start = (page - 1) * limit;
-                const res = await getPatientsPaginated({
-                    start,
-                    length: limit,
-                    searchValue: debouncedSearch,
-                    orderColumn: "last_name",
-                    orderDir: "ASC",
-                    ...filters,
-                });
-
-                setPatients(res.data || res.rows || []);
-                setPagination({
-                    total: res.recordsFiltered || 0,
-                    totalPages: Math.ceil((res.recordsFiltered || 0) / limit) || 1,
-                });
-                setSelectedIndex(0);
-            } catch (err) {
-                setError("No se pudieron cargar los pacientes.");
-                addToast({
-                    type: "error",
-                    title: "Error al cargar pacientes",
-                    message: "No se pudieron obtener los datos desde el servidor.",
-                });
-            } finally {
-                setLoading(false);
+    const loadPatients = useCallback(async () => {
+        try {
+            if (patients.length === 0 && page === 1 && !debouncedSearch) {
+                setLoading(true);
             }
-        }
 
+            const start = (page - 1) * limit;
+            const res = await getPatientsPaginated({
+                start,
+                length: limit,
+                searchValue: debouncedSearch,
+                orderColumn: "last_name",
+                orderDir: "ASC",
+                ...filters,
+            });
+
+            setPatients(res.data || res.rows || []);
+            setPagination({
+                total: res.recordsFiltered || 0,
+                totalPages: Math.ceil((res.recordsFiltered || 0) / limit) || 1,
+            });
+            setSelectedIndex(0);
+        } catch (err) {
+            setError("No se pudieron cargar los pacientes.");
+            addToast({
+                type: "error",
+                title: "Error al cargar pacientes",
+                message: "No se pudieron obtener los datos desde el servidor.",
+            });
+        } finally {
+            setLoading(false);
+        }
+    }, [page, debouncedSearch, filters, addToast]);
+
+    useEffect(() => {
         loadPatients();
-    }, [page, debouncedSearch, filters]);
+    }, [loadPatients]);
 
     // Hotkeys LISTADO
     useHotkeys(
@@ -591,6 +591,7 @@ export default function PatientList() {
                 onCreated={() => {
                     setShowForm(false);
                     setPage(1);
+                    loadPatients();
                 }}
             />
         </div>

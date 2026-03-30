@@ -3,6 +3,7 @@ import { useToastStore } from "@/store/useToastStore";
 import { Modal } from "@/components/ui";
 import { ConfirmDialog } from "@/components/feedback";
 import { Eye, EyeOff, KeyRound } from "lucide-react";
+import { getRoles } from "@/services/role.service";
 
 /**
  * ⚠️ TEMPORAL - MOCK STORAGE
@@ -21,6 +22,7 @@ const initialForm = {
     password: "",
     confirm_password: "",
     status: "active",
+    role_id: "",
 };
 
 const generatePassword = () => {
@@ -47,6 +49,8 @@ export default function EmployeeUserModal({ open, onClose, employee, onSave }) {
     const [errors, setErrors] = useState({});
     const [showPassword, setShowPassword] = useState(false);
     const [confirmCancel, setConfirmCancel] = useState(false);
+    const [roles, setRoles] = useState([]);
+    const [isLoadingRoles, setIsLoadingRoles] = useState(false);
     const firstRef = useRef(null);
 
     const isEditing = !!employee?.user_account;
@@ -63,13 +67,27 @@ export default function EmployeeUserModal({ open, onClose, employee, onSave }) {
                     password: "",
                     confirm_password: "",
                     status: employee.user_account.status || "active",
+                    role_id: employee.user_account.role_id || "",
                 });
             } else {
                 setForm(initialForm);
             }
             setTimeout(() => firstRef.current?.focus(), 100);
+
+            const loadRoles = async () => {
+                setIsLoadingRoles(true);
+                try {
+                    const data = await getRoles();
+                    setRoles(data);
+                } catch (err) {
+                    addToast({ type: "error", title: "Error", message: "No se pudieron cargar los roles." });
+                } finally {
+                    setIsLoadingRoles(false);
+                }
+            };
+            loadRoles();
         }
-    }, [open, employee]);
+    }, [open, employee, isEditing, addToast]);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -98,6 +116,7 @@ export default function EmployeeUserModal({ open, onClose, employee, onSave }) {
     const validate = () => {
         const errs = {};
         if (!form.username.trim()) errs.username = "Campo obligatorio";
+        if (!form.role_id) errs.role_id = "Debes seleccionar un rol";
         if (!isEditing && !form.password) errs.password = "Campo obligatorio";
         if (form.password && form.password.length < 6) errs.password = "Mínimo 6 caracteres";
         if (form.password && form.password !== form.confirm_password) {
@@ -116,6 +135,7 @@ export default function EmployeeUserModal({ open, onClose, employee, onSave }) {
         const userAccount = {
             username: form.username.trim(),
             status: form.status,
+            role_id: form.role_id,
             // Only update password if a new one was entered
             ...(form.password ? { password: form.password } : isEditing ? { password: employee.user_account.password } : {}),
             created_at: isEditing ? employee.user_account.created_at : new Date().toISOString(),
@@ -188,6 +208,29 @@ export default function EmployeeUserModal({ open, onClose, employee, onSave }) {
                                 <option key={val} value={val}>{label}</option>
                             ))}
                         </select>
+                    </div>
+
+                    {/* Divider */}
+                    <div className="border-t border-slate-700/60 my-1" />
+
+                    {/* Rol */}
+                    <div>
+                        <label className="block text-sm mb-2 text-slate-300">
+                            Rol <span className="text-red-500">*</span>
+                        </label>
+                        <select
+                            name="role_id"
+                            value={form.role_id}
+                            onChange={handleChange}
+                            disabled={isLoadingRoles}
+                            className={`input ${errors.role_id ? "border-error ring-1 ring-error/50" : "bg-secondary text-slate-200"}`}
+                        >
+                            <option value="">{isLoadingRoles ? "Cargando roles..." : "Selecciona un rol"}</option>
+                            {roles.map(role => (
+                                <option key={role.id} value={role.id}>{role.name}</option>
+                            ))}
+                        </select>
+                        {errors.role_id && <p className="text-xs text-error mt-1">{errors.role_id}</p>}
                     </div>
 
                     {/* Divider */}
