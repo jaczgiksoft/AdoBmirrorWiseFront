@@ -180,7 +180,7 @@ export default function EmployeeUserModal({ open, onClose, employee, onSave }) {
 
                     {/* Username */}
                     <div>
-                        <label className="block text-sm mb-2 text-slate-300">
+                        <label className="block text-sm mb-2 text-slate-600 dark:text-slate-300">
                             Nombre de usuario <span className="text-red-500">*</span>
                         </label>
                         <input
@@ -197,12 +197,12 @@ export default function EmployeeUserModal({ open, onClose, employee, onSave }) {
 
                     {/* Estatus */}
                     <div>
-                        <label className="block text-sm mb-2 text-slate-300">Estatus</label>
+                        <label className="block text-sm mb-2 text-slate-600 dark:text-slate-300">Estatus</label>
                         <select
                             name="status"
                             value={form.status}
                             onChange={handleChange}
-                            className="input bg-secondary text-slate-200"
+                            className="input bg-white dark:bg-secondary text-slate-700 dark:text-slate-200"
                         >
                             {Object.entries(STATUS_LABELS).map(([val, label]) => (
                                 <option key={val} value={val}>{label}</option>
@@ -211,11 +211,11 @@ export default function EmployeeUserModal({ open, onClose, employee, onSave }) {
                     </div>
 
                     {/* Divider */}
-                    <div className="border-t border-slate-700/60 my-1" />
+                    <div className="border-t border-slate-200 dark:border-slate-700/60 my-1" />
 
                     {/* Rol */}
                     <div>
-                        <label className="block text-sm mb-2 text-slate-300">
+                        <label className="block text-sm mb-2 text-slate-600 dark:text-slate-300">
                             Rol <span className="text-red-500">*</span>
                         </label>
                         <select
@@ -223,7 +223,7 @@ export default function EmployeeUserModal({ open, onClose, employee, onSave }) {
                             value={form.role_id}
                             onChange={handleChange}
                             disabled={isLoadingRoles}
-                            className={`input ${errors.role_id ? "border-error ring-1 ring-error/50" : "bg-secondary text-slate-200"}`}
+                            className={`input ${errors.role_id ? "border-error ring-1 ring-error/50" : "bg-white dark:bg-secondary text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700"}`}
                         >
                             <option value="">{isLoadingRoles ? "Cargando roles..." : "Selecciona un rol"}</option>
                             {roles.map(role => (
@@ -234,11 +234,11 @@ export default function EmployeeUserModal({ open, onClose, employee, onSave }) {
                     </div>
 
                     {/* Divider */}
-                    <div className="border-t border-slate-700/60 my-1" />
+                    <div className="border-t border-slate-200 dark:border-slate-700/60 my-1" />
 
                     {/* Contraseña */}
                     <div className="relative">
-                        <label className="block text-sm mb-2 text-slate-300">
+                        <label className="block text-sm mb-2 text-slate-600 dark:text-slate-300">
                             Contraseña {!isEditing && <span className="text-red-500">*</span>}
                             {isEditing && <span className="text-slate-500 text-xs ml-1">(dejar vacío para mantener)</span>}
                         </label>
@@ -271,7 +271,7 @@ export default function EmployeeUserModal({ open, onClose, employee, onSave }) {
 
                     {/* Confirmar contraseña */}
                     <div>
-                        <label className="block text-sm mb-2 text-slate-300">Confirmar contraseña</label>
+                        <label className="block text-sm mb-2 text-slate-600 dark:text-slate-300">Confirmar contraseña</label>
                         <input
                             type={showPassword ? "text" : "password"}
                             name="confirm_password"
@@ -304,7 +304,7 @@ export default function EmployeeUserModal({ open, onClose, employee, onSave }) {
                         <button
                             type="button"
                             onClick={handleAttemptClose}
-                            className="px-4 py-2 rounded-lg bg-slate-700 text-slate-200 hover:bg-slate-600 transition cursor-pointer text-sm font-medium"
+                            className="px-4 py-2 rounded-lg bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-300 dark:hover:bg-slate-600 transition cursor-pointer text-sm font-medium"
                         >
                             Cancelar
                         </button>

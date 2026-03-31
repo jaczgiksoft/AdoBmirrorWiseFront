@@ -43,6 +43,7 @@ export default function MovementsTable({ movements }) {
                         <th className="px-5 py-4 font-semibold w-16 text-center">Img</th>
                         <th className="px-5 py-4 font-semibold">Producto</th>
                         <th className="px-5 py-4 font-semibold">Tipo</th>
+                        <th className="px-5 py-4 font-semibold">Proveedor</th>
                         <th className="px-5 py-4 font-semibold">Cantidad</th>
                         <th className="px-5 py-4 font-semibold">Precio Unit.</th>
                         <th className="px-5 py-4 font-semibold">Fecha/Hora</th>
@@ -77,6 +78,9 @@ export default function MovementsTable({ movements }) {
                                         {typeConfig.icon}
                                         {mov.type}
                                     </span>
+                                </td>
+                                <td className="px-5 py-3 text-sm text-slate-600 dark:text-slate-400 font-medium whitespace-nowrap">
+                                    {mov.providerName || "-"}
                                 </td>
                                 <td className="px-5 py-3">
                                     <span className={`font-bold text-base ${mov.quantity > 0 ? 'text-green-600 dark:text-green-400' : mov.quantity < 0 ? 'text-red-500' : 'text-slate-900 dark:text-slate-100'}`}>

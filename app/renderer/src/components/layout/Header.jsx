@@ -97,7 +97,7 @@ export default function Header() {
 ">
 
 
-        {/* 🔹 HEADER PRINCIPAL */}
+            {/* 🔹 HEADER PRINCIPAL */}
             <header className="
                 backdrop-blur-md
                 bg-white/70 text-slate-800

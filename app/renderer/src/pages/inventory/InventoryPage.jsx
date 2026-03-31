@@ -13,10 +13,17 @@ import InventoryChart from "./components/InventoryChart";
 import InventoryFilterDropdown from "./components/InventoryFilterDropdown";
 import MovementsTable from "./components/MovementsTable";
 import InventorySummary from "./components/InventorySummary";
+import ProvidersTable from "./components/ProvidersTable";
+import CreateEditProviderModal from "./components/CreateEditProviderModal";
+import Datepicker from "react-tailwindcss-datepicker";
 
 export default function InventoryPage() {
     const navigate = useNavigate();
-    const { items, movements, categories, unitTypes, movementTypes, addItem, updateItem, deleteItem, adjustStock } = useInventory();
+    const {
+        items, movements, categories, unitTypes, movementTypes,
+        addItem, updateItem, deleteItem, adjustStock,
+        providers, addProvider, updateProvider, deleteProvider
+    } = useInventory();
 
     const [selectedCategory, setSelectedCategory] = useState("All");
     const [searchTerm, setSearchTerm] = useState("");
@@ -24,18 +31,27 @@ export default function InventoryPage() {
     // Modal states
     const [isCreateEditModalOpen, setCreateEditModalOpen] = useState(false);
     const [isAdjustModalOpen, setAdjustModalOpen] = useState(false);
+    const [isProviderModalOpen, setProviderModalOpen] = useState(false);
 
     // TAB STATE
     const [activeTab, setActiveTab] = useState("table"); // "table", "movements", "summary", "chart"
 
-    // MOVEMENTS FILTER STATE
-    const [movementsTimeFilter, setMovementsTimeFilter] = useState("24h"); // "24h", "all"
+    // DATE RANGE FILTER STATE
+    const [dateRange, setDateRange] = useState({
+        startDate: null,
+        endDate: null
+    });
+
+    // CHART STATE
+    const [chartType, setChartType] = useState("Movimientos por Tipo");
 
     // Selected item for edits/adjustments
     const [selectedItem, setSelectedItem] = useState(null);
+    const [selectedProvider, setSelectedProvider] = useState(null);
 
     // Delete confirmation state
     const [itemToDelete, setItemToDelete] = useState(null);
+    const [providerToDelete, setProviderToDelete] = useState(null);
 
     // Derived filtered items (Search + Category)
     const filteredItems = items.filter(item => {
@@ -48,16 +64,8 @@ export default function InventoryPage() {
         return matchesCategory && matchesSearch;
     });
 
-    // Derived filtered movements (Search + Time Filter)
+    // Derived filtered movements (Search + Date Range)
     const filteredMovements = movements.filter(mov => {
-        // Time filter
-        let matchesTime = true;
-        if (movementsTimeFilter === "24h") {
-            const yesterday = new Date();
-            yesterday.setHours(yesterday.getHours() - 24);
-            matchesTime = new Date(mov.date) >= yesterday;
-        }
-
         // Search filter
         const searchLow = searchTerm.toLowerCase();
         const matchesSearch =
@@ -65,7 +73,26 @@ export default function InventoryPage() {
             (mov.itemSku && mov.itemSku.toLowerCase().includes(searchLow)) ||
             mov.type.toLowerCase().includes(searchLow);
 
-        return matchesTime && matchesSearch;
+        // Date range filter
+        let matchesDate = true;
+        if (dateRange.startDate && dateRange.endDate) {
+            const movDate = new Date(mov.date);
+            const start = new Date(dateRange.startDate);
+            const end = new Date(dateRange.endDate);
+            end.setHours(23, 59, 59, 999);
+            matchesDate = movDate >= start && movDate <= end;
+        }
+
+        return matchesSearch && matchesDate;
+    });
+
+    // Derived filtered providers (Search)
+    const filteredProviders = providers.filter(prov => {
+        const searchLow = searchTerm.toLowerCase();
+        return prov.name.toLowerCase().includes(searchLow) ||
+            (prov.rfc && prov.rfc.toLowerCase().includes(searchLow)) ||
+            (prov.contactName && prov.contactName.toLowerCase().includes(searchLow)) ||
+            (prov.notes && prov.notes.toLowerCase().includes(searchLow));
     });
 
     // Handlers
@@ -104,9 +131,40 @@ export default function InventoryPage() {
         setCreateEditModalOpen(false);
     };
 
-    const handleSaveAdjustment = (id, amount, reason, reference) => {
-        adjustStock(id, amount, reason, reference);
+    const handleSaveAdjustment = (id, amount, reason, reference, providerId, unitCost) => {
+        adjustStock(id, amount, reason, reference, providerId, unitCost);
         setAdjustModalOpen(false);
+    };
+
+    // --- Provider Handlers ---
+    const handleCreateProvider = () => {
+        setSelectedProvider(null);
+        setProviderModalOpen(true);
+    };
+
+    const handleEditProvider = (provider) => {
+        setSelectedProvider(provider);
+        setProviderModalOpen(true);
+    };
+
+    const handleDeleteProvider = (provider) => {
+        setProviderToDelete(provider);
+    };
+
+    const confirmDeleteProvider = () => {
+        if (providerToDelete) {
+            deleteProvider(providerToDelete.id);
+            setProviderToDelete(null);
+        }
+    };
+
+    const handleSaveProvider = (data) => {
+        if (selectedProvider) {
+            updateProvider(selectedProvider.id, data);
+        } else {
+            addProvider(data);
+        }
+        setProviderModalOpen(false);
     };
 
     return (
@@ -156,6 +214,15 @@ export default function InventoryPage() {
                 >
                     Análisis de Existencias
                 </button>
+                <button
+                    onClick={() => setActiveTab("providers")}
+                    className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === "providers"
+                        ? "bg-white dark:bg-slate-700 text-cyan-600 dark:text-cyan-400 shadow-sm"
+                        : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                        }`}
+                >
+                    Proveedores
+                </button>
             </div>
 
             {/* Filters */}
@@ -169,22 +236,13 @@ export default function InventoryPage() {
                         />
                         <input
                             type="text"
-                            placeholder="Buscar artículo..."
+                            placeholder={activeTab === "providers" ? "Buscar proveedor..." : "Buscar artículo..."}
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                             className="pl-10 pr-20 py-2.5 bg-transparent text-sm outline-none text-slate-700 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-500 w-64 md:w-80"
                         />
                         <div className="absolute right-1">
-                            {activeTab === "movements" ? (
-                                <select
-                                    className="bg-slate-100 dark:bg-slate-700/50 text-slate-700 dark:text-slate-300 text-xs font-bold py-1.5 px-3 rounded cursor-pointer border-none outline-none appearance-none text-center"
-                                    value={movementsTimeFilter}
-                                    onChange={(e) => setMovementsTimeFilter(e.target.value)}
-                                >
-                                    <option value="24h">Últimas 24h</option>
-                                    <option value="all">Todas las fechas</option>
-                                </select>
-                            ) : (
+                            {activeTab === "providers" || activeTab === "chart" || activeTab === "summary" || activeTab === "movements" ? null : (
                                 <InventoryFilterDropdown
                                     categories={categories}
                                     selectedCategory={selectedCategory}
@@ -193,18 +251,66 @@ export default function InventoryPage() {
                             )}
                         </div>
                     </div>
+
+                    {/* 📅 Date & Chart Extra Filters */}
+                    {(activeTab === "chart" || activeTab === "summary" || activeTab === "movements") && (
+                        <>
+                            <div className="w-64 z-50">
+                                <Datepicker
+                                    value={dateRange}
+                                    onChange={setDateRange}
+                                    showShortcuts={true}
+                                    useRange={true}
+                                    displayFormat={"DD/MM/YYYY"}
+                                    i18n={"es"}
+                                    inputClassName="w-full pl-4 pr-10 py-2.5 bg-white dark:bg-dark border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-cyan-500/50"
+                                    placeholder="Rango de fechas..."
+                                />
+                            </div>
+                            {activeTab === "chart" && (
+                                <div className="relative z-40">
+                                    <select
+                                        value={chartType}
+                                        onChange={(e) => setChartType(e.target.value)}
+                                        className="w-full pl-4 pr-10 py-2.5 bg-white dark:bg-dark border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-cyan-500/50 appearance-none cursor-pointer font-medium"
+                                    >
+                                        <option value="Movimientos por Tipo">Movimientos por Tipo</option>
+                                        <option value="Entradas vs Salidas">Entradas vs Salidas</option>
+                                        <option value="Stock por Categoría">Stock por Categoría</option>
+                                        <option value="Stock por Proveedor">Stock por Proveedor</option>
+                                        <option value="Gasto por Proveedor">Gasto por Proveedor</option>
+                                    </select>
+                                    <div className="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none text-slate-500">
+                                        <svg className="w-4 h-4 fill-current" viewBox="0 0 20 20"><path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" fillRule="evenodd"></path></svg>
+                                    </div>
+                                </div>
+                            )}
+                        </>
+                    )}
                 </div>
 
                 <div className="flex flex-col justify-end">
-                    <motion.button
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.97 }}
-                        onClick={handleCreateNew}
-                        className="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-sky-500 transition shadow-lg shadow-primary/20 cursor-pointer"
-                    >
-                        <PlusCircle size={18} />
-                        <span>Registrar Artículo</span>
-                    </motion.button>
+                    {activeTab === "providers" ? (
+                        <motion.button
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.97 }}
+                            onClick={handleCreateProvider}
+                            className="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-sky-500 transition shadow-lg shadow-primary/20 cursor-pointer"
+                        >
+                            <PlusCircle size={18} />
+                            <span>Registrar Proveedor</span>
+                        </motion.button>
+                    ) : (
+                        <motion.button
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.97 }}
+                            onClick={handleCreateNew}
+                            className="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-sky-500 transition shadow-lg shadow-primary/20 cursor-pointer"
+                        >
+                            <PlusCircle size={18} />
+                            <span>Registrar Artículo</span>
+                        </motion.button>
+                    )}
                 </div>
             </div>
 
@@ -225,7 +331,13 @@ export default function InventoryPage() {
                                 {filteredMovements.length} Registros
                             </span>
                         </div>
-                        <InventoryChart movements={filteredMovements} />
+                        <InventoryChart
+                            movements={filteredMovements}
+                            allMovements={movements}
+                            items={filteredItems}
+                            providers={providers}
+                            chartType={chartType}
+                        />
                     </div>
                 ) : activeTab === "movements" ? (
                     <div className="bg-white dark:bg-secondary rounded-xl shadow-soft overflow-hidden border border-slate-200 dark:border-slate-700">
@@ -233,7 +345,20 @@ export default function InventoryPage() {
                     </div>
                 ) : activeTab === "summary" ? (
                     <div className="bg-white dark:bg-secondary p-6 rounded-xl shadow-soft border border-slate-200 dark:border-slate-700">
-                        <InventorySummary items={filteredItems} movements={filteredMovements} />
+                        <InventorySummary
+                            items={filteredItems}
+                            movements={filteredMovements}
+                            allMovements={movements}
+                            providers={providers}
+                        />
+                    </div>
+                ) : activeTab === "providers" ? (
+                    <div className="bg-white dark:bg-secondary rounded-xl shadow-soft overflow-hidden border border-slate-200 dark:border-slate-700">
+                        <ProvidersTable
+                            providers={filteredProviders}
+                            onEdit={handleEditProvider}
+                            onDelete={handleDeleteProvider}
+                        />
                     </div>
                 ) : (
                     <div className="bg-white dark:bg-secondary rounded-xl shadow-soft overflow-hidden border border-slate-200 dark:border-slate-700">
@@ -262,8 +387,9 @@ export default function InventoryPage() {
                 <AdjustStockModal
                     item={selectedItem}
                     movementTypes={movementTypes}
+                    providers={providers}
                     onClose={() => setAdjustModalOpen(false)}
-                    onSave={(amount, reason, reference) => handleSaveAdjustment(selectedItem.id, amount, reason, reference)}
+                    onSave={(amount, reason, reference, providerId, unitCost) => handleSaveAdjustment(selectedItem.id, amount, reason, reference, providerId, unitCost)}
                 />
             )}
 
@@ -277,6 +403,25 @@ export default function InventoryPage() {
                 cancelLabel="Cancelar"
                 confirmVariant="error"
             />
+
+            <ConfirmDialog
+                open={!!providerToDelete}
+                title="Eliminar proveedor"
+                message={`¿Seguro que deseas eliminar el proveedor '${providerToDelete?.name}'?`}
+                onConfirm={confirmDeleteProvider}
+                onCancel={() => setProviderToDelete(null)}
+                confirmLabel="Eliminar"
+                cancelLabel="Cancelar"
+                confirmVariant="error"
+            />
+
+            {isProviderModalOpen && (
+                <CreateEditProviderModal
+                    provider={selectedProvider}
+                    onClose={() => setProviderModalOpen(false)}
+                    onSave={handleSaveProvider}
+                />
+            )}
         </div>
     );
 }

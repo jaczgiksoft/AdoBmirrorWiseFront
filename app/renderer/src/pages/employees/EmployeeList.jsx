@@ -216,14 +216,14 @@ export default function EmployeeList() {
             render: (row) => (
                 <div className="flex items-center gap-3">
                     {row.profile_image ? (
-                        <img src={row.profile_image} alt="" className="w-10 h-10 rounded-full object-cover border border-slate-700 bg-slate-800" />
+                        <img src={row.profile_image} alt="" className="w-10 h-10 rounded-full object-cover border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800" />
                     ) : (
-                        <div className={`w-10 h-10 flex items-center justify-center rounded-full border border-slate-700 text-primary ${row.has_user ? "bg-primary/10 shadow-[0_0_10px_rgba(14,165,233,0.3)]" : "bg-slate-800"}`}>
+                        <div className={`w-10 h-10 flex items-center justify-center rounded-full border border-slate-200 dark:border-slate-700 text-primary ${row.has_user ? "bg-primary/10 shadow-[0_0_10px_rgba(14,165,233,0.3)]" : "bg-slate-100 dark:bg-slate-800"}`}>
                             <User size={20} />
                         </div>
                     )}
                     <div>
-                        <p className="font-semibold text-slate-100">
+                        <p className="font-semibold text-slate-900 dark:text-slate-100">
                             {row.first_name} {row.last_name} {row.second_last_name}
                         </p>
                         <p className="text-xs text-slate-400">{row.email || "Sin correo"}</p>
@@ -248,14 +248,14 @@ export default function EmployeeList() {
             header: "Teléfono",
             accessor: "phone",
             sortable: true,
-            render: (row) => <span className="text-slate-300">{row.phone || "N/A"}</span>
+            render: (row) => <span className="text-slate-600 dark:text-slate-300">{row.phone || "N/A"}</span>
         },
         {
             header: "Contratación",
             accessor: "hiring_date",
             sortable: true,
             render: (row) => (
-                <span className="text-slate-300">
+                <span className="text-slate-600 dark:text-slate-300">
                     {row.hiring_date ? new Date(row.hiring_date).toLocaleDateString("es-MX") : "N/A"}
                 </span>
             )
@@ -277,7 +277,7 @@ export default function EmployeeList() {
             header: "Acciones",
             accessor: "actions",
             render: (row) => (
-                <div className="flex items-center gap-3 text-slate-400">
+                <div className="flex items-center gap-3 text-slate-500 dark:text-slate-400">
                     <button
                         onClick={() => handleUserClick(row)}
                         className={`transition-colors cursor-pointer ${row.has_user ? "text-green-500 hover:text-green-400" : "text-slate-500 hover:text-primary"}`}
@@ -305,7 +305,7 @@ export default function EmployeeList() {
     ];
 
     return (
-        <div className="bg-dark min-h-screen flex flex-col font-sans text-slate-50">
+        <div className="bg-slate-50 dark:bg-dark min-h-screen flex flex-col font-sans text-slate-900 dark:text-slate-50">
             <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -322,14 +322,14 @@ export default function EmployeeList() {
 
                     <div className="flex items-center gap-3">
                         {/* 🔍 Buscar y Filtros Group */}
-                        <div className="relative flex items-center bg-secondary rounded-lg border border-slate-700 transition-all focus-within:ring-2 focus-within:ring-primary/50">
+                        <div className="relative flex items-center bg-white dark:bg-secondary rounded-lg border border-slate-200 dark:border-slate-700 transition-all focus-within:ring-2 focus-within:ring-primary/50">
                             <Search size={16} className="absolute left-3 text-slate-500" />
                             <input
                                 type="text"
                                 placeholder="Buscar empleado..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className="pl-10 pr-20 py-2.5 bg-transparent text-slate-200 text-sm outline-none placeholder:text-slate-500 w-48 md:w-64"
+                                className="pl-10 pr-20 py-2.5 bg-transparent text-slate-800 dark:text-slate-200 text-sm outline-none placeholder:text-slate-500 w-48 md:w-64"
                             />
                             <div className="absolute right-1">
                                 <EmployeeFilterDropdown 

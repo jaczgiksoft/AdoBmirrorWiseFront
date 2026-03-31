@@ -1,19 +1,35 @@
 // app/renderer/src/modules/inventory/components/AdjustStockModal.jsx
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { X, ArrowDown, ArrowUp } from "lucide-react";
 
-export default function AdjustStockModal({ item, movementTypes = [], onClose, onSave }) {
+export default function AdjustStockModal({ item, movementTypes = [], providers = [], onClose, onSave }) {
     const [amount, setAmount] = useState("");
     const [reason, setReason] = useState(movementTypes[0] || "Entrada");
     const [reference, setReference] = useState("");
+    const [providerId, setProviderId] = useState("");
+    const [unitCost, setUnitCost] = useState("");
 
     const parsedAmount = parseInt(amount, 10) || 0;
     const newStock = Number(item.quantity) + parsedAmount;
+
+    // Filtrar opciones según el signo
+    const filteredOptions = movementTypes.filter(type => {
+        if (parsedAmount > 0) return type === "Entrada";
+        if (parsedAmount < 0) return ["Salida", "Merma", "Devolucion", "Caducado"].includes(type);
+        return true; // Si es 0, mostrar todos o dejar que el usuario decida
+    });
+
+    // Auto-seleccionar un motivo válido si el actual ya no está en la lista filtrada
+    useEffect(() => {
+        if (parsedAmount !== 0 && !filteredOptions.includes(reason)) {
+            setReason(filteredOptions[0] || "");
+        }
+    }, [parsedAmount, filteredOptions, reason]);
     
     const handleSubmit = (e) => {
         e.preventDefault();
         if (parsedAmount !== 0) {
-            onSave(parsedAmount, reason, reference);
+            onSave(parsedAmount, reason, reference, providerId, parseFloat(unitCost) || 0);
         }
     };
 
@@ -101,11 +117,43 @@ export default function AdjustStockModal({ item, movementTypes = [], onClose, on
                             onChange={(e) => setReason(e.target.value)} 
                             className="w-full px-4 py-2 bg-slate-50 dark:bg-secondary rounded-lg border border-slate-300 dark:border-slate-700 outline-none focus:ring-2 focus:ring-cyan-500 text-slate-900 dark:text-white"
                         >
-                            {movementTypes.map(type => (
+                            {filteredOptions.map(type => (
                                 <option key={type} value={type}>{type}</option>
                             ))}
                         </select>
                     </div>
+
+                    {(reason === "Entrada" || reason === "Devolucion") && (
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Costo Unitario <span className="text-red-500">*</span></label>
+                                <div className="relative">
+                                    <span className="absolute left-3 top-2 text-slate-500">$</span>
+                                    <input 
+                                        type="number" 
+                                        step="0.01"
+                                        required
+                                        value={unitCost} 
+                                        onChange={(e) => setUnitCost(e.target.value)} 
+                                        className="w-full pl-8 pr-4 py-2 bg-slate-50 dark:bg-secondary rounded-lg border border-slate-300 dark:border-slate-700 outline-none focus:ring-2 focus:ring-cyan-500 text-slate-900 dark:text-white"
+                                    />
+                                </div>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Proveedor (Opcional)</label>
+                                <select 
+                                    value={providerId} 
+                                    onChange={(e) => setProviderId(e.target.value)} 
+                                    className="w-full px-4 py-2 bg-slate-50 dark:bg-secondary rounded-lg border border-slate-300 dark:border-slate-700 outline-none focus:ring-2 focus:ring-cyan-500 text-slate-900 dark:text-white"
+                                >
+                                    <option value="">-- Sin proveedor --</option>
+                                    {providers.map(p => (
+                                        <option key={p.id} value={p.id}>{p.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        </div>
+                    )}
 
                     <div>
                         <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Referencia (Opcional)</label>

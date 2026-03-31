@@ -110,3 +110,15 @@ export const MOVEMENT_TYPES = [
 ];
 
 export const INITIAL_MOVEMENTS_DATA = [];
+
+export const INITIAL_PROVIDERS_DATA = [
+    {
+        id: 1,
+        name: "Medical Supply Co.",
+        email: "ventas@medicalsupply.com",
+        contactName: "Juan Pérez",
+        rfc: "MSC123456789",
+        phone: "555-1234",
+        notes: "Proveedor principal de medicamentos"
+    }
+];

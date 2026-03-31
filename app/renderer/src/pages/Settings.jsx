@@ -118,7 +118,7 @@ export default function Settings() {
     }, []);
 
     return (
-        <div className="min-h-screen bg-dark flex flex-col font-sans text-slate-50">
+        <div className="min-h-screen bg-slate-50 dark:bg-dark flex flex-col font-sans text-slate-900 dark:text-slate-50">
             <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -128,7 +128,7 @@ export default function Settings() {
                 <div className="flex items-center gap-4 mb-6">
                     <button
                         onClick={() => navigate("/dashboard")}
-                        className="flex items-center gap-1 text-slate-400 hover:text-white transition text-sm leading-none mt-[2px] cursor-pointer"
+                        className="flex items-center gap-1 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white transition text-sm leading-none mt-[2px] cursor-pointer"
                     >
                         <ChevronLeft size={16} className="relative top-[1px]" />
                         <span>Volver al Dashboard</span>
@@ -148,23 +148,23 @@ export default function Settings() {
                                 whileHover={{ scale: 1.03 }}
                                 whileTap={{ scale: 0.97 }}
                                 onClick={() => navigate(item.path)}
-                                className={`bg-secondary rounded-2xl p-5 cursor-pointer border transition-all shadow-soft
+                                className={`bg-white dark:bg-secondary rounded-2xl p-5 cursor-pointer border transition-all shadow-soft
                                     ${isSelected
                                         ? "border-primary shadow-hard ring-2 ring-primary/40"
-                                        : "border-slate-700 hover:border-primary"
+                                        : "border-slate-200 hover:border-primary dark:border-slate-700"
                                     }`}
                             >
                                 <div className="flex items-center gap-3 mb-2">
                                     <div className="text-primary">{item.icon}</div>
-                                    <h2 className="text-lg font-semibold">{item.label}</h2>
+                                    <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-50">{item.label}</h2>
                                 </div>
-                                <p className="text-sm text-slate-400">{item.description}</p>
+                                <p className="text-sm text-slate-500 dark:text-slate-400">{item.description}</p>
                             </motion.div>
                         );
                     })}
                 </div>
 
-                <p className="text-center text-xs text-slate-500 mt-6">
+                <p className="text-center text-xs text-slate-400 dark:text-slate-500 mt-6">
                     Usa las flechas ← → ↑ ↓ para moverte y Enter para abrir
                 </p>
             </motion.div>
