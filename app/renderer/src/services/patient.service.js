@@ -18,16 +18,16 @@ export async function getPatients() {
  * 📊 Obtener pacientes paginados (para DataTable)
  */
 export async function getPatientsPaginated({
-                                               start = 0,
-                                               length = 20,
-                                               searchValue = "",
-                                               orderColumn = "created_at",
-                                               orderDir = "DESC",
-                                               gender = "",
-                                               city = "",
-                                               state = "",
-                                               statusFilter = "",
-                                           } = {}) {
+    start = 0,
+    length = 20,
+    searchValue = "",
+    orderColumn = "created_at",
+    orderDir = "DESC",
+    gender = "",
+    city = "",
+    state = "",
+    statusFilter = "",
+} = {}) {
     try {
         const res = await api.post("/patients/datatable", {
             start,

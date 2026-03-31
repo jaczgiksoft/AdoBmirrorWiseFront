@@ -29,14 +29,14 @@ export default function Dashboard() {
                 if (user.permissions?.patients?.read) navigate("/patients");
                 return "prevent";
             },
-            f2: () => {
-                if (user.permissions?.patient_alerts?.read) navigate("/patient-alerts");
-                return "prevent";
-            },
 
             // 🔥 NUEVOS
-            f5: () => {
+            f3: () => {
                 if (user.permissions?.inventory?.read) navigate("/inventory");
+                return "prevent";
+            },
+            f7: () => {
+                if (user.permissions?.employees?.read) navigate("/employees");
                 return "prevent";
             },
             f12: () => {
@@ -44,10 +44,7 @@ export default function Dashboard() {
                 return "prevent";
             },
 
-            f8: () => {
-                if (user.permissions?.users?.read) navigate("/users");
-                return "prevent";
-            },
+
             f10: () => {
                 if (user.permissions?.notifications?.read) navigate("/notifications");
                 return "prevent";
@@ -102,8 +99,11 @@ export default function Dashboard() {
                     return (
                         <motion.button
                             key={i}
-                            whileHover={{ scale: 1.03 }}
+                            whileHover="hovered"
                             whileTap={{ scale: 0.98 }}
+                            variants={{
+                                hovered: { scale: 1.03 }
+                            }}
                             className="
                                 flex flex-col items-center justify-center
                                 bg-white dark:bg-slate-800/50
@@ -114,12 +114,22 @@ export default function Dashboard() {
                             "
                             onClick={() => navigate(item.path)}
                         >
-                            <div
+                            <motion.div
                                 style={{ color: item.color }}
                                 className="mb-3 md:mb-4 p-2 md:p-5 rounded-2xl bg-slate-50 dark:bg-slate-900/50 transition-colors group-hover:bg-white dark:group-hover:bg-slate-800"
+                                variants={{
+                                    hovered: {
+                                        scale: [1, 1.1, 1],
+                                        transition: {
+                                            repeat: Infinity,
+                                            duration: 1,
+                                            ease: "easeInOut"
+                                        }
+                                    }
+                                }}
                             >
-                                <Icon className="w-5 h-5 md:w-7 md:h-7" />
-                            </div>
+                                <Icon className="w-8 h-8 md:w-10 md:h-10" />
+                            </motion.div>
                             <span className="text-sm md:text-base font-semibold md:font-bold text-slate-800 dark:text-slate-100">{item.label}</span>
 
                             {item.key && (

@@ -5,8 +5,11 @@ import { Home, ChevronLeft, PlusCircle, Edit2, Trash2, User, Search } from "luci
 import { useToastStore } from "@/store/useToastStore";
 import { ConfirmDialog } from "@/components/feedback";
 import { Table, Pagination } from "@/components/ui";
+import { PageHeader } from "@/components/layout";
 import { employeesStorage } from "@/utils/employeesStorage";
 import EmployeeFormModal from "./EmployeeFormModal";
+import EmployeeUserModal from "./EmployeeUserModal";
+import EmployeeFilterDropdown from "./components/EmployeeFilterDropdown";
 
 const MOCK_EMPLOYEES = [
     {
@@ -21,7 +24,8 @@ const MOCK_EMPLOYEES = [
         status: "active",
         profile_image: null,
         hiring_date: "2023-01-10",
-        roleIds: [1]
+        roleIds: [1],
+        has_user: true
     },
     {
         id: 2,
@@ -35,7 +39,8 @@ const MOCK_EMPLOYEES = [
         status: "active",
         profile_image: null,
         hiring_date: "2023-05-20",
-        roleIds: [2]
+        roleIds: [2],
+        has_user: true
     },
     {
         id: 3,
@@ -49,7 +54,8 @@ const MOCK_EMPLOYEES = [
         status: "inactive",
         profile_image: null,
         hiring_date: "2024-02-15",
-        roleIds: []
+        roleIds: [],
+        has_user: false
     }
 ];
 
@@ -68,27 +74,28 @@ export default function EmployeeList() {
      * - Diseñado para ser removido fácilmente sin afectar la lógica de los componentes.
      */
     const [employees, setEmployees] = useState(() => employeesStorage.get(MOCK_EMPLOYEES));
-    
+
     // Sincronizar cambios a localStorage cada vez que la lista se modifique
     useEffect(() => {
         employeesStorage.save(employees);
     }, [employees]);
-    
+
     const [searchTerm, setSearchTerm] = useState("");
     const [statusFilter, setStatusFilter] = useState("all");
+    const [userFilter, setUserFilter] = useState("all"); // New filter
     const [currentPage, setCurrentPage] = useState(1);
     const [sortConfig, setSortConfig] = useState({ key: "first_name", direction: "asc" });
     const ITEMS_PER_PAGE = 10;
-    
+
     // Reset page when filters change
     useEffect(() => {
         setCurrentPage(1);
-    }, [searchTerm, statusFilter]);
-    
+    }, [searchTerm, statusFilter, userFilter]);
+
     // Modal states
     const [showForm, setShowForm] = useState(false);
     const [selectedEmployee, setSelectedEmployee] = useState(null);
-    
+
     // Delete states
     const [confirmOpen, setConfirmOpen] = useState(false);
     const [employeeToDelete, setEmployeeToDelete] = useState(null);
@@ -109,9 +116,27 @@ export default function EmployeeList() {
         setConfirmOpen(true);
     };
 
+    // --- User Account Modal ---
+    const [showUserModal, setShowUserModal] = useState(false);
+    const [selectedUserEmployee, setSelectedUserEmployee] = useState(null);
+
+    const handleUserClick = (employee) => {
+        setSelectedUserEmployee(employee);
+        setShowUserModal(true);
+    };
+
+    const handleSaveUserAccount = (userAccount) => {
+        const updatedEmployees = employees.map(emp =>
+            emp.id === selectedUserEmployee.id
+                ? { ...emp, has_user: true, user_account: userAccount }
+                : emp
+        );
+        setEmployees(updatedEmployees);
+    };
+
     const handleConfirmDelete = () => {
         if (!employeeToDelete) return;
-        
+
         setEmployees(employees.filter(emp => emp.id !== employeeToDelete.id));
         setConfirmOpen(false);
         setEmployeeToDelete(null);
@@ -147,14 +172,17 @@ export default function EmployeeList() {
         })();
 
         const matchesStatus = statusFilter === "all" || emp.status === statusFilter;
+        const matchesUser = userFilter === "all" ||
+            (userFilter === "with_user" && emp.has_user) ||
+            (userFilter === "without_user" && !emp.has_user);
 
-        return matchesSearch && matchesStatus;
+        return matchesSearch && matchesStatus && matchesUser;
     });
 
     // Sorting Logic
     const sortedEmployees = [...filteredEmployees].sort((a, b) => {
         if (!sortConfig.key) return 0;
-        
+
         const aValue = (a[sortConfig.key] || "").toString().toLowerCase();
         const bValue = (b[sortConfig.key] || "").toString().toLowerCase();
 
@@ -188,14 +216,14 @@ export default function EmployeeList() {
             render: (row) => (
                 <div className="flex items-center gap-3">
                     {row.profile_image ? (
-                        <img src={row.profile_image} alt="" className="w-10 h-10 rounded-full object-cover border border-slate-700 bg-slate-800" />
+                        <img src={row.profile_image} alt="" className="w-10 h-10 rounded-full object-cover border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800" />
                     ) : (
-                        <div className="w-10 h-10 flex items-center justify-center rounded-full bg-slate-800 border border-slate-700 text-primary">
+                        <div className={`w-10 h-10 flex items-center justify-center rounded-full border border-slate-200 dark:border-slate-700 text-primary ${row.has_user ? "bg-primary/10 shadow-[0_0_10px_rgba(14,165,233,0.3)]" : "bg-slate-100 dark:bg-slate-800"}`}>
                             <User size={20} />
                         </div>
                     )}
                     <div>
-                        <p className="font-semibold text-slate-100">
+                        <p className="font-semibold text-slate-900 dark:text-slate-100">
                             {row.first_name} {row.last_name} {row.second_last_name}
                         </p>
                         <p className="text-xs text-slate-400">{row.email || "Sin correo"}</p>
@@ -220,14 +248,14 @@ export default function EmployeeList() {
             header: "Teléfono",
             accessor: "phone",
             sortable: true,
-            render: (row) => <span className="text-slate-300">{row.phone || "N/A"}</span>
+            render: (row) => <span className="text-slate-600 dark:text-slate-300">{row.phone || "N/A"}</span>
         },
         {
             header: "Contratación",
             accessor: "hiring_date",
             sortable: true,
             render: (row) => (
-                <span className="text-slate-300">
+                <span className="text-slate-600 dark:text-slate-300">
                     {row.hiring_date ? new Date(row.hiring_date).toLocaleDateString("es-MX") : "N/A"}
                 </span>
             )
@@ -249,15 +277,22 @@ export default function EmployeeList() {
             header: "Acciones",
             accessor: "actions",
             render: (row) => (
-                <div className="flex items-center gap-3 text-slate-400">
-                    <button 
+                <div className="flex items-center gap-3 text-slate-500 dark:text-slate-400">
+                    <button
+                        onClick={() => handleUserClick(row)}
+                        className={`transition-colors cursor-pointer ${row.has_user ? "text-green-500 hover:text-green-400" : "text-slate-500 hover:text-primary"}`}
+                        title={row.has_user ? "Ver / editar usuario" : "Crear usuario"}
+                    >
+                        <User size={18} />
+                    </button>
+                    <button
                         onClick={() => handleEditClick(row)}
                         className="hover:text-primary transition-colors cursor-pointer"
                         title="Editar"
                     >
                         <Edit2 size={18} />
                     </button>
-                    <button 
+                    <button
                         onClick={() => handleDeleteClick(row)}
                         className="hover:text-error transition-colors cursor-pointer"
                         title="Eliminar"
@@ -270,89 +305,87 @@ export default function EmployeeList() {
     ];
 
     return (
-        <div className="bg-dark min-h-screen flex flex-col font-sans text-slate-50">
+        <div className="bg-slate-50 dark:bg-dark min-h-screen flex flex-col font-sans text-slate-900 dark:text-slate-50">
             <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3 }}
                 className="w-full max-w-6xl mx-auto px-6 mt-6 pb-20"
             >
-                {/* Header Actions */}
-                <div className="flex items-center gap-4 mb-6 flex-wrap">
-                    <button
-                        onClick={() => navigate("/dashboard")}
-                        className="relative group flex items-center gap-1 text-slate-400 hover:text-white transition cursor-pointer"
-                    >
-                        <Home size={18} className="relative top-[1px]" />
-                        <ChevronLeft size={16} className="relative top-[1px]" />
-                        <span className="absolute left-full ml-3 whitespace-nowrap px-3 py-1.5 text-xs bg-black/85 text-white rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-all duration-200">
-                            Ir al panel principal
-                        </span>
-                    </button>
+                {/* Header Actions Row */}
+                <div className="flex items-center justify-between gap-4 mb-6 flex-wrap">
+                    <PageHeader
+                        title="Gestión de Empleados"
+                        subtitle="Administra el personal y cuentas de usuario"
+                        onBack={() => navigate("/dashboard")}
+                    />
 
-                    <h1 className="text-2xl font-semibold text-primary leading-none flex-1">
-                        Gestión de Empleados
-                    </h1>
-
-                    {/* 🔍 Buscar y Filtros */}
-                    <div className="flex items-center gap-2">
-                        <div className="relative flex items-center bg-secondary rounded-lg border border-slate-700">
-                            <Search size={16} className="absolute left-2 text-slate-400" />
+                    <div className="flex items-center gap-3">
+                        {/* 🔍 Buscar y Filtros Group */}
+                        <div className="relative flex items-center bg-white dark:bg-secondary rounded-lg border border-slate-200 dark:border-slate-700 transition-all focus-within:ring-2 focus-within:ring-primary/50">
+                            <Search size={16} className="absolute left-3 text-slate-500" />
                             <input
                                 type="text"
                                 placeholder="Buscar empleado..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className="pl-7 pr-4 py-1.5 bg-transparent text-slate-200 text-sm outline-none placeholder:text-slate-500"
+                                className="pl-10 pr-20 py-2.5 bg-transparent text-slate-800 dark:text-slate-200 text-sm outline-none placeholder:text-slate-500 w-48 md:w-64"
                             />
+                            <div className="absolute right-1">
+                                <EmployeeFilterDropdown 
+                                    filters={{ statusFilter, userFilter }}
+                                    onApply={(f) => {
+                                        setStatusFilter(f.statusFilter);
+                                        setUserFilter(f.userFilter);
+                                    }}
+                                />
+                            </div>
                         </div>
-                        
-                        <select
-                            value={statusFilter}
-                            onChange={(e) => setStatusFilter(e.target.value)}
-                            className="bg-secondary text-slate-200 text-sm border border-slate-700 rounded-lg py-1.5 px-3 outline-none focus:border-primary transition cursor-pointer"
-                        >
-                            <option value="all">Todos los estados</option>
-                            <option value="active">Activos</option>
-                            <option value="inactive">Inactivos</option>
-                        </select>
-                    </div>
 
-                    <motion.button
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.97 }}
-                        onClick={handleAddClick}
-                        className="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-sky-500 transition shadow-lg shadow-primary/20 cursor-pointer"
-                    >
-                        <PlusCircle size={18} />
-                        <span>Agregar empleado</span>
-                    </motion.button>
+                        <motion.button
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.97 }}
+                            onClick={handleAddClick}
+                            className="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-sky-500 transition shadow-lg shadow-primary/20 cursor-pointer"
+                        >
+                            <PlusCircle size={18} />
+                            <span>Agregar empleado</span>
+                        </motion.button>
+                    </div>
                 </div>
 
                 {/* Table View */}
-                <Table 
-                    columns={columns} 
-                    data={paginatedEmployees} 
+                <Table
+                    columns={columns}
+                    data={paginatedEmployees}
                     sortConfig={sortConfig}
                     onSort={handleSort}
-                    emptyMessage="No se encontraron empleados que coincidan con la búsqueda." 
+                    emptyMessage="No se encontraron empleados que coincidan con la búsqueda."
                 />
 
                 {/* Pagination Controls */}
-                <Pagination 
-                    page={currentPage} 
-                    totalPages={totalPages} 
-                    onPageChange={setCurrentPage} 
+                <Pagination
+                    page={currentPage}
+                    totalPages={totalPages}
+                    onPageChange={setCurrentPage}
                 />
 
             </motion.div>
 
             {/* Modal de Formulario */}
-            <EmployeeFormModal 
-                open={showForm} 
-                onClose={() => setShowForm(false)} 
-                employee={selectedEmployee} 
-                onSave={handleSaveEmployee} 
+            <EmployeeFormModal
+                open={showForm}
+                onClose={() => setShowForm(false)}
+                employee={selectedEmployee}
+                onSave={handleSaveEmployee}
+            />
+
+            {/* Modal de Usuario */}
+            <EmployeeUserModal
+                open={showUserModal}
+                onClose={() => setShowUserModal(false)}
+                employee={selectedUserEmployee}
+                onSave={handleSaveUserAccount}
             />
 
             {/* Modal de Confirmación de Eliminación */}

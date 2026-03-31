@@ -1,5 +1,6 @@
 import React, { useState, useRef, useLayoutEffect, useCallback, useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import bracketImg from '@/assets/images/odontogram/bracket.svg';
 import bracketGanchoImg from '@/assets/images/odontogram/bracket-gancho.svg';
@@ -13,231 +14,14 @@ import VoiceSettingsModal from './VoiceSettingsModal';
 // 1. Asset Loading & Helpers
 // ==========================================
 
-// Load all tooth SVGs from all subfolders (original, root-canal, etc.) as image URLs
-const toothImages = import.meta.glob('@/assets/images/odontogram/**/*.svg', {
-    eager: true,
-    as: 'url'
-});
-
-// Load the raw SVG string for generating dynamic custom SVGs without CSS conflicts
-const toothRawSvgs = import.meta.glob('@/assets/images/odontogram/**/*.svg', {
-    eager: true,
-    query: '?raw',
-    import: 'default'
-});
-
-// Helper to get image src by Tooth ID and Type
-// const getToothSrc = (id, type) => {
-//     // Try to find the specific type first
-//     const specificTypeEntry = Object.entries(toothImages).find(([path]) =>
-//         path.includes(`/odontogram/${type}/tooth-${id}.svg`)
-//     );
-
-//     if (specificTypeEntry) return specificTypeEntry[1];
-
-//     // Fallback to original if not found
-//     const originalEntry = Object.entries(toothImages).find(([path]) =>
-//         path.includes(`/odontogram/original/tooth-${id}.svg`)
-//     );
-
-//     return originalEntry ? originalEntry[1] : null;
-// };
-
-// Helper to get raw SVG strings
-const getToothRaw = (id, type) => {
-    const specificTypeEntry = Object.entries(toothRawSvgs).find(([path]) =>
-        path.includes(`/odontogram/${type}/tooth-${id}.svg`)
-    );
-    if (specificTypeEntry) return specificTypeEntry[1];
-
-    const originalEntry = Object.entries(toothRawSvgs).find(([path]) =>
-        path.includes(`/odontogram/original/tooth-${id}.svg`)
-    );
-    return originalEntry ? originalEntry[1] : null;
-};
-
-// Helper to get image src by Tooth ID and Type
-const getToothSrc = (id, type) => {
-    // Try to find the specific type first
-    const specificTypeEntry = Object.entries(toothImages).find(([path]) =>
-        path.includes(`/odontogram/${type}/tooth-${id}.svg`)
-    );
-
-    if (specificTypeEntry) return specificTypeEntry[1];
-
-    // Fallback to original if not found
-    const originalEntry = Object.entries(toothImages).find(([path]) =>
-        path.includes(`/odontogram/original/tooth-${id}.svg`)
-    );
-
-    return originalEntry ? originalEntry[1] : null;
-};
-
-const getBaseSvgType = (types) => {
-
-    const priority = [
-        'crown',
-        'root-canal',
-        'fissure-root',
-        'fissure-crown',
-        'fissure-full',
-        'implant'
-    ];
-
-    for (const type of priority) {
-        if (types.includes(type)) {
-            return type;
-        }
-    }
-
-    return types[0];
-};
-
-// Encapsulated function to create a Combined SVG data URL containing BOTH implant and crown
-const generateCombinedSvgDataUrl = (id, types = []) => {
-
-    if (!types || types.length === 0) {
-        types = ['implant', 'crown'];
-    }
-
-    types = [...new Set(types)];
-
-    try {
-        const parser = new DOMParser();
-        const serializer = new XMLSerializer();
-        const docs = {};
-
-        // Parse all requested SVGs
-        types.forEach(type => {
-            const raw = getToothRaw(id, type);
-            if (raw) {
-                docs[type] = parser.parseFromString(raw, "image/svg+xml");
-            }
-        });
-
-        const baseType = getBaseSvgType(types);
-        const baseDoc = docs[baseType];
-        if (!baseDoc) return getToothSrc(id, baseType);
-
-        // 🔥 CLAVE: usar el SVG base real
-        const newSvg = baseDoc.documentElement.cloneNode(true);
-
-        // Buscar el grupo principal
-        const mainGroup = newSvg.querySelector('g');
-        if (!mainGroup) return getToothSrc(id, baseType);
-
-        // Limpiar contenido interno (pero mantener estructura)
-        mainGroup.innerHTML = '';
-
-        // Helper
-        const getEl = (doc, selector) =>
-            doc?.querySelector(selector)?.cloneNode(true);
-
-        const extractCrownElements = (crownDoc) => {
-            const group = crownDoc.querySelector('g[id="crown"], g[id="Crown"]');
-            let elements = [];
-
-            if (group) {
-                elements = Array.from(group.children).filter(el => {
-                    const tagId = (el.getAttribute('id') || '').toLowerCase();
-                    return el.tagName.toLowerCase() !== 'metadata' &&
-                        !tagId.includes('root') &&
-                        !tagId.includes('outline');
-                });
-            }
-
-            if (elements.length === 0) {
-                elements = Array.from(crownDoc.querySelectorAll('*')).filter(el => {
-                    const tagId = (el.getAttribute('id') || '').toLowerCase();
-                    return /^crown[_\d]*$/.test(tagId) &&
-                        el.tagName.toLowerCase() !== 'g' &&
-                        el.tagName.toLowerCase() !== 'metadata';
-                });
-            }
-
-            return elements.map(el => el.cloneNode(true));
-        };
-
-        const hasImplant = types.includes('implant');
-        const hasRootCanal = types.includes('root-canal');
-        const hasCrown = types.includes('crown');
-        const hasFissureRoot = types.includes('fissure-root');
-        const hasFissureFull = types.includes('fissure-full');
-        const hasFissureCrown = types.includes('fissure-crown');
-
-        // =====================================================
-        // DIRECT ASSET LOADING FOR SPECIFIC COMBINATIONS
-        // =====================================================
-        if (hasImplant && hasCrown) {
-            return getToothSrc(id, 'combinations/implant+crown');
-        } else if (hasRootCanal && hasFissureCrown) {
-            return getToothSrc(id, 'combinations/root-canal+fissure-crown');
-        } else if (hasRootCanal && hasCrown) {
-            return getToothSrc(id, 'combinations/root-canal+crown');
-        }
-
-        // =====================================================
-        // CONSTRUCCIÓN DINÁMICA DE SVG
-        // =====================================================
-
-        // 2. crown + fissure-root
-        // root → crown → fil2
-        else if (hasCrown && hasFissureRoot) {
-
-            const root = getEl(docs['fissure-root'], '#root');
-            const crownElements = extractCrownElements(docs['crown']);
-            const outline = getEl(docs['fissure-root'], '.fil2') ||
-                getEl(docs['fissure-root'], '#outline');
-
-            root && mainGroup.appendChild(root);
-            crownElements.forEach(el => mainGroup.appendChild(el));
-            outline && mainGroup.appendChild(outline);
-        }
-
-        // =====================================================
-        // crown + fissure-full o fissure-crown
-        // root → crown → outline
-        // =====================================================
-        else if (hasCrown && (hasFissureFull || hasFissureCrown)) {
-
-            const fissureType = hasFissureFull ? 'fissure-full' : 'fissure-crown';
-
-            const root = getEl(docs[fissureType], '#root') || getEl(docs[fissureType], '#Root');
-            const crownElements = extractCrownElements(docs['crown']);
-            const outline = getEl(docs[fissureType], '#outline') || getEl(docs[fissureType], '#Outline') || getEl(docs[fissureType], '.fil2');
-
-            root && mainGroup.appendChild(root);
-            crownElements.forEach(el => mainGroup.appendChild(el));
-            outline && mainGroup.appendChild(outline);
-        }
-
-        // =====================================================
-        // Fallback
-        // =====================================================
-        else {
-            const originalChildren = Array.from(
-                docs[baseType].querySelector('g').children
-            );
-
-            originalChildren.forEach(el => {
-                mainGroup.appendChild(el.cloneNode(true));
-            });
-        }
-
-        let svgString = serializer.serializeToString(newSvg);
-        svgString = svgString.replace(/xmlns:xmlns="[^"]+"/g, '');
-
-        const encoded = encodeURIComponent(svgString)
-            .replace(/'/g, "%27")
-            .replace(/"/g, "%22");
-
-        return `data:image/svg+xml;utf8,${encoded}`;
-
-    } catch (err) {
-        console.error("Error formatting combined SVG:", err);
-        return getToothSrc(id, types[0] || 'implant');
-    }
-};
+import { 
+    toothImages, 
+    toothRawSvgs, 
+    getToothRaw, 
+    getToothSrc, 
+    getBaseSvgType, 
+    generateCombinedSvgDataUrl 
+} from './components/toothSvgHelpers';
 
 // Helper to handle combined state toggling
 const getToggledToothState = (currentType, newType) => {
@@ -332,11 +116,26 @@ const TEETH_TO_SCALE = [
 // ==========================================
 const BRACKET_HOOK_CONFIG = {
     // Dientes que usarán el bracket-gancho.svg en lugar del tradicional
-    teethIds: [18, 28, 38, 48],
+    teethIds: [16, 17, 18, 26, 27, 28, 36, 37, 38, 46, 47, 48],
     // Clases CSS de Tailwind para el tamaño del bracket especial (móvil y escritorio)
     sizeClasses: 'w-4 h-4 md:w-8 md:h-8',
     // Clases CSS de Tailwind para el tamaño del bracket normal
-    defaultSizeClasses: 'w-2.5 h-2.5 md:w-5 md:h-5'
+    defaultSizeClasses: 'w-2.5 h-2.5 md:w-5 md:h-5',
+    // Micro ajustes para rotar (grados), voltear (espejo scaleX/scaleY), o trasladar (offsetX/offsetY en píxeles)
+    adjustments: {
+        16: { rotate: 180, scaleX: 1, scaleY: 1, offsetX: 0, offsetY: -12 },
+        17: { rotate: 180, scaleX: 1, scaleY: 1, offsetX: 0, offsetY: -12 },
+        18: { rotate: 180, scaleX: 1, scaleY: 1, offsetX: 0, offsetY: -10 },
+        26: { rotate: 180, scaleX: -1, scaleY: 1, offsetX: 0, offsetY: -12 },
+        27: { rotate: 180, scaleX: -1, scaleY: 1, offsetX: 0, offsetY: -12 }, // Volteado horizontalmente
+        28: { rotate: 180, scaleX: -1, scaleY: 1, offsetX: 0, offsetY: -10 },
+        36: { rotate: 0, scaleX: 1, scaleY: 1, offsetX: 0, offsetY: -1 },
+        37: { rotate: 0, scaleX: 1, scaleY: 1, offsetX: 0, offsetY: -3 }, // Rotado
+        38: { rotate: 0, scaleX: 1, scaleY: 1, offsetX: 0, offsetY: -6 },
+        46: { rotate: 0, scaleX: -1, scaleY: 1, offsetX: 0, offsetY: -1 },
+        47: { rotate: 0, scaleX: -1, scaleY: 1, offsetX: 0, offsetY: -3 }, // Rotado y volteado
+        48: { rotate: 0, scaleX: -1, scaleY: 1, offsetX: 0, offsetY: -6 }
+    }
 };
 const INACTIVE_TYPES = ['extraction', 'missing', 'unerupted'];
 const DENTAL_TYPES = [
@@ -979,6 +778,13 @@ function Tooth({ id, type, hasBracket, isSelectedBracket, isBracketMode, onTooth
                                 src={BRACKET_HOOK_CONFIG.teethIds.includes(parseInt(id, 10)) ? bracketGanchoImg : bracketImg}
                                 alt="Bracket"
                                 className={`object-contain opacity-90 drop-shadow-sm transition-transform duration-200 ${BRACKET_HOOK_CONFIG.teethIds.includes(parseInt(id, 10)) ? BRACKET_HOOK_CONFIG.sizeClasses : BRACKET_HOOK_CONFIG.defaultSizeClasses} ${isSelectedBracket ? 'scale-125' : ''}`}
+                                style={
+                                    BRACKET_HOOK_CONFIG.teethIds.includes(parseInt(id, 10)) && BRACKET_HOOK_CONFIG.adjustments && BRACKET_HOOK_CONFIG.adjustments[id]
+                                        ? {
+                                            transform: `translate(${BRACKET_HOOK_CONFIG.adjustments[id].offsetX || 0}px, ${BRACKET_HOOK_CONFIG.adjustments[id].offsetY || 0}px) rotate(${BRACKET_HOOK_CONFIG.adjustments[id].rotate || 0}deg) scaleX(${BRACKET_HOOK_CONFIG.adjustments[id].scaleX || 1}) scaleY(${BRACKET_HOOK_CONFIG.adjustments[id].scaleY || 1}) ${isSelectedBracket ? 'scale(1.25)' : ''}`
+                                        }
+                                        : {}
+                                }
                             />
                         </motion.div>
                     )}
@@ -1909,7 +1715,9 @@ function ActionPanel({
     isBracketMode, setBracketMode,
     isTadMode, setTadMode,
     isPeriodontalMode, setPeriodontalMode,
-    onApplyAll, selectedToothType, setSelectedToothType, onReset, onOpenVoiceSettings
+    onApplyAll, selectedToothType, setSelectedToothType, onReset,
+    onOpenVoiceSettings, hasVoiceSupport,
+    onSaveToElastics, savedToElastics
 }) {
     return (
         <div className="bg-white dark:bg-[var(--color-secondary)] p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm mt-6 flex flex-col md:flex-row items-center justify-between gap-4">
@@ -1949,28 +1757,54 @@ function ActionPanel({
             </div>
             <div className="hidden md:block w-px h-8 bg-slate-400 dark:bg-slate-700 mx-1"></div>
             <div className="flex items-center gap-2 md:gap-4 w-full md:w-auto justify-between md:justify-end flex-wrap md:flex-wrap lg:flex-nowrap">
-                {/* Contenido movido a la parte superior */}
-                <button
-                    type="button"
-                    onClick={onOpenVoiceSettings}
-                    className="btn btn-sm md:btn-md bg-white dark:bg-slate-700 hover:bg-slate-50 dark:hover:bg-slate-600/80 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-600 shadow-sm transition-colors whitespace-nowrap flex items-center gap-2"
-                    title="Configuración de Voz"
-                >
-                    <svg className="w-4 h-4 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
-                    </svg>
-                    Ajustes de Voz
-                </button>
+                {/* Botón guardar diseño para Elásticos y persistencia general */}
+                <div className="relative">
+                    <button
+                        type="button"
+                        onClick={onSaveToElastics}
+                        className="btn btn-sm md:btn-md bg-white dark:bg-slate-700 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-700 shadow-sm transition-colors whitespace-nowrap flex items-center gap-2"
+                        title="Guardar diseño actual del odontograma para este paciente"
+                    >
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                        </svg>
+                        Guardar Odontograma
+                    </button>
+                    {/* Feedback de guardado exitoso */}
+                    {savedToElastics && (
+                        <span className="absolute -top-6 left-1/2 -translate-x-1/2 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/50 border border-emerald-200 dark:border-emerald-700 rounded px-2 py-0.5 whitespace-nowrap shadow-sm animate-bounce">
+                            ✓ ¡Guardado!
+                        </span>
+                    )}
+                </div>
+
+                {hasVoiceSupport && (
+                    <button
+                        type="button"
+                        onClick={onOpenVoiceSettings}
+                        className="btn btn-sm md:btn-md bg-white dark:bg-slate-700 hover:bg-slate-50 dark:hover:bg-slate-600/80 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-600 shadow-sm transition-colors whitespace-nowrap flex items-center gap-2"
+                        title="Configuración de Voz"
+                    >
+                        <svg className="w-4 h-4 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                        </svg>
+                        Ajustes de Voz
+                    </button>
+                )}
             </div>
         </div>
     );
 }
+
 
 // ==========================================
 // 6. Main Component
 // ==========================================
 
 export default function OdontogramSection() {
+    // Obtener ID del paciente actual para aislar los datos en localStorage
+    const { id: patientId } = useParams();
+
     // Initial State: All teeth are 'original'
     const [toothStates, setToothStates] = useState(buildInitialToothStates);
     const [radialState, setRadialState] = useState(null);
@@ -1979,6 +1813,9 @@ export default function OdontogramSection() {
     const [hoveredMenuItem, setHoveredMenuItem] = useState(null);
     const [hoveredPreviewType, setHoveredPreviewType] = useState(null);
     const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+
+    // Feedback temporal al guardar para Elásticos
+    const [savedToElastics, setSavedToElastics] = useState(false);
 
     const [brackets, setBrackets] = useState({});
     const [bracketWires, setBracketWires] = useState({});
@@ -1993,6 +1830,24 @@ export default function OdontogramSection() {
 
     const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false);
     const [voiceSettings, setVoiceSettings] = useState({ isMuted: false, selectedVoiceURI: '' });
+    const [hasVoiceSupport, setHasVoiceSupport] = useState(false);
+
+    useEffect(() => {
+        const checkVoices = () => {
+            if ('speechSynthesis' in window) {
+                const voices = window.speechSynthesis.getVoices();
+                const spanishVoices = voices.filter(v => v.lang.startsWith('es'));
+                setHasVoiceSupport(spanishVoices.length > 0);
+            } else {
+                setHasVoiceSupport(false);
+            }
+        };
+
+        checkVoices();
+        if ('speechSynthesis' in window && window.speechSynthesis.onvoiceschanged !== undefined) {
+            window.speechSynthesis.onvoiceschanged = checkVoices;
+        }
+    }, []);
 
     useEffect(() => {
         const savedSettingsStr = localStorage.getItem('odontogram_voice_settings');
@@ -2144,9 +1999,61 @@ export default function OdontogramSection() {
         future: []
     }));
     const isUndoRedoAction = useRef(false);
+    const isInitialLoad = useRef(true);
+
+    // ==========================================
+    // Carga inicial del estado persistido (localStorage)
+    // ==========================================
+    useEffect(() => {
+        if (!patientId) return;
+        const STORAGE_KEY = `odontogram_data_${patientId}`;
+        try {
+            const raw = localStorage.getItem(STORAGE_KEY);
+            if (!raw) {
+                isInitialLoad.current = false;
+                return;
+            }
+
+            const parsed = JSON.parse(raw);
+            isUndoRedoAction.current = true; // Evitar que el historial guarde este paso inicial
+            isInitialLoad.current = true;
+
+            // Actualizar todos los estados clínicos
+            if (parsed.toothStates) setToothStates(parsed.toothStates);
+            if (parsed.brackets) setBrackets(parsed.brackets);
+            if (parsed.bracketWires) setBracketWires(parsed.bracketWires);
+            if (parsed.tads) setTads(parsed.tads);
+            if (parsed.tadWires) setTadWires(parsed.tadWires);
+            if (parsed.surfaceStates) setSurfaceStates(parsed.surfaceStates);
+            if (parsed.periodontalData) setPeriodontalData(parsed.periodontalData);
+
+            // Sincronizar historial con los datos cargados
+            setHistoryState({
+                past: [],
+                present: {
+                    toothStates: parsed.toothStates || buildInitialToothStates(),
+                    brackets: parsed.brackets || {},
+                    bracketWires: parsed.bracketWires || {},
+                    tads: parsed.tads || {},
+                    tadWires: parsed.tadWires || {},
+                    surfaceStates: parsed.surfaceStates || {},
+                    periodontalData: parsed.periodontalData || {}
+                },
+                future: []
+            });
+
+            setTimeout(() => {
+                isInitialLoad.current = false;
+            }, 100);
+
+        } catch (err) {
+            console.error('[OdontogramSection] Error al cargar datos persistidos:', err);
+            isInitialLoad.current = false;
+        }
+    }, [patientId]);
 
     useEffect(() => {
-        if (isUndoRedoAction.current) {
+        if (isUndoRedoAction.current || isInitialLoad.current) {
             isUndoRedoAction.current = false;
             return;
         }
@@ -2215,9 +2122,42 @@ export default function OdontogramSection() {
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [handleUndo, handleRedo]);
 
+    // ==========================================
+    // Guardar diseño del odontograma en localStorage para la sección de Elásticos
+    // La clave incluye el patientId para evitar cruce de datos entre pacientes
+    // ==========================================
+    const STORAGE_KEY = patientId ? `odontogram_data_${patientId}` : 'odontogram_data_unknown';
+
+    const handleSaveToElastics = useCallback(() => {
+        try {
+            // Guardamos el estado COMPLETO del odontograma
+            const dataToSave = {
+                toothStates:     historyState.present.toothStates,
+                brackets:        historyState.present.brackets,
+                bracketWires:    historyState.present.bracketWires,
+                tads:            historyState.present.tads,
+                tadWires:        historyState.present.tadWires,
+                surfaceStates:   historyState.present.surfaceStates,
+                periodontalData: historyState.present.periodontalData,
+            };
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
+            setSavedToElastics(true);
+        } catch (err) {
+            console.error('[OdontogramSection] Error al guardar en localStorage:', err);
+        }
+    }, [STORAGE_KEY, historyState.present]);
+
+    // Limpiar el badge "¡Guardado!" después de 2.5 segundos
+    useEffect(() => {
+        if (!savedToElastics) return;
+        const timer = setTimeout(() => setSavedToElastics(false), 2500);
+        return () => clearTimeout(timer);
+    }, [savedToElastics]);
+
     // Store measured widths of frontal teeth
     const [toothWidths, setToothWidths] = useState({});
     const [baseToothWidths, setBaseToothWidths] = useState({});
+
     const handleToothResize = useCallback((id, width) => {
         setToothWidths(prev => {
             if (prev[id] === width) return prev;
@@ -3635,7 +3575,7 @@ export default function OdontogramSection() {
                             {!isBracketMode && "Odontograma Actual"}
                             {isBracketMode && <span className="badge badge-sm badge-info gap-1 font-normal">Modo Ortodoncia (Brackets)</span>}
                             {isTadMode && <span className="badge badge-sm badge-info gap-1 font-normal">Modo Ortodoncia (TADs)</span>}
-                            {isPeriodontalMode && <span className="badge badge-sm badge-error gap-1 font-normal">Bolsas Periodontales</span>}
+                            {/* {isPeriodontalMode && <span className="badge badge-sm badge-error gap-1 font-normal">Bolsas Periodontales</span>} */}
                         </h2>
                         {!isBracketMode && <p className="text-sm text-slate-500 dark:text-slate-400">Vista general del estado dental del paciente.</p>}
                     </div>
@@ -3645,7 +3585,9 @@ export default function OdontogramSection() {
 
                         {/* Checkboxes de Modos y Botón Aplicar a Todos */}
                         <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800/50 rounded-lg p-1 border border-slate-200 dark:border-slate-700 shadow-sm">
-                            <ModeCheckbox label="Bolsas Periodontales" checked={isPeriodontalMode} onChange={(e) => setPeriodontalMode(e.target.checked)} color="red" />
+                            {/*  desactivado temporalmente jhasta quese tenga el priocedimiento bien
+                            <ModeCheckbox label="Bolsas Periodontales" checked={isPeriodontalMode} onChange={(e) => setPeriodontalMode(e.target.checked)} color="red" /> 
+                            */}
                             <ModeCheckbox label="Colocar TADs" checked={isTadMode} onChange={(e) => setTadMode(e.target.checked)} color="sky" />
                             <ModeCheckbox label="Colocar Brackets" checked={isBracketMode} onChange={(e) => setBracketMode(e.target.checked)} color="blue" />
 
@@ -3857,6 +3799,9 @@ export default function OdontogramSection() {
                     setIsResetDialogOpen(true);
                 }}
                 onOpenVoiceSettings={() => setIsVoiceModalOpen(true)}
+                hasVoiceSupport={hasVoiceSupport}
+                onSaveToElastics={handleSaveToElastics}
+                savedToElastics={savedToElastics}
             />
 
             <ClinicalActionModal
@@ -4056,11 +4001,13 @@ export default function OdontogramSection() {
             </AnimatePresence>
 
             {/* Voice Settings Modal */}
-            <VoiceSettingsModal
-                isOpen={isVoiceModalOpen}
-                onClose={() => setIsVoiceModalOpen(false)}
-                onSettingsChange={(settings) => setVoiceSettings(settings)}
-            />
+            {hasVoiceSupport && (
+                <VoiceSettingsModal
+                    isOpen={isVoiceModalOpen}
+                    onClose={() => setIsVoiceModalOpen(false)}
+                    onSettingsChange={(settings) => setVoiceSettings(settings)}
+                />
+            )}
         </motion.div>
     );
 }

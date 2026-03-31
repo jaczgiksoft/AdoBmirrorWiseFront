@@ -184,7 +184,7 @@ export default function EmployeeFormModal({ open, onClose, employee, onSave }) {
                     {/* Nombre y Apellido Paterno */}
                     <div className="grid grid-cols-2 gap-3">
                         <div>
-                            <label className="block text-sm mb-2 text-slate-300">
+                            <label className="block text-sm mb-2 text-slate-600 dark:text-slate-300">
                                 Nombre <span className="text-red-500">*</span>
                             </label>
                             <input
@@ -197,7 +197,7 @@ export default function EmployeeFormModal({ open, onClose, employee, onSave }) {
                             />
                         </div>
                         <div>
-                            <label className="block text-sm mb-2 text-slate-300">
+                            <label className="block text-sm mb-2 text-slate-600 dark:text-slate-300">
                                 Apellido paterno <span className="text-red-500">*</span>
                             </label>
                             <input
@@ -212,7 +212,7 @@ export default function EmployeeFormModal({ open, onClose, employee, onSave }) {
 
                     {/* Apellido Materno */}
                     <div>
-                        <label className="block text-sm mb-2 text-slate-300">Apellido materno</label>
+                        <label className="block text-sm mb-2 text-slate-600 dark:text-slate-300">Apellido materno</label>
                         <input
                             name="second_last_name"
                             placeholder="Apellido materno (opcional)"
@@ -225,7 +225,7 @@ export default function EmployeeFormModal({ open, onClose, employee, onSave }) {
                     {/* Correo y Teléfono */}
                     <div className="grid grid-cols-2 gap-3">
                         <div>
-                            <label className="block text-sm mb-2 text-slate-300">Correo electrónico</label>
+                            <label className="block text-sm mb-2 text-slate-600 dark:text-slate-300">Correo electrónico</label>
                             <input
                                 name="email"
                                 type="email"
@@ -236,7 +236,7 @@ export default function EmployeeFormModal({ open, onClose, employee, onSave }) {
                             />
                         </div>
                         <div>
-                            <label className="block text-sm mb-2 text-slate-300">Teléfono</label>
+                            <label className="block text-sm mb-2 text-slate-600 dark:text-slate-300">Teléfono</label>
                             <input
                                 name="phone"
                                 placeholder="10 dígitos"
@@ -250,7 +250,7 @@ export default function EmployeeFormModal({ open, onClose, employee, onSave }) {
                     {/* Puesto y Estado */}
                     <div className="grid grid-cols-2 gap-3">
                         <div>
-                            <label className="block text-sm mb-2 text-slate-300">Puesto</label>
+                            <label className="block text-sm mb-2 text-slate-600 dark:text-slate-300">Puesto</label>
                             <input
                                 name="position"
                                 placeholder="Ej: Dentista, Asistente..."
@@ -260,12 +260,12 @@ export default function EmployeeFormModal({ open, onClose, employee, onSave }) {
                             />
                         </div>
                         <div>
-                            <label className="block text-sm mb-2 text-slate-300">Estado</label>
+                            <label className="block text-sm mb-2 text-slate-600 dark:text-slate-300">Estado</label>
                             <select
                                 name="status"
                                 value={form.status}
                                 onChange={handleChange}
-                                className="input bg-secondary text-slate-200"
+                                className="input bg-white dark:bg-secondary text-slate-700 dark:text-slate-200"
                             >
                                 <option value="active">Activo</option>
                                 <option value="inactive">Inactivo</option>
@@ -286,7 +286,7 @@ export default function EmployeeFormModal({ open, onClose, employee, onSave }) {
                     </div>
 
                     {/* Imagen de Perfil */}
-                    <div className="flex flex-col items-center gap-3 py-2 bg-slate-800/30 rounded-xl border border-dashed border-slate-700">
+                    <div className="flex flex-col items-center gap-3 py-2 bg-slate-50 dark:bg-slate-800/30 rounded-xl border border-dashed border-slate-200 dark:border-slate-700">
                         <div className="relative group">
                             {preview ? (
                                 <img
@@ -295,7 +295,7 @@ export default function EmployeeFormModal({ open, onClose, employee, onSave }) {
                                     className="w-24 h-24 rounded-full object-cover border-2 border-primary shadow-lg"
                                 />
                             ) : (
-                                <div className="w-24 h-24 rounded-full bg-slate-700 flex items-center justify-center text-slate-500 border-2 border-slate-600">
+                                <div className="w-24 h-24 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-slate-400 dark:text-slate-500 border-2 border-slate-300 dark:border-slate-600">
                                     <UploadCloud size={32} />
                                 </div>
                             )}
@@ -314,7 +314,7 @@ export default function EmployeeFormModal({ open, onClose, employee, onSave }) {
                     </div>
 
                     {/* Roles del Empleado */}
-                    <div className="p-4 bg-slate-800/20 rounded-xl border border-slate-700/50">
+                    <div className="p-4 bg-slate-50 dark:bg-slate-800/20 rounded-xl border border-slate-200 dark:border-slate-700/50">
                         <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-2">
                             Roles del empleado
                             {loadingRoles && <span className="loading loading-spinner loading-xs text-primary"></span>}
@@ -331,7 +331,7 @@ export default function EmployeeFormModal({ open, onClose, employee, onSave }) {
                                             onChange={() => handleRoleChange(role.id)}
                                             className="w-4 h-4 rounded border-slate-700 bg-secondary text-primary accent-primary cursor-pointer"
                                         />
-                                        <label htmlFor={`role-${role.id}`} className="text-sm text-slate-300 cursor-pointer select-none">
+                                        <label htmlFor={`role-${role.id}`} className="text-sm text-slate-600 dark:text-slate-300 cursor-pointer select-none">
                                             {role.name}
                                         </label>
                                     </div>
@@ -352,7 +352,7 @@ export default function EmployeeFormModal({ open, onClose, employee, onSave }) {
                             onChange={handleChange}
                             className="w-4 h-4 rounded border-slate-700 bg-secondary text-primary accent-primary cursor-pointer"
                         />
-                        <label htmlFor="is_appointment_eligible" className="text-sm text-slate-300 cursor-pointer">
+                        <label htmlFor="is_appointment_eligible" className="text-sm text-slate-600 dark:text-slate-300 cursor-pointer">
                             Es elegible para citas / atiende pacientes
                         </label>
                     </div>
@@ -362,7 +362,7 @@ export default function EmployeeFormModal({ open, onClose, employee, onSave }) {
                         <button
                             type="button"
                             onClick={handleAttemptClose}
-                            className="px-4 py-2 rounded-lg bg-slate-700 text-slate-200 hover:bg-slate-600 transition cursor-pointer text-sm font-medium"
+                            className="px-4 py-2 rounded-lg bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-300 dark:hover:bg-slate-600 transition cursor-pointer text-sm font-medium"
                         >
                             Cancelar
                         </button>

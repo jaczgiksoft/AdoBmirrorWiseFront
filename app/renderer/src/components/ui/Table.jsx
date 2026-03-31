@@ -29,17 +29,17 @@ export default function Table({
 
     if (!data || data.length === 0) {
         return (
-            <div className="text-center py-10 text-slate-400 text-sm border border-dashed border-slate-700 rounded-xl">
+            <div className="text-center py-10 text-slate-500 text-sm border border-dashed border-slate-300 dark:border-slate-700 rounded-xl">
                 {emptyMessage}
             </div>
         );
     }
 
     return (
-        <div className="w-full overflow-x-auto rounded-xl border border-slate-700 bg-secondary">
+        <div className="w-full overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-secondary">
             <table className="w-full text-left border-collapse text-sm">
                 <thead>
-                    <tr className="border-b border-slate-700 bg-slate-800/50 text-primary">
+                    <tr className="border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 text-primary">
                         {columns.map((col, index) => {
                             const isSortable = col.sortable && onSort;
                             const isSorted = sortConfig?.key === col.accessor;
@@ -48,7 +48,7 @@ export default function Table({
                             return (
                                 <th 
                                     key={index} 
-                                    className={`px-5 py-3 font-medium whitespace-nowrap ${isSortable ? "cursor-pointer select-none hover:bg-slate-700/30 transition-colors" : ""}`}
+                                    className={`px-5 py-3 font-medium whitespace-nowrap ${isSortable ? "cursor-pointer select-none hover:bg-slate-200/50 dark:hover:bg-slate-700/30 transition-colors" : ""}`}
                                     onClick={() => isSortable && onSort(col.accessor)}
                                 >
                                     <div className="flex items-center gap-2">
@@ -75,10 +75,10 @@ export default function Table({
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ duration: 0.2, delay: rowIndex * 0.03 }}
                             key={row.id || rowIndex}
-                            className="border-b border-slate-700/50 hover:bg-slate-800/30 transition-colors group"
+                            className="border-b border-slate-100 dark:border-slate-700/50 hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors group"
                         >
                             {columns.map((col, colIndex) => (
-                                <td key={colIndex} className="px-5 py-3 whitespace-nowrap text-slate-200">
+                                <td key={colIndex} className="px-5 py-3 whitespace-nowrap text-slate-700 dark:text-slate-200">
                                     {col.render ? col.render(row) : row[col.accessor]}
                                 </td>
                             ))}

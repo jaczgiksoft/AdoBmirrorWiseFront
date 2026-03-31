@@ -215,7 +215,7 @@ export default function ServiceList() {
     }
 
     return (
-        <div className="bg-dark flex flex-col font-sans text-slate-50 h-full">
+        <div className="bg-slate-50 dark:bg-dark flex flex-col font-sans text-slate-900 dark:text-slate-50 h-full">
             <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -226,7 +226,7 @@ export default function ServiceList() {
                 <div className="flex items-center gap-4 mb-6 flex-wrap">
                     <button
                         onClick={() => navigate("/dashboard")}
-                        className="flex items-center gap-1 text-slate-400 hover:text-white transition cursor-pointer"
+                        className="flex items-center gap-1 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white transition cursor-pointer"
                         title="Ir al panel principal"
                     >
                         <Home size={18} />
@@ -238,7 +238,7 @@ export default function ServiceList() {
                     </h1>
 
                     {/* 🔍 Buscar */}
-                    <div className="relative flex items-center bg-secondary rounded-lg border border-slate-700 w-64">
+                    <div className="relative flex items-center bg-white dark:bg-secondary rounded-lg border border-slate-200 dark:border-slate-700 w-64">
                         <Search size={16} className="absolute left-2 text-slate-400" />
                         <input
                             ref={searchRef}
@@ -246,7 +246,7 @@ export default function ServiceList() {
                             placeholder="Buscar servicio..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full pl-8 pr-3 py-1.5 bg-transparent text-slate-200 text-sm outline-none placeholder:text-slate-500"
+                            className="w-full pl-8 pr-3 py-1.5 bg-transparent text-slate-800 dark:text-slate-200 text-sm outline-none placeholder:text-slate-400 dark:placeholder:text-slate-500"
                         />
                     </div>
 
@@ -265,7 +265,7 @@ export default function ServiceList() {
 
                 {/* 📋 Tabla / Lista */}
                 {services.length === 0 ? (
-                    <div className="text-center py-20 bg-secondary/30 rounded-2xl border border-dashed border-slate-700">
+                    <div className="text-center py-20 bg-white dark:bg-secondary/30 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700">
                         <Stethoscope className="mx-auto text-slate-600 mb-2" size={40} />
                         <p className="text-slate-400 mb-1">No se encontraron servicios.</p>
                         <p className="text-xs text-slate-500">Intenta otra búsqueda o agrega uno nuevo.</p>
@@ -280,8 +280,8 @@ export default function ServiceList() {
                                     layoutId={`service-${service.id}`}
                                     onClick={() => handleEditClick(service)}
                                     // Borde condicional
-                                    className={`relative flex items-center justify-between bg-secondary rounded-xl px-4 py-3 cursor-pointer border transition-all group overflow-hidden
-                                        ${isSelected ? "border-primary ring-1 ring-primary/40" : "border-slate-700 hover:border-slate-500"}
+                                    className={`relative flex items-center justify-between bg-white dark:bg-secondary rounded-xl px-4 py-3 cursor-pointer border transition-all group overflow-hidden
+                                        ${isSelected ? "border-primary ring-1 ring-primary/40" : "border-slate-200 dark:border-slate-700 hover:border-slate-400 dark:hover:border-slate-500"}
                                     `}
                                 >
                                     {/* Indicador de color lateral */}
@@ -291,11 +291,11 @@ export default function ServiceList() {
                                     />
 
                                     <div className="flex items-center gap-4 ml-2">
-                                        <div className="w-10 h-10 rounded-full bg-dark/50 flex items-center justify-center text-slate-400 border border-slate-700">
+                                        <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-dark/50 flex items-center justify-center text-slate-400 border border-slate-200 dark:border-slate-700">
                                             <Stethoscope size={20} style={{ color: service.color }} />
                                         </div>
                                         <div>
-                                            <p className="font-semibold text-slate-100">{service.name}</p>
+                                            <p className="font-semibold text-slate-900 dark:text-slate-100">{service.name}</p>
                                             <div className="flex items-center gap-3 text-xs text-slate-400 mt-0.5">
                                                 <span className="flex items-center gap-1">
                                                     <Clock size={12} />
@@ -317,7 +317,7 @@ export default function ServiceList() {
 
                                     <div className="flex items-center gap-6">
                                         <div className="text-right">
-                                            <p className="font-bold text-slate-200 flex items-center justify-end gap-0.5">
+                                            <p className="font-bold text-slate-900 dark:text-slate-200 flex items-center justify-end gap-0.5">
                                                 <span className="text-slate-500 text-xs font-normal">$</span>
                                                 {Number(service.price).toFixed(2)}
                                             </p>
@@ -332,7 +332,7 @@ export default function ServiceList() {
                                         <div className={`flex items-center gap-2 transition-opacity ${isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
                                             <button
                                                 onClick={(e) => { e.stopPropagation(); handleEditClick(service); }}
-                                                className="p-2 hover:bg-slate-700 rounded-lg text-slate-400 hover:text-white transition"
+                                                className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg text-slate-400 hover:text-slate-800 dark:hover:text-white transition"
                                                 title="Editar"
                                             >
                                                 <Edit2 size={16} />

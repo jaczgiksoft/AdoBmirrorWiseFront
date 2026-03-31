@@ -202,7 +202,7 @@ export default function ServiceForm({ open, onClose, onSaved, serviceToEdit = nu
                     animate={{ scale: 1, opacity: 1 }}
                     exit={{ scale: 0.95, opacity: 0 }}
                     transition={{ duration: 0.2 }}
-                    className="bg-secondary rounded-2xl shadow-xl border border-slate-700 w-[600px] max-h-[90vh] overflow-y-auto p-6"
+                    className="bg-white dark:bg-secondary rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 w-[600px] max-h-[90vh] overflow-y-auto p-6"
                 >
                     {/* Encabezado */}
                     <div className="flex justify-between items-center mb-6">
@@ -211,7 +211,7 @@ export default function ServiceForm({ open, onClose, onSaved, serviceToEdit = nu
                         </h2>
                         <button
                             onClick={() => (form.name ? setConfirmCancel(true) : handleExit())}
-                            className="text-slate-400 hover:text-white transition cursor-pointer"
+                            className="text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white transition cursor-pointer"
                         >
                             <X size={20} />
                         </button>
@@ -299,9 +299,9 @@ export default function ServiceForm({ open, onClose, onSaved, serviceToEdit = nu
                         </div>
 
                         {/* Unidades (Opcional) */}
-                        <div className="grid grid-cols-2 gap-3 bg-dark/30 p-3 rounded-lg border border-slate-700/50">
+                        <div className="grid grid-cols-2 gap-3 bg-slate-50 dark:bg-dark/30 p-3 rounded-lg border border-slate-200 dark:border-slate-700/50">
                             <div>
-                                <label className="block text-xs mb-1 text-slate-400">Unidades sugeridas</label>
+                                <label className="block text-xs mb-1 text-slate-500 dark:text-slate-400">Unidades sugeridas</label>
                                 <input
                                     type="number"
                                     name="suggested_units"
@@ -312,7 +312,7 @@ export default function ServiceForm({ open, onClose, onSaved, serviceToEdit = nu
                                 />
                             </div>
                             <div>
-                                <label className="block text-xs mb-1 text-slate-400">Valor por unidad</label>
+                                <label className="block text-xs mb-1 text-slate-500 dark:text-slate-400">Valor por unidad</label>
                                 <input
                                     type="number"
                                     name="unit_value"
@@ -330,7 +330,7 @@ export default function ServiceForm({ open, onClose, onSaved, serviceToEdit = nu
                         {/* Datos Fiscales (Simples) */}
                         <div className="grid grid-cols-2 gap-3">
                             <div>
-                                <label className="block text-sm mb-1">Código SAT</label>
+                                <label className="block text-sm mb-1 text-slate-700 dark:text-slate-300">Código SAT</label>
                                 <input
                                     name="sat_code"
                                     placeholder="Ej. 85122000"
@@ -340,7 +340,7 @@ export default function ServiceForm({ open, onClose, onSaved, serviceToEdit = nu
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm mb-1">Uso CFDI</label>
+                                <label className="block text-sm mb-1 text-slate-700 dark:text-slate-300">Uso CFDI</label>
                                 <input
                                     name="cfdi_usage"
                                     placeholder="Ej. D01"
@@ -352,7 +352,7 @@ export default function ServiceForm({ open, onClose, onSaved, serviceToEdit = nu
                         </div>
 
                         {/* Toggles */}
-                        <div className="flex flex-col sm:flex-row gap-6 mt-4 p-4 bg-slate-800/30 rounded-xl border border-slate-700/50">
+                        <div className="flex flex-col sm:flex-row gap-6 mt-4 p-4 bg-slate-50 dark:bg-slate-800/30 rounded-xl border border-slate-200 dark:border-slate-700/50">
                             <label className="flex items-center gap-3 cursor-pointer group select-none">
                                 <div className="relative">
                                     <input
@@ -375,7 +375,7 @@ export default function ServiceForm({ open, onClose, onSaved, serviceToEdit = nu
                                         peer-checked:translate-x-5 shadow-sm
                                     "></div>
                                 </div>
-                                <span className="text-sm font-medium text-slate-400 group-hover:text-slate-200 transition-colors">
+                                <span className="text-sm font-medium text-slate-500 dark:text-slate-400 group-hover:text-slate-800 dark:group-hover:text-slate-200 transition-colors">
                                     Requiere inventario
                                 </span>
                             </label>
@@ -402,7 +402,7 @@ export default function ServiceForm({ open, onClose, onSaved, serviceToEdit = nu
                                         peer-checked:translate-x-5 shadow-sm
                                     "></div>
                                 </div>
-                                <span className="text-sm font-medium text-slate-400 group-hover:text-slate-200 transition-colors">
+                                <span className="text-sm font-medium text-slate-500 dark:text-slate-400 group-hover:text-slate-800 dark:group-hover:text-slate-200 transition-colors">
                                     Es deducible
                                 </span>
                             </label>
@@ -410,11 +410,11 @@ export default function ServiceForm({ open, onClose, onSaved, serviceToEdit = nu
                     </div>
 
                     {/* Botones */}
-                    <div className="flex justify-end gap-3 mt-8 pt-4 border-t border-slate-700">
+                    <div className="flex justify-end gap-3 mt-8 pt-4 border-t border-slate-100 dark:border-slate-700">
                         <button
                             type="button"
                             onClick={() => (form.name ? setConfirmCancel(true) : handleExit())}
-                            className="px-4 py-2 rounded-lg bg-slate-700 text-slate-200 hover:bg-slate-600 transition cursor-pointer font-medium text-sm"
+                            className="px-4 py-2 rounded-lg bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-300 dark:hover:bg-slate-600 transition cursor-pointer font-medium text-sm"
                         >
                             Cancelar
                         </button>

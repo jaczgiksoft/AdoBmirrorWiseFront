@@ -164,7 +164,7 @@ export default function ClinicAreaForm({ open, onClose, onSaved, itemToEdit = nu
                     animate={{ scale: 1, opacity: 1 }}
                     exit={{ scale: 0.95, opacity: 0 }}
                     transition={{ duration: 0.2 }}
-                    className="bg-secondary rounded-2xl shadow-xl border border-slate-700 w-[500px] max-h-[90vh] overflow-y-auto p-6"
+                    className="bg-white dark:bg-secondary rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 w-[500px] max-h-[90vh] overflow-y-auto p-6"
                 >
                     {/* Encabezado */}
                     <div className="flex justify-between items-center mb-6">
@@ -173,7 +173,7 @@ export default function ClinicAreaForm({ open, onClose, onSaved, itemToEdit = nu
                         </h2>
                         <button
                             onClick={() => (form.name ? setConfirmCancel(true) : handleExit())}
-                            className="text-slate-400 hover:text-white transition cursor-pointer"
+                            className="text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white transition cursor-pointer"
                         >
                             <X size={20} />
                         </button>
@@ -184,7 +184,7 @@ export default function ClinicAreaForm({ open, onClose, onSaved, itemToEdit = nu
 
                         {/* Nombre */}
                         <div>
-                            <label className="block text-sm mb-1 label-required">Nombre del área</label>
+                            <label className="block text-sm mb-1 label-required text-slate-700 dark:text-slate-300">Nombre del área</label>
                             <input
                                 ref={firstRef}
                                 name="name"
@@ -198,7 +198,7 @@ export default function ClinicAreaForm({ open, onClose, onSaved, itemToEdit = nu
 
                         {/* Estatus */}
                         <div>
-                            <label className="block text-sm mb-1 text-slate-400">Estado</label>
+                            <label className="block text-sm mb-1 text-slate-500 dark:text-slate-400">Estado</label>
                             <select
                                 name="status"
                                 value={form.status}
@@ -213,11 +213,11 @@ export default function ClinicAreaForm({ open, onClose, onSaved, itemToEdit = nu
                     </div>
 
                     {/* Botones */}
-                    <div className="flex justify-end gap-3 mt-8 pt-4 border-t border-slate-700">
+                    <div className="flex justify-end gap-3 mt-8 pt-4 border-t border-slate-100 dark:border-slate-700">
                         <button
                             type="button"
                             onClick={() => (form.name ? setConfirmCancel(true) : handleExit())}
-                            className="px-4 py-2 rounded-lg bg-slate-700 text-slate-200 hover:bg-slate-600 transition cursor-pointer font-medium text-sm"
+                            className="px-4 py-2 rounded-lg bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-300 dark:hover:bg-slate-600 transition cursor-pointer font-medium text-sm"
                         >
                             Cancelar
                         </button>

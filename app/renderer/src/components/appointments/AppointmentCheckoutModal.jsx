@@ -95,7 +95,7 @@ export default function AppointmentCheckoutModal({
                                 </div>
                                 <div>
                                     <h2 className="text-lg font-bold text-slate-800 dark:text-white">
-                                        Checkout / Cobro
+                                        Checkout / Pago de servicio
                                     </h2>
                                     <p className="text-xs text-slate-400">{patientName}</p>
                                 </div>
@@ -122,7 +122,7 @@ export default function AppointmentCheckoutModal({
                             {/* LEFT 35% — Charge Breakdown */}
                             <div className="w-[35%] border-r border-slate-100 dark:border-slate-800 overflow-y-auto p-5 bg-slate-50/50 dark:bg-slate-800/20 shrink-0">
                                 <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">
-                                    Desglose de Cobro
+                                    Desglose de Pago
                                 </h3>
                                 <ChargeBreakdown
                                     baseAmount={co.baseAmount}

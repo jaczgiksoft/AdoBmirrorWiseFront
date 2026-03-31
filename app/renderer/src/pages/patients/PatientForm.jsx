@@ -258,6 +258,7 @@ export default function PatientForm({ open, onClose, onCreated, patientType }) {
                 "genre",
                 "birth_date",
                 "phone_number",
+                "email",
             ];
 
             required.forEach((f) => {
@@ -337,10 +338,23 @@ export default function PatientForm({ open, onClose, onCreated, patientType }) {
             handleExit();
             onCreated?.();
         } catch (err) {
+            // 1. Extraemos de forma segura la respuesta de Axios (o el objeto vacío si falla la red)
+            const responseData = err || {};
+            let errorTitle = "Error al registrar paciente";
+
+            // 2. Tomamos el mensaje general ("Errores de validación" según tu JSON)
+            let errorMsg = responseData.message || "No se pudo registrar.";
+
+            // 3. Verificamos si existe un arreglo 'errors' y si tiene al menos un elemento
+            if (Array.isArray(responseData.errors) && responseData.errors.length > 0) {
+                // 4. Sobre-escribimos el mensaje general con el 'message' del primer error (índice 0)
+                errorMsg = responseData.errors[0].message;
+            }
+
             addToast({
                 type: "error",
-                title: "Error al registrar paciente",
-                message: err.response?.data?.message || "No se pudo registrar.",
+                title: errorTitle,
+                message: errorMsg,
             });
         } finally {
             setSaving(false);
@@ -412,13 +426,13 @@ export default function PatientForm({ open, onClose, onCreated, patientType }) {
                             className={`
         flex items-start gap-3 text-left group transition-all duration-200
         ${active
-                                ? "text-primary"
-                                : "text-slate-600 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
-                            }
+                                    ? "text-primary"
+                                    : "text-slate-600 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
+                                }
     `}
                         >
 
-                        {/* CONTENEDOR DEL NÚMERO */}
+                            {/* CONTENEDOR DEL NÚMERO */}
                             <div className="relative mt-1">
                                 {/* PULSO EXTERNO */}
                                 {active && (
@@ -435,26 +449,25 @@ export default function PatientForm({ open, onClose, onCreated, patientType }) {
                                     className={`
                             relative w-7 h-7 flex items-center justify-center rounded-md text-xs font-semibold
                             transition-all duration-200
-                    ${
-                                        active
+                    ${active
                                             ? "bg-primary text-white"
                                             : "bg-slate-200 text-slate-700 hover:bg-slate-300 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600"
-                                    }
+                                        }
 
                         `}
                                 >
-                                    { visibleIndex }
+                                    {visibleIndex}
                                 </div>
                             </div>
 
                             {/* TEXTO */}
                             <div className="flex flex-col">
-                    <span
-                        className={`
+                                <span
+                                    className={`
         text-sm font-semibold transition-all duration-200
         ${active ? "text-primary" : ""}
     `}
-                    >
+                                >
                                     {s.title}
                                 </span>
 
@@ -463,9 +476,9 @@ export default function PatientForm({ open, onClose, onCreated, patientType }) {
                                     className={`
                                         text-xs transition-all duration-200
                                         ${active
-                                        ? "text-slate-700 dark:text-slate-300"
-                                        : "text-slate-500 dark:text-slate-500"
-                                    }
+                                            ? "text-slate-700 dark:text-slate-300"
+                                            : "text-slate-500 dark:text-slate-500"
+                                        }
                                     `}
                                 >
                                     {s.desc}
@@ -628,8 +641,8 @@ export default function PatientForm({ open, onClose, onCreated, patientType }) {
                                     <label className="text-sm label-required">Fecha de nacimiento</label>
                                     {form.birth_date && (
                                         <span className="text-xs text-primary font-medium">
-                                {calculateAge(form.birth_date)}
-                            </span>
+                                            {calculateAge(form.birth_date)}
+                                        </span>
                                     )}
                                 </div>
 
@@ -700,7 +713,7 @@ export default function PatientForm({ open, onClose, onCreated, patientType }) {
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm mb-1">Correo</label>
+                                <label className="block text-sm mb-1 label-required">Correo</label>
                                 <input
                                     name="email"
                                     placeholder="correo@ejemplo.com"
@@ -1056,8 +1069,8 @@ export default function PatientForm({ open, onClose, onCreated, patientType }) {
                                                     key={idx}
                                                     className="px-2 py-1 text-xs rounded-full bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 flex items-center gap-1"
                                                 >
-                        <span>👤</span> {rep.full_name}
-                    </span>
+                                                    <span>👤</span> {rep.full_name}
+                                                </span>
                                             ))}
                                         </div>
                                     )}
@@ -1073,14 +1086,13 @@ export default function PatientForm({ open, onClose, onCreated, patientType }) {
                                             {form.alerts.map((a, idx) => (
                                                 <span
                                                     key={idx}
-                                                    className={`px-2 py-1 text-xs rounded-full flex items-center gap-1 ${
-                                                        a.is_admin_alert
-                                                            ? "bg-yellow-200 text-yellow-800"
-                                                            : "bg-red-200 text-red-800"
-                                                    }`}
+                                                    className={`px-2 py-1 text-xs rounded-full flex items-center gap-1 ${a.is_admin_alert
+                                                        ? "bg-yellow-200 text-yellow-800"
+                                                        : "bg-red-200 text-red-800"
+                                                        }`}
                                                 >
-                        {a.is_admin_alert ? "⚠️" : "🩺"} {a.title}
-                    </span>
+                                                    {a.is_admin_alert ? "⚠️" : "🩺"} {a.title}
+                                                </span>
                                             ))}
                                         </div>
                                     )}
@@ -1098,13 +1110,13 @@ export default function PatientForm({ open, onClose, onCreated, patientType }) {
                                                     key={idx}
                                                     className={`px-2 py-1 text-xs rounded-full bg-cyan-200 text-cyan-800 flex items-center gap-1`}
                                                 >
-                        🧾 {b.business_name}
+                                                    🧾 {b.business_name}
                                                     {b.is_primary && (
                                                         <span className="text-[10px] bg-primary text-white px-1 rounded">
-                                Principal
-                            </span>
+                                                            Principal
+                                                        </span>
                                                     )}
-                    </span>
+                                                </span>
                                             ))}
                                         </div>
                                     )}
@@ -1272,8 +1284,8 @@ export default function PatientForm({ open, onClose, onCreated, patientType }) {
                                 Registrar nuevo paciente
                                 {patientType && (
                                     <span className="text-slate-400 text-sm">
-                        — {patientType === "prospecto" ? "Prospecto" : "Consulta única"}
-                    </span>
+                                        — {patientType === "prospecto" ? "Prospecto" : "Consulta única"}
+                                    </span>
                                 )}
                             </h2>
 
