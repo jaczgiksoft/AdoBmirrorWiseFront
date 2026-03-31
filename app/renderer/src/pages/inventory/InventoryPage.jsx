@@ -57,9 +57,10 @@ export default function InventoryPage() {
     const filteredItems = items.filter(item => {
         const matchesCategory = selectedCategory === "All" || item.category === selectedCategory;
         const searchLow = searchTerm.toLowerCase();
-        const matchesSearch = item.name.toLowerCase().includes(searchLow) ||
-            item.category.toLowerCase().includes(searchLow) ||
-            (item.notes && item.notes.toLowerCase().includes(searchLow));
+        const matchesSearch = 
+            (item.name?.toLowerCase().includes(searchLow)) ||
+            (item.category?.toLowerCase().includes(searchLow)) ||
+            (item.notes?.toLowerCase().includes(searchLow));
 
         return matchesCategory && matchesSearch;
     });
@@ -69,9 +70,9 @@ export default function InventoryPage() {
         // Search filter
         const searchLow = searchTerm.toLowerCase();
         const matchesSearch =
-            mov.itemName.toLowerCase().includes(searchLow) ||
-            (mov.itemSku && mov.itemSku.toLowerCase().includes(searchLow)) ||
-            mov.type.toLowerCase().includes(searchLow);
+            (mov.itemName?.toLowerCase().includes(searchLow)) ||
+            (mov.itemSku?.toLowerCase().includes(searchLow)) ||
+            (mov.type?.toLowerCase().includes(searchLow));
 
         // Date range filter
         let matchesDate = true;
@@ -89,10 +90,10 @@ export default function InventoryPage() {
     // Derived filtered providers (Search)
     const filteredProviders = providers.filter(prov => {
         const searchLow = searchTerm.toLowerCase();
-        return prov.name.toLowerCase().includes(searchLow) ||
-            (prov.rfc && prov.rfc.toLowerCase().includes(searchLow)) ||
-            (prov.contactName && prov.contactName.toLowerCase().includes(searchLow)) ||
-            (prov.notes && prov.notes.toLowerCase().includes(searchLow));
+        return (prov.name?.toLowerCase().includes(searchLow)) ||
+            (prov.rfc?.toLowerCase().includes(searchLow)) ||
+            (prov.contactName?.toLowerCase().includes(searchLow)) ||
+            (prov.notes?.toLowerCase().includes(searchLow));
     });
 
     // Handlers

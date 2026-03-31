@@ -10,56 +10,69 @@ export default function Settings() {
     const navigate = useNavigate();
     const { user } = useAuthStore();
 
+    const TABS = ["Generales", "Tenat", "Usuarios", "Pacientes"];
+    const [activeTab, setActiveTab] = useState("Generales");
+
     const SETTINGS_MENU = [
         {
             icon: <UserCog size={28} />,
             label: "Usuarios y Roles",
             description: "Gestiona usuarios, permisos y roles del sistema.",
             path: "/configuracion/usuarios",
+            category: "Usuarios",
         },
         {
             icon: <Database size={28} />,
             label: "Departamentos",
             description: "Gestiona los departamentos y sus márgenes por tienda.",
             path: "/settings/departments",
+            category: "Tenat",
         },
         {
             icon: <Database size={28} />,
             label: "Base de Datos",
             description: "Respaldo, restauración y mantenimiento de datos.",
             path: "/configuracion/database",
+            category: "Generales",
         },
         {
             icon: <Bell size={28} />,
             label: "Notificaciones",
             description: "Personaliza alertas y sonidos del sistema.",
             path: "/configuracion/notificaciones",
+            category: "Generales",
         },
         {
             icon: <Shield size={28} />,
             label: "Seguridad",
             description: "Opciones de bloqueo, auditoría y privacidad.",
             path: "/configuracion/seguridad",
+            category: "Generales",
         },
         {
             icon: <Wrench size={28} />,
             label: "Preferencias del Sistema",
             description: "Tema, idioma, formato de fecha y apariencia.",
             path: "/configuracion/preferencias",
+            category: "Generales",
         },
         {
             icon: <Briefcase size={28} />,
             label: "Servicios",
             description: "Gestiona los servicios y tratamientos ofrecidos.",
             path: "/services",
+            category: "Pacientes",
         },
         {
             icon: <Layout size={28} />,
             label: "Áreas Clínicas",
             description: "Configura los consultorios y áreas de atención.",
             path: "/clinic-areas",
+            category: "Tenat",
         },
     ];
+
+    const filteredMenu = SETTINGS_MENU.filter(item => item.category === activeTab);
 
     const [selectedIndex, setSelectedIndex] = useState(0);
 
@@ -74,7 +87,7 @@ export default function Settings() {
             arrowright: (e) => {
                 e.preventDefault();
                 setSelectedIndex((prev) =>
-                    prev + 1 < SETTINGS_MENU.length ? prev + 1 : 0
+                    prev + 1 < filteredMenu.length ? prev + 1 : 0
                 );
             },
 
@@ -82,7 +95,7 @@ export default function Settings() {
             arrowleft: (e) => {
                 e.preventDefault();
                 setSelectedIndex((prev) =>
-                    prev - 1 >= 0 ? prev - 1 : SETTINGS_MENU.length - 1
+                    prev - 1 >= 0 ? prev - 1 : filteredMenu.length - 1
                 );
             },
 
@@ -91,7 +104,7 @@ export default function Settings() {
                 e.preventDefault();
                 setSelectedIndex((prev) => {
                     const next = prev + COLUMNS;
-                    return next < SETTINGS_MENU.length ? next : prev;
+                    return next < filteredMenu.length ? next : prev;
                 });
             },
 
@@ -104,13 +117,21 @@ export default function Settings() {
                 });
             },
 
+            // Tab keys (1, 2, 3, 4)
+            1: (e) => { console.log("Tab 1 - Generales"); e.preventDefault(); setActiveTab("Generales"); setSelectedIndex(0); },
+            2: (e) => { console.log("Tab 2 - Tenat"); e.preventDefault(); setActiveTab("Tenat"); setSelectedIndex(0); },
+            3: (e) => { console.log("Tab 3 - Usuarios"); e.preventDefault(); setActiveTab("Usuarios"); setSelectedIndex(0); },
+            4: (e) => { console.log("Tab 4 - Pacientes"); e.preventDefault(); setActiveTab("Pacientes"); setSelectedIndex(0); },
+
             // Enter → abrir el módulo seleccionado
             enter: (e) => {
                 e.preventDefault();
-                navigate(SETTINGS_MENU[selectedIndex].path);
+                if (filteredMenu[selectedIndex]) {
+                    navigate(filteredMenu[selectedIndex].path);
+                }
             },
         },
-        [selectedIndex]
+        [selectedIndex, filteredMenu, activeTab]
     );
 
     useEffect(() => {
@@ -139,33 +160,62 @@ export default function Settings() {
                     </h1>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {SETTINGS_MENU.map((item, index) => {
-                        const isSelected = index === selectedIndex;
-                        return (
-                            <motion.div
-                                key={index}
-                                whileHover={{ scale: 1.03 }}
-                                whileTap={{ scale: 0.97 }}
-                                onClick={() => navigate(item.path)}
-                                className={`bg-white dark:bg-secondary rounded-2xl p-5 cursor-pointer border transition-all shadow-soft
-                                    ${isSelected
-                                        ? "border-primary shadow-hard ring-2 ring-primary/40"
-                                        : "border-slate-200 hover:border-primary dark:border-slate-700"
-                                    }`}
-                            >
-                                <div className="flex items-center gap-3 mb-2">
-                                    <div className="text-primary">{item.icon}</div>
-                                    <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-50">{item.label}</h2>
-                                </div>
-                                <p className="text-sm text-slate-500 dark:text-slate-400">{item.description}</p>
-                            </motion.div>
-                        );
-                    })}
+                {/* TAB NAVIGATION */}
+                <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800/50 p-1 rounded-xl border border-slate-200 dark:border-slate-700 w-fit mb-8">
+                    {TABS.map((tab) => (
+                        <button
+                            key={tab}
+                            onClick={() => {
+                                setActiveTab(tab);
+                                setSelectedIndex(0);
+                            }}
+                            className={`px-6 py-2.5 rounded-lg text-sm font-bold transition-all ${activeTab === tab
+                                ? "bg-white dark:bg-slate-700 text-primary shadow-sm"
+                                : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                                }`}
+                        >
+                            {tab}
+                        </button>
+                    ))}
                 </div>
 
-                <p className="text-center text-xs text-slate-400 dark:text-slate-500 mt-6">
-                    Usa las flechas ← → ↑ ↓ para moverte y Enter para abrir
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {filteredMenu.length > 0 ? (
+                        filteredMenu.map((item, index) => {
+                            const isSelected = index === selectedIndex;
+                            return (
+                                <motion.div
+                                    key={item.label}
+                                    layout
+                                    initial={{ opacity: 0, scale: 0.95 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    exit={{ opacity: 0, scale: 0.95 }}
+                                    whileHover={{ scale: 1.03 }}
+                                    whileTap={{ scale: 0.97 }}
+                                    onClick={() => navigate(item.path)}
+                                    className={`bg-white dark:bg-secondary rounded-2xl p-5 cursor-pointer border transition-all shadow-soft
+                                        ${isSelected
+                                            ? "border-primary shadow-hard ring-2 ring-primary/40"
+                                            : "border-slate-200 hover:border-primary dark:border-slate-700"
+                                        }`}
+                                >
+                                    <div className="flex items-center gap-3 mb-2">
+                                        <div className="text-primary">{item.icon}</div>
+                                        <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-50">{item.label}</h2>
+                                    </div>
+                                    <p className="text-sm text-slate-500 dark:text-slate-400">{item.description}</p>
+                                </motion.div>
+                            );
+                        })
+                    ) : (
+                        <div className="col-span-full py-12 text-center text-slate-400 dark:text-slate-600 font-medium italic">
+                            No hay configuraciones en esta categoría todavía.
+                        </div>
+                    )}
+                </div>
+
+                <p className="text-center text-xs text-slate-400 dark:text-slate-500 mt-8">
+                    Usa las flechas ← → ↑ ↓ para moverte y Enter para abrir. Atajos: 1-Generales, 2-Tenat, 3-Usuarios, 4-Pacientes.
                 </p>
             </motion.div>
         </div>
