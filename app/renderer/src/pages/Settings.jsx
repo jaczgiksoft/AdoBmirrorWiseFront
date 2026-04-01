@@ -16,9 +16,9 @@ export default function Settings() {
     const SETTINGS_MENU = [
         {
             icon: <UserCog size={28} />,
-            label: "Usuarios y Roles",
-            description: "Gestiona usuarios, permisos y roles del sistema.",
-            path: "/settings/users",
+            label: "Roles",
+            description: "Gestiona roles y permisos del sistema.",
+            path: "/settings/roles",
             category: "Usuarios",
         },
         {
