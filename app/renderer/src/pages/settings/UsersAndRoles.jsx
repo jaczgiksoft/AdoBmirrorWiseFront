@@ -14,20 +14,20 @@ export default function UsersAndRoles() {
             icon: <Users size={28} />,
             label: "Gestión de Usuarios",
             description: "Crea, edita y administra los usuarios del sistema.",
-            path: "/configuracion/usuarios/listado",
+            path: "/users",
         },
         {
             icon: <ShieldCheck size={28} />,
             label: "Roles y Permisos",
             description: "Define roles y asigna permisos por módulo.",
-            path: "/configuracion/usuarios/roles",
+            path: "/settings/roles",
         },
     ];
 
     // 🔹 Atajos de teclado
     useHotkeys(
         {
-            escape: () => navigate("/configuracion"), // volver a Configuración
+            escape: () => navigate("/settings"), // volver a Configuración
             arrowright: (e) => {
                 e.preventDefault();
                 setSelectedIndex((prev) => (prev + 1) % MENU.length);
@@ -66,7 +66,7 @@ export default function UsersAndRoles() {
             >
                 <div className="flex items-center gap-4 mb-6">
                     <button
-                        onClick={() => navigate("/configuracion")}
+                        onClick={() => navigate("/settings")}
                         className="flex items-center gap-1 text-slate-400 hover:text-white transition text-sm leading-none mt-[2px] cursor-pointer"
                     >
                         <ChevronLeft size={16} className="relative top-[1px]" />

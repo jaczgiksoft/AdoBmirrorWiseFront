@@ -21,6 +21,14 @@ import CashRegisterDetail from "@/pages/cashRegisters/CashRegisterDetail";
 import ServiceList from "@/pages/services/ServiceList"; // ➕ Nuevo componente
 import ClinicAreaList from "@/pages/clinic_areas/ClinicAreaList";
 import AppointmentList from "@/pages/appointments/AppointmentList";
+import RoleList from "@/pages/roles";
+import PatientTypeList from "@/pages/patient_types";
+import PatientStatusList from "@/pages/patient_statuses";
+import PatientBracketList from "@/pages/patient_brackets";
+import OccupationList from "@/pages/occupations";
+import ReferralList from "@/pages/referrals";
+import PositionList from "@/pages/positions";
+import TenantSettings from "@/pages/tenant";
 
 import PatientList from "@/pages/patients/PatientList";
 import PatientDetail from "@/pages/patients/PatientDetail";
@@ -165,6 +173,94 @@ export default function AppRouter() {
                         <PrivateRoute>
                             <PrivateLayout>
                                 <UsersAndRoles />
+                            </PrivateLayout>
+                        </PrivateRoute>
+                    }
+                />
+
+                <Route
+                    path="/settings/roles"
+                    element={
+                        <PrivateRoute>
+                            <PrivateLayout>
+                                <RoleList />
+                            </PrivateLayout>
+                        </PrivateRoute>
+                    }
+                />
+
+                <Route
+                    path="/settings/patient-types"
+                    element={
+                        <PrivateRoute>
+                            <PrivateLayout>
+                                <PatientTypeList />
+                            </PrivateLayout>
+                        </PrivateRoute>
+                    }
+                />
+
+                <Route
+                    path="/settings/patient-statuses"
+                    element={
+                        <PrivateRoute>
+                            <PrivateLayout>
+                                <PatientStatusList />
+                            </PrivateLayout>
+                        </PrivateRoute>
+                    }
+                />
+
+                <Route
+                    path="/settings/patient-brackets"
+                    element={
+                        <PrivateRoute>
+                            <PrivateLayout>
+                                <PatientBracketList />
+                            </PrivateLayout>
+                        </PrivateRoute>
+                    }
+                />
+
+                <Route
+                    path="/settings/occupations"
+                    element={
+                        <PrivateRoute>
+                            <PrivateLayout>
+                                <OccupationList />
+                            </PrivateLayout>
+                        </PrivateRoute>
+                    }
+                />
+
+                <Route
+                    path="/settings/referrals"
+                    element={
+                        <PrivateRoute>
+                            <PrivateLayout>
+                                <ReferralList />
+                            </PrivateLayout>
+                        </PrivateRoute>
+                    }
+                />
+
+                <Route
+                    path="/settings/positions"
+                    element={
+                        <PrivateRoute>
+                            <PrivateLayout>
+                                <PositionList />
+                            </PrivateLayout>
+                        </PrivateRoute>
+                    }
+                />
+
+                <Route
+                    path="/settings/tenant"
+                    element={
+                        <PrivateRoute>
+                            <PrivateLayout>
+                                <TenantSettings />
                             </PrivateLayout>
                         </PrivateRoute>
                     }

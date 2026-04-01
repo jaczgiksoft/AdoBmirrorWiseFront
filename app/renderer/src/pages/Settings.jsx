@@ -4,13 +4,13 @@ import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { useHotkeys } from "@/hooks/useHotkeys";
 import { useAuthStore } from "@/store/useAuthStore";
-import { Wrench, UserCog, Database, Shield, Bell, ChevronLeft, Briefcase, Layout } from "lucide-react";
+import { Wrench, UserCog, UserCircle2, Activity, Box, Share2, Database, Shield, Bell, ChevronLeft, Briefcase, Layout, Building2 } from "lucide-react";
 
 export default function Settings() {
     const navigate = useNavigate();
     const { user } = useAuthStore();
 
-    const TABS = ["Generales", "Tenat", "Usuarios", "Pacientes"];
+    const TABS = ["Generales", "Tenant", "Usuarios", "Pacientes"];
     const [activeTab, setActiveTab] = useState("Generales");
 
     const SETTINGS_MENU = [
@@ -18,7 +18,14 @@ export default function Settings() {
             icon: <UserCog size={28} />,
             label: "Usuarios y Roles",
             description: "Gestiona usuarios, permisos y roles del sistema.",
-            path: "/configuracion/usuarios",
+            path: "/settings/users",
+            category: "Usuarios",
+        },
+        {
+            icon: <UserCog size={28} />,
+            label: "Puestos de Trabajo",
+            description: "Define los cargos y responsabilidades del personal.",
+            path: "/settings/positions",
             category: "Usuarios",
         },
         {
@@ -26,7 +33,7 @@ export default function Settings() {
             label: "Departamentos",
             description: "Gestiona los departamentos y sus márgenes por tienda.",
             path: "/settings/departments",
-            category: "Tenat",
+            category: "Tenant",
         },
         {
             icon: <Database size={28} />,
@@ -64,11 +71,53 @@ export default function Settings() {
             category: "Pacientes",
         },
         {
+            icon: <UserCircle2 size={28} />,
+            label: "Tipo de Pacientes",
+            description: "Clasifica a tus pacientes por categorías y colores.",
+            path: "/settings/patient-types",
+            category: "Pacientes",
+        },
+        {
+            icon: <Activity size={28} />,
+            label: "Estados de Pacientes",
+            description: "Define estados operativos para el seguimiento de pacientes.",
+            path: "/settings/patient-statuses",
+            category: "Pacientes",
+        },
+        {
+            icon: <Box size={28} />,
+            label: "Brackets de Pacientes",
+            description: "Catálogo de marcas y tipos de brackets utilizados.",
+            path: "/settings/patient-brackets",
+            category: "Pacientes",
+        },
+        {
+            icon: <Briefcase size={28} />,
+            label: "Ocupaciones de Pacientes",
+            description: "Gestiona los tipos de ocupaciones para perfiles de pacientes.",
+            path: "/settings/occupations",
+            category: "Pacientes",
+        },
+        {
+            icon: <Share2 size={28} />,
+            label: "Referidos de Pacientes",
+            description: "Gestiona las fuentes de origen de tus pacientes.",
+            path: "/settings/referrals",
+            category: "Pacientes",
+        },
+        {
             icon: <Layout size={28} />,
             label: "Áreas Clínicas",
             description: "Configura los consultorios y áreas de atención.",
             path: "/clinic-areas",
-            category: "Tenat",
+            category: "Tenant",
+        },
+        {
+            icon: <Building2 size={28} />,
+            label: "Información de la Clínica",
+            description: "Configura la identidad, datos fiscales y de contacto.",
+            path: "/settings/tenant",
+            category: "Tenant",
         },
     ];
 
@@ -119,7 +168,7 @@ export default function Settings() {
 
             // Tab keys (1, 2, 3, 4)
             1: (e) => { console.log("Tab 1 - Generales"); e.preventDefault(); setActiveTab("Generales"); setSelectedIndex(0); },
-            2: (e) => { console.log("Tab 2 - Tenat"); e.preventDefault(); setActiveTab("Tenat"); setSelectedIndex(0); },
+            2: (e) => { console.log("Tab 2 - Tenant"); e.preventDefault(); setActiveTab("Tenant"); setSelectedIndex(0); },
             3: (e) => { console.log("Tab 3 - Usuarios"); e.preventDefault(); setActiveTab("Usuarios"); setSelectedIndex(0); },
             4: (e) => { console.log("Tab 4 - Pacientes"); e.preventDefault(); setActiveTab("Pacientes"); setSelectedIndex(0); },
 
