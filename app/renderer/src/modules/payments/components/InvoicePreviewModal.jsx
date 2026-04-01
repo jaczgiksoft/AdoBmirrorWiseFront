@@ -1,7 +1,7 @@
 import Modal from "@/components/ui/Modal";
 import { Calculator, CheckCircle2, AlertCircle } from "lucide-react";
 import { formatCurrency } from "../utils/formatCurrency";
-
+import { useMemo } from "react";
 /**
  * InvoicePreviewModal - Previews and calculates tax before confirming an invoice.
  * Private to the payments module.
@@ -33,7 +33,7 @@ export default function InvoicePreviewModal({ payment, onClose, onConfirm }) {
         });
 
         // The exact final total from the payment itself
-        const total = payment.total; 
+        const total = payment.total;
 
         return {
             subtotal,
