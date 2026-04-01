@@ -73,11 +73,11 @@ export default function Dashboard() {
 
     // 🧭 Módulos visibles según permisos y configuración global
     // 💡 NOTA: Agregamos "employees" y "appointments" manualmente
-    const userModules = [...new Set([...(user.modules || []), "employees", "inventory"])];
+    const userModules = [...new Set([...(user.modules || []), "employees", "inventory", "payments"])];
 
     const shortcuts = userModules
         .filter((m) => MODULE_CONFIG[m]) // Existe en config
-        .filter((m) => user.is_superadmin || user.permissions[m]?.read || m === "employees" || m === "inventory") // Tiene permiso
+        .filter((m) => user.is_superadmin || user.permissions[m]?.read || m === "employees" || m === "inventory" || m === "payments") // Tiene permiso
         .map((m) => MODULE_CONFIG[m]) // Mapear a objeto config
         .sort((a, b) => a.order - b.order); // Ordenar
 

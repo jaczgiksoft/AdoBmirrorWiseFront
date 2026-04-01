@@ -9,7 +9,8 @@ import {
     Package,
     Users,
     Calendar,
-    FileText
+    FileText,
+    CreditCard
 } from "lucide-react";
 
 export const MODULE_CONFIG = {
@@ -67,6 +68,14 @@ export const MODULE_CONFIG = {
         icon: FileText,
         color: "#6b7280",
         path: "/reports",
+        key: null,
+    },
+    payments: {
+        order: 12,
+        label: "Pagos",
+        icon: CreditCard,
+        color: "#f59e0b", // Amber
+        path: "/payments",
         key: null,
     },
 };

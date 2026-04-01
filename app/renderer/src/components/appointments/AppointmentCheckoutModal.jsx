@@ -52,11 +52,13 @@ export default function AppointmentCheckoutModal({
 
     const canComplete = co.paymentStatus !== "pending" || co.totalDue === 0;
 
-    const handleComplete = () => {
-        co.handleComplete((result) => {
-            setLastResult(result);
-            setShowNextPrompt(true);
-        });
+    const handleComplete = async () => {
+        const result = await co.handleSubmitPayment();
+
+        if (!result) return; // 🔥 defensivo
+
+        setLastResult(result);
+        setShowNextPrompt(true);
     };
 
     const handleConfirmNext = () => {
@@ -236,11 +238,11 @@ export default function AppointmentCheckoutModal({
                                 </button>
                                 <button
                                     onClick={handleComplete}
-                                    disabled={!canComplete || co.completed}
+                                    disabled={!canComplete || co.completed || co.isSubmitting}
                                     className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold bg-emerald-600 text-white shadow-lg shadow-emerald-500/20 hover:bg-emerald-700 transition active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
                                 >
                                     <CheckCircle size={17} />
-                                    {co.completed ? "Registrado" : "Registrar Pago"}
+                                    {co.isSubmitting ? "Registrando..." : co.completed ? "Registrado" : "Registrar Pago"}
                                 </button>
                             </div>
                         </div>

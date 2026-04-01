@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { createPayment } from "../../../modules/payments";
 
 /**
  * useCheckout — Encapsulates all checkout business logic.
@@ -21,6 +22,7 @@ export function useCheckout(appointment, mockPatient) {
     const [paymentMethod, setPaymentMethod] = useState("efectivo");
     const [applyAsCredit, setApplyAsCredit] = useState(false);
     const [completed, setCompleted] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     // Extra form state
     const [extraName, setExtraName] = useState("");
@@ -110,9 +112,46 @@ export function useCheckout(appointment, mockPatient) {
         };
     };
 
-    const handleComplete = (onComplete) => {
-        setCompleted(true);
-        onComplete(buildResult());
+    /**
+     * handleSubmitPayment — prepares payload and submits to service.
+     */
+    const handleSubmitPayment = async () => {
+        if (isSubmitting) return;
+        setIsSubmitting(true);
+
+        try {
+            const items = [
+                { name: "Consulta base", qty: 1, price: baseAmount, total: baseAmount },
+                ...extras.map(e => ({ name: e.name, qty: 1, price: e.amount, total: e.amount }))
+            ];
+
+            const payload = {
+                patient_id: appointment.patient?.id ?? null,
+                source_type: "appointment",
+                source_id: appointment?.id ?? null,
+                method: paymentMethod,
+                total: totalDue,
+                received: received,
+                items,
+            };
+
+            const serviceResult = await createPayment(payload);
+
+            setCompleted(true);
+
+            const finalResult = {
+                ...buildResult(),
+                ticket: serviceResult?.ticket ?? null
+            };
+
+            return finalResult; // 🔥 IMPORTANTE
+
+        } catch (error) {
+            console.error("Error validando checkout:", error);
+            return null; // opcional pero recomendado
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     return {
@@ -146,6 +185,7 @@ export function useCheckout(appointment, mockPatient) {
         addExtra,
         addExtraFromService,
         removeExtra,
-        handleComplete,
+        handleSubmitPayment,
+        isSubmitting,
     };
 }

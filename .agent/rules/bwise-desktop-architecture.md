@@ -73,3 +73,76 @@ If a request conflicts with this contract:
 3. Ask how to proceed
 
 DO NOT silently violate the architecture.
+
+---
+
+## Refactor Rules (CRITICAL)
+
+These rules apply when modifying existing code.
+
+### Codebase Awareness
+- ALWAYS analyze existing files before making changes
+- NEVER assume structure — infer it from the codebase
+- Identify where logic currently lives before moving it
+
+---
+
+### Minimal Change Principle
+- Prefer MODIFYING existing code over rewriting
+- Do NOT recreate files unless necessary
+- Preserve naming conventions when possible
+
+---
+
+### UI Integrity
+- JSX structure MUST remain unchanged unless explicitly allowed
+- Styles MUST NOT be modified
+- Component hierarchy MUST remain intact
+
+---
+
+### Logic Extraction Rules
+- Business logic MUST be extracted into hooks or services
+- Services MUST remain pure and stateless
+- Hooks orchestrate flow between UI and services
+
+---
+
+### Data Flow Contract
+Refactors MUST move toward this structure:
+
+UI → Hook → Service → (Mock | API)
+
+---
+
+### Safe Refactoring
+- Do NOT break existing behavior
+- Do NOT introduce global state unless explicitly required
+- Keep backward compatibility with current flow
+
+---
+
+### File Modification Strategy
+- Clearly identify:
+  - Files to CREATE
+  - Files to MODIFY
+- Avoid touching unrelated modules
+
+---
+
+### Validation Before Completion
+Before finishing a refactor, verify:
+
+- UI behavior is unchanged
+- No broken imports
+- No architecture violations
+- Data flow follows contract
+
+---
+
+### If Uncertainty Exists
+- STOP
+- Explain uncertainty
+- Ask for clarification
+
+DO NOT guess when refactoring critical logic

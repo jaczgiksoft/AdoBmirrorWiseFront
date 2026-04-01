@@ -51,6 +51,7 @@ import RepresentativesSection from "@/pages/patients/PatientDetail/sections/Repr
 import BillingSection from "@/pages/patients/PatientDetail/sections/BillingSection";
 
 import InventoryPage from "@/pages/inventory/InventoryPage";
+import PaymentsPage from "@/modules/payments/pages/PaymentsPage";
 
 /* ──────────────────────────────────────────────
  🔒 RUTA PRIVADA
@@ -344,6 +345,18 @@ export default function AppRouter() {
                     }
                 />
 
+                {/* 💳 Pagos (Nuevo Módulo) */}
+                <Route
+                    path="/payments"
+                    element={
+                        <PrivateRoute>
+                            <PrivateLayout>
+                                <PaymentsPage />
+                            </PrivateLayout>
+                        </PrivateRoute>
+                    }
+                />
+
                 {/* 🚦 Fallback */}
                 <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
@@ -369,6 +382,7 @@ function PrivateLayout({ children }) {
         { label: "EM", name: "Empleados", path: "/employees", bg: "#052e16", color: "#22c55e" },
         { label: "ES", name: "Estudio de fotos", path: "/photo-studio", bg: "#1e1b4b", color: "#6366f1" },
         { label: "CO", name: "Configuración", path: "/settings", bg: "#450a0a", color: "#ef4444" },
+        { label: "PG", name: "Pagos", path: "/payments", bg: "#451a03", color: "#f59e0b" }, // ➕ Pagos shortcut
     ];
 
     return (
