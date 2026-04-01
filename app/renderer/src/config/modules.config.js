@@ -46,6 +46,14 @@ export const MODULE_CONFIG = {
         path: "/employees",
         key: "F7",
     },
+    patient_alerts: {
+        order: 5,
+        label: "Alertas de Paciente",
+        icon: AlertTriangle,
+        color: "#f59e0b",
+        path: "/patient-alerts",
+        key: "F8",
+    },
     settings: {
         order: 9,
         label: "Configuración",
@@ -55,7 +63,7 @@ export const MODULE_CONFIG = {
         key: "F11",
     },
     notifications: {
-        order: 10,
+        order: 6,
         label: "Notificaciones",
         icon: Bell,
         color: "#ef4444",

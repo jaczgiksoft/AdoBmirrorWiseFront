@@ -39,6 +39,10 @@ export default function Dashboard() {
                 if (user.permissions?.employees?.read) navigate("/employees");
                 return "prevent";
             },
+            f8: () => {
+                if (user.permissions?.patient_alerts?.read) navigate("/patient-alerts");
+                return "prevent";
+            },
             f12: () => {
                 if (user.permissions?.appointments?.read) navigate("/appointments");
                 return "prevent";
