@@ -17,7 +17,8 @@ export default function Table({
     loading = false, 
     emptyMessage = "No hay datos disponibles.",
     sortConfig = null,
-    onSort = null
+    onSort = null,
+    onRowClick = null,
 }) {
     if (loading) {
         return (
@@ -75,10 +76,19 @@ export default function Table({
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ duration: 0.2, delay: rowIndex * 0.03 }}
                             key={row.id || rowIndex}
-                            className="border-b border-slate-100 dark:border-slate-700/50 hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors group"
+                            onClick={onRowClick ? () => onRowClick(row) : undefined}
+                            className={`border-b border-slate-100 dark:border-slate-700/50 transition-colors group
+                                ${onRowClick
+                                    ? "cursor-pointer hover:bg-primary/5 dark:hover:bg-primary/10"
+                                    : "hover:bg-slate-50 dark:hover:bg-slate-800/30"
+                                }`}
                         >
                             {columns.map((col, colIndex) => (
-                                <td key={colIndex} className="px-5 py-3 whitespace-nowrap text-slate-700 dark:text-slate-200">
+                                <td
+                                    key={colIndex}
+                                    className="px-5 py-3 whitespace-nowrap text-slate-700 dark:text-slate-200"
+                                    onClick={onRowClick ? (e) => { if (e.target !== e.currentTarget && (e.target.closest('button') || e.target.closest('a'))) e.stopPropagation(); } : undefined}
+                                >
                                     {col.render ? col.render(row) : row[col.accessor]}
                                 </td>
                             ))}
