@@ -14,7 +14,7 @@ const DEFAULT_ROLES = [
     {
         id: 1,
         name: "Administrador",
-        permissions: { 
+        permissions: {
             dashboard: { read: true, create: true, update: true, delete: true },
             users: { read: true, create: true, update: true, delete: true },
             settings: { read: true, create: true, update: true, delete: true }
@@ -23,7 +23,7 @@ const DEFAULT_ROLES = [
     {
         id: 2,
         name: "Recepcionista",
-        permissions: { 
+        permissions: {
             appointments: { read: true, create: true, update: true, delete: false },
             patients: { read: true, create: true, update: true, delete: false }
         }
@@ -60,7 +60,7 @@ export default function RoleList() {
     }, []);
 
     // 🔹 Filtrado y Paginación
-    const filteredItems = items.filter(role => 
+    const filteredItems = items.filter(role =>
         role.name.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
@@ -133,7 +133,7 @@ export default function RoleList() {
         const newItems = items.filter(i => i.id !== itemToDelete.id);
         setItems(newItems);
         localStorage.setItem(STORAGE_KEY, JSON.stringify(newItems));
-        
+
         setConfirmOpen(false);
         setItemToDelete(null);
 
@@ -151,7 +151,7 @@ export default function RoleList() {
         } else {
             newItems = [...items, savedItem];
         }
-        
+
         setItems(newItems);
         localStorage.setItem(STORAGE_KEY, JSON.stringify(newItems));
         setShowForm(false);
@@ -168,7 +168,7 @@ export default function RoleList() {
                 {/* 🔙 Header + Buscador */}
                 <div className="flex items-center gap-4 mb-6 flex-wrap">
                     <button
-                        onClick={() => navigate("/settings/users")}
+                        onClick={() => navigate("/settings")}
                         className="flex items-center gap-1 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white transition cursor-pointer"
                     >
                         <ChevronLeft size={20} />
@@ -179,7 +179,7 @@ export default function RoleList() {
                         Roles y Permisos
                     </h1>
 
-                    {/* 🔍 Buscar */}
+                    {/* 🔍 Busca r */}
                     <div className="relative flex items-center bg-white dark:bg-secondary rounded-lg border border-slate-200 dark:border-slate-700 w-64 shadow-sm">
                         <Search size={16} className="absolute left-2 text-slate-400" />
                         <input

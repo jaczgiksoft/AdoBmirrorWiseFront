@@ -180,7 +180,7 @@ export default function EmployeeUserModal({ open, onClose, employee, onSave }) {
 
                     {/* Username */}
                     <div>
-                        <label className="block text-sm mb-2 text-slate-600 dark:text-slate-300">
+                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
                             Nombre de usuario <span className="text-red-500">*</span>
                         </label>
                         <input
@@ -190,19 +190,19 @@ export default function EmployeeUserModal({ open, onClose, employee, onSave }) {
                             value={form.username}
                             onChange={handleChange}
                             autoComplete="off"
-                            className={`input ${errors.username ? "border-error ring-1 ring-error/50" : ""}`}
+                            className={`w-full px-4 py-2 bg-slate-50 dark:bg-secondary rounded-lg border border-slate-300 dark:border-slate-700 outline-none focus:ring-2 focus:ring-primary text-slate-900 dark:text-white transition ${errors.username ? "border-error ring-1 ring-error/50" : ""}`}
                         />
                         {errors.username && <p className="text-xs text-error mt-1">{errors.username}</p>}
                     </div>
 
                     {/* Estatus */}
                     <div>
-                        <label className="block text-sm mb-2 text-slate-600 dark:text-slate-300">Estatus</label>
+                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Estatus</label>
                         <select
                             name="status"
                             value={form.status}
                             onChange={handleChange}
-                            className="input bg-white dark:bg-secondary text-slate-700 dark:text-slate-200"
+                            className="w-full px-4 py-2 bg-slate-50 dark:bg-secondary rounded-lg border border-slate-300 dark:border-slate-700 outline-none focus:ring-2 focus:ring-primary text-slate-900 dark:text-white transition"
                         >
                             {Object.entries(STATUS_LABELS).map(([val, label]) => (
                                 <option key={val} value={val}>{label}</option>
@@ -215,7 +215,7 @@ export default function EmployeeUserModal({ open, onClose, employee, onSave }) {
 
                     {/* Rol */}
                     <div>
-                        <label className="block text-sm mb-2 text-slate-600 dark:text-slate-300">
+                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
                             Rol <span className="text-red-500">*</span>
                         </label>
                         <select
@@ -223,7 +223,7 @@ export default function EmployeeUserModal({ open, onClose, employee, onSave }) {
                             value={form.role_id}
                             onChange={handleChange}
                             disabled={isLoadingRoles}
-                            className={`input ${errors.role_id ? "border-error ring-1 ring-error/50" : "bg-white dark:bg-secondary text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700"}`}
+                            className={`w-full px-4 py-2 bg-slate-50 dark:bg-secondary rounded-lg border border-slate-300 dark:border-slate-700 outline-none focus:ring-2 focus:ring-primary text-slate-900 dark:text-white transition ${errors.role_id ? "border-error ring-1 ring-error/50" : ""}`}
                         >
                             <option value="">{isLoadingRoles ? "Cargando roles..." : "Selecciona un rol"}</option>
                             {roles.map(role => (
@@ -238,7 +238,7 @@ export default function EmployeeUserModal({ open, onClose, employee, onSave }) {
 
                     {/* Contraseña */}
                     <div className="relative">
-                        <label className="block text-sm mb-2 text-slate-600 dark:text-slate-300">
+                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
                             Contraseña {!isEditing && <span className="text-red-500">*</span>}
                             {isEditing && <span className="text-slate-500 text-xs ml-1">(dejar vacío para mantener)</span>}
                         </label>
@@ -249,7 +249,7 @@ export default function EmployeeUserModal({ open, onClose, employee, onSave }) {
                             value={form.password}
                             onChange={handleChange}
                             autoComplete="new-password"
-                            className={`input pr-24 ${errors.password ? "border-error ring-1 ring-error/50" : ""}`}
+                            className={`w-full pl-4 pr-24 py-2 bg-slate-50 dark:bg-secondary rounded-lg border border-slate-300 dark:border-slate-700 outline-none focus:ring-2 focus:ring-primary text-slate-900 dark:text-white transition ${errors.password ? "border-error ring-1 ring-error/50" : ""}`}
                         />
                         <button
                             type="button"
@@ -271,7 +271,7 @@ export default function EmployeeUserModal({ open, onClose, employee, onSave }) {
 
                     {/* Confirmar contraseña */}
                     <div>
-                        <label className="block text-sm mb-2 text-slate-600 dark:text-slate-300">Confirmar contraseña</label>
+                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Confirmar contraseña</label>
                         <input
                             type={showPassword ? "text" : "password"}
                             name="confirm_password"
@@ -279,7 +279,7 @@ export default function EmployeeUserModal({ open, onClose, employee, onSave }) {
                             value={form.confirm_password}
                             onChange={handleChange}
                             autoComplete="new-password"
-                            className={`input ${errors.confirm_password ? "border-error ring-1 ring-error/50" : ""}`}
+                            className={`w-full px-4 py-2 bg-slate-50 dark:bg-secondary rounded-lg border border-slate-300 dark:border-slate-700 outline-none focus:ring-2 focus:ring-primary text-slate-900 dark:text-white transition ${errors.confirm_password ? "border-error ring-1 ring-error/50" : ""}`}
                         />
                         {errors.confirm_password && <p className="text-xs text-error mt-1">{errors.confirm_password}</p>}
                     </div>
@@ -300,18 +300,18 @@ export default function EmployeeUserModal({ open, onClose, employee, onSave }) {
                     )}
 
                     {/* Botones */}
-                    <div className="flex justify-end gap-3 mt-2 pt-4 border-t border-slate-700/50">
+                    <div className="flex justify-end gap-3 mt-4 pt-6 border-t border-slate-200 dark:border-slate-800">
                         <button
                             type="button"
                             onClick={handleAttemptClose}
-                            className="px-4 py-2 rounded-lg bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-300 dark:hover:bg-slate-600 transition cursor-pointer text-sm font-medium"
+                            className="px-5 py-2.5 rounded-lg border border-slate-300 dark:border-slate-700 font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
                         >
                             Cancelar
                         </button>
                         <button
                             type="button"
                             onClick={handleSave}
-                            className="px-4 py-2 rounded-lg bg-primary text-white hover:bg-sky-500 transition cursor-pointer text-sm font-medium shadow-lg shadow-primary/20"
+                            className="px-6 py-2.5 rounded-lg font-bold bg-cyan-600 hover:bg-cyan-700 text-white shadow-lg shadow-cyan-600/20 transition hover:shadow-cyan-600/40"
                         >
                             {isEditing ? "Guardar cambios" : "Crear usuario"}
                         </button>

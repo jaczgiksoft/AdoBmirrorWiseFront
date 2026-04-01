@@ -43,6 +43,10 @@ export default function Dashboard() {
                 if (user.permissions?.patient_alerts?.read) navigate("/patient-alerts");
                 return "prevent";
             },
+            f9: () => {
+                if (user.permissions?.attendance?.read || user.is_superadmin) navigate("/attendance");
+                return "prevent";
+            },
             f12: () => {
                 if (user.permissions?.appointments?.read) navigate("/appointments");
                 return "prevent";
@@ -77,7 +81,7 @@ export default function Dashboard() {
 
     // 🧭 Módulos visibles según permisos y configuración global
     // 💡 NOTA: Agregamos "employees" y "appointments" manualmente
-    const userModules = [...new Set([...(user.modules || []), "employees", "inventory", "payments"])];
+    const userModules = [...new Set([...(user.modules || []), "employees", "inventory", "payments", "attendance"])];
 
     const shortcuts = userModules
         .filter((m) => MODULE_CONFIG[m]) // Existe en config

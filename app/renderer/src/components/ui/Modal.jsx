@@ -64,25 +64,24 @@ export default function Modal({
                         animate={{ scale: 1, opacity: 1, y: 0 }}
                         exit={{ scale: 0.95, opacity: 0, y: 10 }}
                         transition={{ duration: 0.2 }}
-                        className={`bg-secondary rounded-2xl shadow-xl border border-slate-700 max-h-[90vh] overflow-y-auto ${widthClass} flex flex-col`}
+                        className={`bg-white dark:bg-dark rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 max-h-[90vh] overflow-hidden ${widthClass} flex flex-col`}
                     >
                         {/* Header */}
                         {title && (
-                            <div className="flex justify-between items-center p-6 pb-4 border-b border-slate-700/50">
-                                <h2 className="text-lg font-semibold text-primary">{title}</h2>
+                            <div className="flex justify-between items-center p-6 border-b border-slate-200 dark:border-slate-800 shrink-0">
+                                <h2 className="text-xl font-bold text-slate-900 dark:text-white">{title}</h2>
                                 {onClose && (
                                     <button
                                         onClick={onClose}
-                                        className="text-slate-400 hover:text-white transition cursor-pointer p-1 rounded hover:bg-slate-700/50"
+                                        className="text-slate-400 hover:text-slate-600 dark:hover:text-white transition cursor-pointer p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
                                     >
-                                        <X size={18} />
+                                        <X size={20} />
                                     </button>
                                 )}
                             </div>
                         )}
 
-                        {/* Content */}
-                        <div className="p-6 pt-4 flex-1 overflow-y-auto">
+                        <div className="p-6 overflow-y-auto flex-1 custom-scrollbar">
                             {children}
                         </div>
                     </motion.div>

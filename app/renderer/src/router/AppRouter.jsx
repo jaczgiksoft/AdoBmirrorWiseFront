@@ -9,7 +9,6 @@ import SplashScreen from "@/pages/SplashScreen";
 import LoginPage from "@/pages/Login";
 import Dashboard from "@/pages/dashboard/Dashboard";
 import Settings from "@/pages/Settings";
-import UsersAndRoles from "@/pages/settings/UsersAndRoles";
 import Departments from "@/pages/settings/Departments";
 import DepartmentList from "@/pages/settings/departments/DepartmentList";
 import UserList from "@/pages/users/UserList";
@@ -60,6 +59,7 @@ import BillingSection from "@/pages/patients/PatientDetail/sections/BillingSecti
 
 import InventoryPage from "@/pages/inventory/InventoryPage";
 import PaymentsPage from "@/modules/payments/pages/PaymentsPage";
+import AttendancePage from "@/pages/attendance/AttendancePage";
 
 /* ──────────────────────────────────────────────
  🔒 RUTA PRIVADA
@@ -163,17 +163,6 @@ export default function AppRouter() {
                         <PrivateRoute>
                             <PrivateLayout>
                                 <Settings />
-                            </PrivateLayout>
-                        </PrivateRoute>
-                    }
-                />
-
-                <Route
-                    path="/settings/users"
-                    element={
-                        <PrivateRoute>
-                            <PrivateLayout>
-                                <UsersAndRoles />
                             </PrivateLayout>
                         </PrivateRoute>
                     }
@@ -448,6 +437,17 @@ export default function AppRouter() {
                         <PrivateRoute>
                             <PrivateLayout>
                                 <PaymentsPage />
+                            </PrivateLayout>
+                        </PrivateRoute>
+                    }
+                />
+                {/* 📦 Inventario (Mocked Frontend Version) */}
+                <Route
+                    path="/attendance"
+                    element={
+                        <PrivateRoute>
+                            <PrivateLayout>
+                                <AttendancePage />
                             </PrivateLayout>
                         </PrivateRoute>
                     }

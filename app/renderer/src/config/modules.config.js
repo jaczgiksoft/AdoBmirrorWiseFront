@@ -10,7 +10,8 @@ import {
     Users,
     Calendar,
     FileText,
-    CreditCard
+    CreditCard,
+    Clock
 } from "lucide-react";
 
 export const MODULE_CONFIG = {
@@ -21,6 +22,14 @@ export const MODULE_CONFIG = {
         color: "#6366f1", // Indigo
         path: "/appointments",
         key: "F12",
+    },
+    attendance: {
+        order: 4,
+        label: "Asistencias",
+        icon: Clock,
+        color: "#f43f5e", // Rose
+        path: "/attendance",
+        key: "F9",
     },
     patients: {
         order: 2,
