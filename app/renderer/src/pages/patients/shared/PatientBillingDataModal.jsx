@@ -6,11 +6,11 @@ import { ConfirmDialog } from "@/components/feedback";
 import { useHotkeys } from "@/hooks/useHotkeys";
 
 export default function PatientBillingDataModal({
-                                                    open,
-                                                    onClose,
-                                                    onSave,
-                                                    billingData,
-                                                }) {
+    open,
+    onClose,
+    onSave,
+    billingData,
+}) {
     const firstRef = useRef(null);
 
     const TAX_REGIMES = [
@@ -255,9 +255,9 @@ export default function PatientBillingDataModal({
                                 className={`
                                     w-10 h-5 rounded-full relative transition-all
                                     ${form.is_primary
-                                    ? "bg-primary/70"
-                                    : "bg-slate-400 dark:bg-slate-600"
-                                }
+                                        ? "bg-primary/70"
+                                        : "bg-slate-400 dark:bg-slate-600"
+                                    }
                                 `}
                             >
                                 <div

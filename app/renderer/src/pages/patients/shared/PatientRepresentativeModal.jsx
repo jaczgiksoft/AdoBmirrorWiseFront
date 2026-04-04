@@ -289,9 +289,9 @@ export default function PatientRepresentativeModal({ open, onClose, onSave, repr
                                 className={`
                                     w-10 h-5 rounded-full relative transition-all
                                     ${form.can_login
-                                    ? "bg-primary/70"
-                                    : "bg-slate-400 dark:bg-slate-600"
-                                }
+                                        ? "bg-primary/70"
+                                        : "bg-slate-400 dark:bg-slate-600"
+                                    }
                                 `}
                             >
                                 <div

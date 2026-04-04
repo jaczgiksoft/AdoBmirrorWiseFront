@@ -1,9 +1,90 @@
+import { useState } from "react";
 import { useOutletContext } from "react-router-dom";
-import { User2, UserPlus, Phone, Mail } from "lucide-react";
+import { User2, UserPlus, Phone, Mail, Edit2, Trash2 } from "lucide-react";
+import PatientRepresentativeModal from "../../shared/PatientRepresentativeModal";
+import * as repService from "@/services/patientRepresentative.service";
+import { ConfirmDialog } from "@/components/feedback";
+import { useToast } from "@/hooks/useToast";
+
+
 
 export default function RepresentativesSection() {
-    const { profile } = useOutletContext();
+    const { profile, refreshProfile } = useOutletContext();
+    const { addToast } = useToast();
     const reps = profile.representatives || [];
+
+    const [modalOpen, setModalOpen] = useState(false);
+    const [editingIndex, setEditingIndex] = useState(null);
+    const [saving, setSaving] = useState(false);
+
+    // Para eliminación
+    const [deleteIndex, setDeleteIndex] = useState(null);
+
+    const handleAdd = () => {
+        setEditingIndex(null);
+        setModalOpen(true);
+    };
+
+    const handleEdit = (index) => {
+        setEditingIndex(index);
+        setModalOpen(true);
+    };
+
+    const handleSave = async (rep) => {
+        setSaving(true);
+        try {
+            if (editingIndex !== null) {
+                // 🟡 ACTUALIZAR
+                const existingRep = reps[editingIndex];
+                await repService.updateRepresentative(existingRep.id, rep);
+            } else {
+                // 🟢 CREAR (y vincular automáticamente por el backend)
+                await repService.createRepresentative({
+                    ...rep,
+                    patient_id: profile.id
+                });
+            }
+
+            await refreshProfile();
+            addToast({
+                type: "success",
+                message: editingIndex !== null
+                    ? "Representante actualizado correctamente"
+                    : "Representante agregado correctamente"
+            });
+            setModalOpen(false);
+        } catch (e) {
+            console.error("Error saving representative:", e);
+            addToast({
+                type: "error",
+                message: "Error al guardar el representante"
+            });
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const confirmDelete = async () => {
+        if (deleteIndex === null) return;
+        try {
+            const repToDelete = reps[deleteIndex];
+            await repService.deleteRepresentative(repToDelete.id);
+            await refreshProfile();
+            addToast({
+                type: "success",
+                message: "Representante eliminado correctamente"
+            });
+        } catch (e) {
+            console.error("Error deleting representative:", e);
+            addToast({
+                type: "error",
+                message: "Error al eliminar el representante"
+            });
+        } finally {
+            setDeleteIndex(null);
+        }
+    };
+
 
     return (
         <div className="space-y-6">
@@ -40,7 +121,7 @@ export default function RepresentativesSection() {
 
                 {/* DERECHA: Botón premium */}
                 <button
-                    onClick={() => console.log("AGREGAR REPRESENTANTE")}
+                    onClick={handleAdd}
                     className="
             flex items-center gap-2
             px-4 py-2
@@ -99,12 +180,35 @@ export default function RepresentativesSection() {
                 xl:grid-cols-6
             "
                     >
-                        {reps.map(r => (
-                            <RepresentativeCard key={r.id} rep={r} />
+                        {reps.map((r, idx) => (
+                            <RepresentativeCard
+                                key={r.id || idx}
+                                rep={r}
+                                onEdit={() => handleEdit(idx)}
+                                onDelete={() => setDeleteIndex(idx)}
+                            />
                         ))}
                     </div>
                 </Section>
             )}
+
+            <PatientRepresentativeModal
+                open={modalOpen}
+                onClose={() => setModalOpen(false)}
+                onSave={handleSave}
+                representative={editingIndex !== null ? reps[editingIndex] : null}
+            />
+
+            <ConfirmDialog
+                open={deleteIndex !== null}
+                title="Eliminar representante"
+                message={`¿Estás seguro de que deseas eliminar a ${reps[deleteIndex]?.full_name}?`}
+                onConfirm={confirmDelete}
+                onCancel={() => setDeleteIndex(null)}
+                confirmLabel="Eliminar"
+                cancelLabel="Cancelar"
+                confirmVariant="error"
+            />
 
         </div>
     );
@@ -113,7 +217,7 @@ export default function RepresentativesSection() {
 /* ============================================================
    🔷 TARJETA PREMIUM DE REPRESENTANTE
 ============================================================ */
-function RepresentativeCard({ rep }) {
+function RepresentativeCard({ rep, onEdit, onDelete }) {
 
     const initials = rep.full_name
         .split(" ")
@@ -130,8 +234,34 @@ function RepresentativeCard({ rep }) {
                 shadow-sm p-4
                 transition-all duration-200
                 hover:shadow-md space-y-3
+                relative
             "
         >
+
+            {/* Acciones Absolutas */}
+            <div className="
+                absolute top-3 right-3
+                flex items-center gap-1
+                opacity-0 group-hover:opacity-100
+                transition-all duration-200
+                translate-y-1 group-hover:translate-y-0
+            ">
+                <button
+                    onClick={onEdit}
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-primary hover:bg-primary/10 transition-colors bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm shadow-sm border border-slate-200 dark:border-slate-700"
+                    title="Editar"
+                >
+                    <Edit2 size={14} />
+                </button>
+                <button
+                    onClick={onDelete}
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm shadow-sm border border-slate-200 dark:border-slate-700"
+                    title="Eliminar"
+                >
+                    <Trash2 size={14} />
+                </button>
+            </div>
+
             <div className="flex items-center gap-3">
                 <div
                     className="
