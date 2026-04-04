@@ -1,9 +1,41 @@
-import { useOutletContext } from "react-router-dom";
-import { Receipt, Mail, PlusCircle } from "lucide-react";
+import { useState } from "react";
+import { useOutletContext, useParams } from "react-router-dom";
+import { Receipt, Mail, PlusCircle, Edit2, Trash2 } from "lucide-react";
+import PatientBillingDataModal from "../../shared/PatientBillingDataModal";
+import { usePatientBillingData } from "../../../../hooks/usePatientBillingData";
+import { ConfirmDialog } from "@/components/feedback";
 
 export default function BillingSection() {
-    const { profile } = useOutletContext();
+    const { profile, refreshProfile } = useOutletContext();
+    const { id: patientId } = useParams();
     const billing = profile.billing_data || [];
+
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [selectedBilling, setSelectedBilling] = useState(null);
+    const [confirmDelete, setConfirmDelete] = useState(null);
+    
+    const { saveBillingData, deleteBillingData, isSubmitting } = usePatientBillingData(
+        patientId,
+        () => {
+            setIsModalOpen(false);
+            setConfirmDelete(null);
+            if (refreshProfile) refreshProfile();
+        }
+    );
+
+    const handleEdit = (b) => {
+        // Formateamos para que el modal entienda los datos correctamente
+        setSelectedBilling({
+            ...b,
+            is_primary: b.PatientBillingData?.is_primary || false,
+            PatientBillingData: b.PatientBillingData // para guardar el ID de la relación
+        });
+        setIsModalOpen(true);
+    };
+
+    const handleDelete = (b) => {
+        setConfirmDelete(b.PatientBillingData?.id);
+    };
 
     return (
         <div className="space-y-6">
@@ -33,7 +65,12 @@ export default function BillingSection() {
 
                 {/* DERECHA: botón premium */}
                 <button
-                    onClick={() => console.log("AGREGAR DATO FISCAL")}
+                    onClick={() => {
+                        console.log(">>> [BWISE] ABRIENDO MODAL DE FACTURACION");
+                        setSelectedBilling(null);
+                        setIsModalOpen(true);
+                    }}
+                    disabled={isSubmitting}
                     className="
                      flex items-center gap-2
             px-4 py-2
@@ -42,7 +79,7 @@ export default function BillingSection() {
             text-sm font-medium
             hover:bg-primary hover:text-white
             active:scale-[0.97]
-            transition-all duration-150 cursor-pointer"
+            transition-all duration-150 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                     <PlusCircle size={16} />
                     Agregar dato fiscal
@@ -90,11 +127,36 @@ export default function BillingSection() {
                         "
                     >
                         {billing.map(b => (
-                            <BillingCard key={b.id} b={b} />
+                            <BillingCard 
+                                key={b.id} 
+                                b={b} 
+                                onEdit={() => handleEdit(b)}
+                                onDelete={() => handleDelete(b)}
+                            />
                         ))}
                     </div>
                 </Section>
             )}
+
+            {/* MODAL */}
+            <PatientBillingDataModal 
+                open={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
+                onSave={saveBillingData}
+                billingData={selectedBilling}
+            />
+
+            {/* ERROR EXIT */}
+            <ConfirmDialog
+                open={!!confirmDelete}
+                title="Eliminar Dato Fiscal"
+                message="¿Estás seguro que deseas desvincular este dato fiscal del paciente?"
+                onConfirm={() => deleteBillingData(confirmDelete)}
+                onCancel={() => setConfirmDelete(null)}
+                confirmLabel="Eliminar"
+                cancelLabel="Cancelar"
+                confirmVariant="error"
+            />
 
         </div>
     );
@@ -103,11 +165,11 @@ export default function BillingSection() {
 /* ============================================================
    🔷 TARJETA PREMIUM DE FACTURACIÓN
 ============================================================ */
-function BillingCard({ b }) {
+function BillingCard({ b, onEdit, onDelete }) {
     return (
         <div
             className="
-                group
+                group relative
                 rounded-xl border border-slate-200 dark:border-slate-700
                 bg-white dark:bg-slate-800
                 shadow-sm p-4
@@ -115,8 +177,32 @@ function BillingCard({ b }) {
                 hover:shadow-md space-y-3
             "
         >
+            {/* Acciones Hover */}
+            <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm p-1 rounded-lg">
+                <button
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        onEdit();
+                    }}
+                    className="p-1.5 text-slate-400 hover:text-primary hover:bg-primary/10 rounded-md transition-colors"
+                    title="Editar"
+                >
+                    <Edit2 size={14} />
+                </button>
+                <button
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        onDelete();
+                    }}
+                    className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-500/10 rounded-md transition-colors"
+                    title="Eliminar"
+                >
+                    <Trash2 size={14} />
+                </button>
+            </div>
+
             {/* Encabezado fiscal */}
-            <div>
+            <div className="pr-12">
                 <p className="font-semibold text-sm">
                     {b.business_name}
                 </p>
