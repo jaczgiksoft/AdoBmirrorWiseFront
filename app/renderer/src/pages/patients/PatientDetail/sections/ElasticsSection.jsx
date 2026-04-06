@@ -135,25 +135,10 @@ const UPPER_LEFT = [21, 22, 23, 24, 25, 26, 27, 28];
 const LOWER_RIGHT = [48, 47, 46, 45, 44, 43, 42, 41];
 const LOWER_LEFT = [31, 32, 33, 34, 35, 36, 37, 38];
 
-const MOCK_INSTRUCTIONS = [
-    {
-        id: 1,
-        startDate: '2025-10-01',
-        endDate: '2025-10-15',
-        type: 'Clase II Cortos (3/16" Heavy)',
-        hours: '24 horas'
-    },
-    {
-        id: 2,
-        startDate: '2025-10-16',
-        endDate: null,
-        type: 'Triangulares (1/4" Medium)',
-        hours: 'Solo noches (12 horas)'
-    }
-];
-
-// Tipos de diente que se consideran "inactivos" (sin participación en elásticos)
+// No more mock instructions here, we use the hook
 const INACTIVE_TYPES = ['extraction', 'missing', 'unerupted'];
+ 
+import { usePatientElasticsData } from '@/hooks/usePatientElasticsData';
 
 export default function ElasticsSection() {
     // Leer el ID del paciente de la URL para aislar datos en localStorage
@@ -161,6 +146,15 @@ export default function ElasticsSection() {
 
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
+    const [isReadOnly, setIsReadOnly] = useState(false);
+
+    // Form states
+    const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
+    const [endDate, setEndDate] = useState('');
+    const [hours, setHours] = useState('');
+    const [notes, setNotes] = useState('');
+
+    const { instructions, saveInstruction, isLoading: isInstructionsLoading } = usePatientElasticsData(patientId);
 
     // Sequential Selection State
     // Segment-based State
@@ -191,12 +185,12 @@ export default function ElasticsSection() {
     // Cargar datos guardados desde el Odontograma (localStorage)
     // Se ejecuta al montar el componente y cada vez que cambia el patientId
     // ==========================================
-    useEffect(() => {
+    const loadGlobalOdontogram = useCallback(() => {
         if (!patientId) return;
         const STORAGE_KEY = `odontogram_data_${patientId}`;
         try {
             const raw = localStorage.getItem(STORAGE_KEY);
-            if (!raw) return; // No hay datos guardados aún → no hacer nada
+            if (!raw) return;
 
             const parsed = JSON.parse(raw);
 
@@ -213,6 +207,11 @@ export default function ElasticsSection() {
             console.error('[ElasticsSection] Error al cargar datos del odontograma desde localStorage:', err);
         }
     }, [patientId]);
+
+    // Cargar inicialmente
+    useEffect(() => {
+        loadGlobalOdontogram();
+    }, [loadGlobalOdontogram]);
 
 
 
@@ -430,7 +429,7 @@ export default function ElasticsSection() {
             handleBracketClick(pairId);
             return;
         }
-        if (actionType !== 'tad') return;
+        if (actionType !== 'tad' || isReadOnly) return;
 
         const isRemoving = !!tads[pairId];
 
@@ -486,6 +485,7 @@ export default function ElasticsSection() {
     const handleBracketClick = (id, overrideRouting = null) => {
         // --- ARCADO DE BRACKETS (PLACEMENT/REMOVAL) ---
         if (actionType === 'bracket') {
+            if (isReadOnly) return; // Bloquear en modo lectura
             if (INACTIVE_TYPES.includes(toothStates[id])) return;
 
             const isRemoving = !!brackets[id];
@@ -541,7 +541,7 @@ export default function ElasticsSection() {
         }
 
         // --- ARCADO DE ELÁSTICOS ---
-        if (actionType !== 'elastics') return;
+        if (actionType !== 'elastics' || isReadOnly) return;
 
         // Solo permitir elásticos en dientes que tengan BRACKET o TAD
         const hasAnchor = brackets[id] || tads[id] || (typeof id === 'string' && id.includes('-') && tads[id]);
@@ -624,6 +624,71 @@ export default function ElasticsSection() {
             setCompletedChains(history[newIndex].completedChains);
         }
     }, [history, historyIndex]);
+ 
+    const handleSaveInstruction = async () => {
+        if (isReadOnly) return;
+        
+        const type = ELASTIC_TYPES.find(t => t.id === selectedElasticTypeId);
+        
+        const newInstruction = {
+            startDate,
+            endDate,
+            hours: hours ? `${hours} horas` : 'No especificado',
+            type: type ? type.label : selectedElasticTypeId,
+            typeId: selectedElasticTypeId,
+            notes,
+            odontogramData: {
+                completedChains,
+                brackets,
+                tads
+            }
+        };
+
+        const success = await saveInstruction(newInstruction);
+        if (success) {
+            setIsModalOpen(false);
+        }
+    };
+
+    const handleOpenNew = () => {
+        setIsReadOnly(false);
+        setStartDate(new Date().toISOString().split('T')[0]);
+        setEndDate('');
+        setHours('');
+        setNotes('');
+        setSelectedElasticTypeId(ELASTIC_TYPES[0].id);
+        
+        // Reset Odontogram to last "global" state
+        loadGlobalOdontogram();
+        setCompletedChains([]);
+        setActiveChain({ segments: [], lastPoint: null, startPoint: null });
+        setHistory([{ activeChain: { segments: [], lastPoint: null, startPoint: null }, completedChains: [] }]);
+        setHistoryIndex(0);
+        
+        setIsModalOpen(true);
+    };
+
+    const handleOpenView = (inst) => {
+        setIsReadOnly(true);
+        setStartDate(inst.startDate || '');
+        setEndDate(inst.endDate || '');
+        setHours(inst.hours?.replace(' horas', '') || '');
+        setNotes(inst.notes || '');
+        setSelectedElasticTypeId(inst.typeId || ELASTIC_TYPES[0].id);
+        
+        // Load Snapshotted Odontogram
+        if (inst.odontogramData) {
+            setCompletedChains(inst.odontogramData.completedChains || []);
+            setBrackets(inst.odontogramData.brackets || {});
+            setTads(inst.odontogramData.tads || {});
+        }
+        
+        setActiveChain({ segments: [], lastPoint: null, startPoint: null });
+        setHistory([{ activeChain: { segments: [], lastPoint: null, startPoint: null }, completedChains: inst.odontogramData?.completedChains || [] }]);
+        setHistoryIndex(0);
+        
+        setIsModalOpen(true);
+    };
 
     const handleRedo = useCallback(() => {
         if (historyIndex < history.length - 1) {
@@ -684,7 +749,7 @@ export default function ElasticsSection() {
                         </p>
                     </div>
                     <button
-                        onClick={() => setIsModalOpen(true)}
+                        onClick={handleOpenNew}
                         className="
                             flex items-center gap-1.5 px-3 py-1.5
                             btn-primary-soft
@@ -700,7 +765,7 @@ export default function ElasticsSection() {
 
                 {/* List of Instructions */}
                 <div className="mt-4 space-y-3">
-                    {MOCK_INSTRUCTIONS.length === 0 ? (
+                    {instructions.length === 0 ? (
                         <div className="text-center py-8 border border-dashed border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50/50 dark:bg-slate-800/30">
                             <p className="text-sm text-slate-400 dark:text-slate-500 italic">
                                 No se han registrado instrucciones de elásticos aún.
@@ -708,22 +773,24 @@ export default function ElasticsSection() {
                         </div>
                     ) : (
                         <div className="grid grid-cols-1 gap-3">
-                            {MOCK_INSTRUCTIONS.map((instruction) => (
+                            {instructions.map((instruction) => (
                                 <div
                                     key={instruction.id}
+                                    onClick={() => handleOpenView(instruction)}
                                     className="
                                         flex flex-col md:flex-row md:items-center justify-between gap-4
                                         p-4 rounded-xl
                                         bg-slate-50 dark:bg-slate-800/50
                                         border border-slate-100 dark:border-slate-700/50
-                                        hover:border-slate-200 dark:hover:border-slate-600
-                                        transition-colors
+                                        hover:border-primary/30 dark:hover:border-primary/50
+                                        hover:bg-white dark:hover:bg-slate-800
+                                        transition-all cursor-pointer group
                                     "
                                 >
                                     {/* Left Info */}
                                     <div className="flex-1 space-y-2">
                                         <div className="flex items-center gap-2">
-                                            <span className="font-semibold text-sm text-slate-700 dark:text-slate-200">
+                                            <span className="font-semibold text-sm text-slate-700 dark:text-slate-200 group-hover:text-primary transition-colors">
                                                 {instruction.type}
                                             </span>
                                             {!instruction.endDate && (
@@ -736,7 +803,7 @@ export default function ElasticsSection() {
                                                 </span>
                                             )}
                                         </div>
-
+ 
                                         <div className="flex items-center gap-4 text-xs text-slate-500 dark:text-slate-400">
                                             <div className="flex items-center gap-1.5">
                                                 <Calendar size={12} />
@@ -771,7 +838,7 @@ export default function ElasticsSection() {
                         {/* Modal Header */}
                         <div className="flex items-center justify-between p-4 border-b border-slate-100 dark:border-slate-700 shrink-0">
                             <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">
-                                Registrar Nueva Instrucción
+                                {isReadOnly ? 'Ver Instrucción de Elásticos' : 'Registrar Nueva Instrucción'}
                             </h3>
                             <button
                                 onClick={() => setIsModalOpen(false)}
@@ -792,10 +859,10 @@ export default function ElasticsSection() {
                                     </label>
 
                                     {/* History Toolbar */}
-                                    <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800/50 p-1 rounded-lg border border-slate-200 dark:border-slate-700/50">
+                                    <div className={`flex items-center gap-1 bg-slate-100 dark:bg-slate-800/50 p-1 rounded-lg border border-slate-200 dark:border-slate-700/50 ${isReadOnly ? 'opacity-50 pointer-events-none' : ''}`}>
                                         <button
                                             onClick={handleUndo}
-                                            disabled={historyIndex === 0}
+                                            disabled={historyIndex === 0 || isReadOnly}
                                             title="Deshacer (Ctrl+Z)"
                                             className="p-1.5 rounded-md text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-slate-100 hover:shadow-sm disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:shadow-none transition-all active:scale-95 disabled:active:scale-100"
                                         >
@@ -803,7 +870,7 @@ export default function ElasticsSection() {
                                         </button>
                                         <button
                                             onClick={handleRedo}
-                                            disabled={historyIndex === history.length - 1}
+                                            disabled={historyIndex === history.length - 1 || isReadOnly}
                                             title="Rehacer (Ctrl+Y)"
                                             className="p-1.5 rounded-md text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-slate-100 hover:shadow-sm disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:shadow-none transition-all active:scale-95 disabled:active:scale-100"
                                         >
@@ -812,7 +879,7 @@ export default function ElasticsSection() {
                                         <div className="w-[1px] h-4 bg-slate-300 dark:bg-slate-600 mx-1"></div>
                                         <button
                                             onClick={handleClear}
-                                            disabled={activeChain.segments.length === 0 && completedChains.length === 0}
+                                            disabled={(activeChain.segments.length === 0 && completedChains.length === 0) || isReadOnly}
                                             title="Limpiar todos los elásticos"
                                             className="p-1.5 rounded-md text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-700 hover:text-red-600 dark:hover:text-red-400 hover:shadow-sm disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:shadow-none transition-all active:scale-95 disabled:active:scale-100"
                                         >
@@ -1075,50 +1142,54 @@ export default function ElasticsSection() {
                                 </label>
                                 <div className="flex flex-wrap items-center gap-4">
                                     <label className="flex items-center gap-2 cursor-pointer">
-                                        <input type="radio" name="actionType" value="bracket" checked={actionType === 'bracket'} onChange={() => setActionType('bracket')} className="w-4 h-4 text-primary focus:ring-primary" />
+                                        <input type="radio" name="actionType" value="bracket" checked={actionType === 'bracket'} onChange={() => setActionType('bracket')} disabled={isReadOnly} className="w-4 h-4 text-primary focus:ring-primary disabled:opacity-50" />
                                         <span className="text-sm text-slate-700 dark:text-slate-300">Colocar Bracket</span>
                                     </label>
                                     <label className="flex items-center gap-2 cursor-pointer">
-                                        <input type="radio" name="actionType" value="tad" checked={actionType === 'tad'} onChange={() => setActionType('tad')} className="w-4 h-4 text-primary focus:ring-primary" />
+                                        <input type="radio" name="actionType" value="tad" checked={actionType === 'tad'} onChange={() => setActionType('tad')} disabled={isReadOnly} className="w-4 h-4 text-primary focus:ring-primary disabled:opacity-50" />
                                         <span className="text-sm text-slate-700 dark:text-slate-300">Colocar Microimplant</span>
                                     </label>
                                     <label className="flex items-center gap-2 cursor-pointer pr-4 border-r border-slate-200 dark:border-slate-700">
-                                        <input type="radio" name="actionType" value="elastics" checked={actionType === 'elastics'} onChange={() => setActionType('elastics')} className="w-4 h-4 text-primary focus:ring-primary" />
+                                        <input type="radio" name="actionType" value="elastics" checked={actionType === 'elastics'} onChange={() => setActionType('elastics')} disabled={isReadOnly} className="w-4 h-4 text-primary focus:ring-primary disabled:opacity-50" />
                                         <span className="text-sm text-slate-700 dark:text-slate-300">Colocar Elásticos</span>
                                     </label>
-
+ 
                                     {/* Configuración de Ruta (Interno/Externo) */}
                                     <div className="flex items-center gap-3">
                                         <button
                                             onClick={() => setElasticRouting('external')}
+                                            disabled={isReadOnly}
                                             className={`
                                                 relative flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-semibold transition-all duration-300
                                                 ${elasticRouting === 'external'
                                                     ? 'bg-primary text-white shadow-[0_0_12px_rgba(59,130,246,0.6)] scale-[1.02] border-transparent'
                                                     : 'bg-slate-50 dark:bg-slate-800 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 border border-slate-200 dark:border-slate-700'
                                                 }
+                                                ${isReadOnly && elasticRouting !== 'external' ? 'opacity-30' : ''}
                                             `}
                                         >
                                             <div className={`w-4 h-[2px] ${elasticRouting === 'external' ? 'bg-white' : 'bg-slate-400 dark:bg-slate-500'}`} />
                                             Externo
-                                            {elasticRouting === 'external' && (
+                                            {elasticRouting === 'external' && !isReadOnly && (
                                                 <span className="absolute inset-0 rounded-lg ring-2 ring-primary dark:ring-primary animate-pulse opacity-20 pointer-events-none" />
                                             )}
                                         </button>
-
+ 
                                         <button
                                             onClick={() => setElasticRouting('internal')}
+                                            disabled={isReadOnly}
                                             className={`
                                                 relative flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-semibold transition-all duration-300
                                                 ${elasticRouting === 'internal'
                                                     ? 'bg-primary text-white shadow-[0_0_12px_rgba(59,130,246,0.6)] scale-[1.02] border-transparent'
                                                     : 'bg-slate-50 dark:bg-slate-800 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 border border-slate-200 dark:border-slate-700'
                                                 }
+                                                ${isReadOnly && elasticRouting !== 'internal' ? 'opacity-30' : ''}
                                             `}
                                         >
-                                            <div className={`w-4 h-[2px] border-t-2 border-dotted ${elasticRouting === 'internal' ? 'border-white' : 'border-slate-400 dark:border-slate-500'}`} />
+                                            <div className={`w-4 h-[2px] border-t-2 border-dotted ${elasticRouting === 'internal' ? 'border-white' : 'border-slate-400 dark:bg-slate-500'}`} />
                                             Interno
-                                            {elasticRouting === 'internal' && (
+                                            {elasticRouting === 'internal' && !isReadOnly && (
                                                 <span className="absolute inset-0 rounded-lg ring-2 ring-primary dark:ring-primary animate-pulse opacity-20 pointer-events-none" />
                                             )}
                                         </button>
@@ -1139,6 +1210,9 @@ export default function ElasticsSection() {
                                         </label>
                                         <input
                                             type="date"
+                                            value={startDate}
+                                            onChange={(e) => setStartDate(e.target.value)}
+                                            readOnly={isReadOnly}
                                             className="
                                                 w-full px-3 py-2 rounded-lg text-sm
                                                 bg-slate-50 dark:bg-slate-800
@@ -1146,6 +1220,7 @@ export default function ElasticsSection() {
                                                 focus:ring-2 focus:ring-primary/20 focus:border-primary
                                                 outline-none transition-all
                                                 text-slate-700 dark:text-slate-200
+                                                read-only:opacity-70 read-only:cursor-default
                                             "
                                         />
                                     </div>
@@ -1155,6 +1230,9 @@ export default function ElasticsSection() {
                                         </label>
                                         <input
                                             type="date"
+                                            value={endDate}
+                                            onChange={(e) => setEndDate(e.target.value)}
+                                            readOnly={isReadOnly}
                                             className="
                                                 w-full px-3 py-2 rounded-lg text-sm
                                                 bg-slate-50 dark:bg-slate-800
@@ -1162,6 +1240,7 @@ export default function ElasticsSection() {
                                                 focus:ring-2 focus:ring-primary/20 focus:border-primary
                                                 outline-none transition-all
                                                 text-slate-700 dark:text-slate-200
+                                                read-only:opacity-70 read-only:cursor-default
                                             "
                                         />
                                     </div>
@@ -1175,6 +1254,7 @@ export default function ElasticsSection() {
                                         <select
                                             value={selectedElasticTypeId}
                                             onChange={(e) => setSelectedElasticTypeId(e.target.value)}
+                                            disabled={isReadOnly}
                                             className="
                                                 w-full px-3 py-2 rounded-lg text-sm
                                                 bg-slate-50 dark:bg-slate-800
@@ -1183,6 +1263,7 @@ export default function ElasticsSection() {
                                                 outline-none transition-all
                                                 text-slate-700 dark:text-slate-200
                                                 appearance-none cursor-pointer
+                                                disabled:opacity-70 disabled:cursor-default
                                             "
                                         >
                                             {ELASTIC_TYPES.map(type => (
@@ -1199,6 +1280,9 @@ export default function ElasticsSection() {
                                         <input
                                             type="number"
                                             placeholder="Ej. 24"
+                                            value={hours}
+                                            onChange={(e) => setHours(e.target.value)}
+                                            readOnly={isReadOnly}
                                             className="
                                                 w-full px-3 py-2 rounded-lg text-sm
                                                 bg-slate-50 dark:bg-slate-800
@@ -1206,6 +1290,7 @@ export default function ElasticsSection() {
                                                 focus:ring-2 focus:ring-primary/20 focus:border-primary
                                                 outline-none transition-all
                                                 text-slate-700 dark:text-slate-200
+                                                read-only:opacity-70 read-only:cursor-default
                                             "
                                         />
                                     </div>
@@ -1218,6 +1303,9 @@ export default function ElasticsSection() {
                                     <textarea
                                         rows={3}
                                         placeholder="Notas o indicaciones especiales para el paciente..."
+                                        value={notes}
+                                        onChange={(e) => setNotes(e.target.value)}
+                                        readOnly={isReadOnly}
                                         className="
                                             w-full px-3 py-2 rounded-lg text-sm
                                             bg-slate-50 dark:bg-slate-800
@@ -1225,6 +1313,7 @@ export default function ElasticsSection() {
                                             focus:ring-2 focus:ring-primary/20 focus:border-primary
                                             outline-none transition-all resize-none
                                             text-slate-700 dark:text-slate-200
+                                            read-only:opacity-70 read-only:cursor-default
                                         "
                                     />
                                 </div>
@@ -1244,22 +1333,23 @@ export default function ElasticsSection() {
                             >
                                 Cancelar
                             </button>
-                            <button
-                                onClick={() => setIsModalOpen(false)}
-                                className="
-                                    px-4 py-2 rounded-lg text-sm font-medium
-                                    bg-primary text-white 
-                                    hover:brightness-110 active:scale-95
-                                    transition-all shadow-sm
-                                "
-                            >
-                                Guardar Instrucción
-                            </button>
+                            {!isReadOnly && (
+                                <button
+                                    onClick={handleSaveInstruction}
+                                    className="
+                                        px-4 py-2 rounded-lg text-sm font-medium
+                                        bg-primary text-white 
+                                        hover:brightness-110 active:scale-95
+                                        transition-all shadow-sm
+                                    "
+                                >
+                                    Guardar Instrucción
+                                </button>
+                            )}
                         </div>
                     </div>
                 </div>
-            )
-            }
-        </div >
+            )}
+        </div>
     );
 }
