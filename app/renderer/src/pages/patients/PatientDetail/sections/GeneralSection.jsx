@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import {
     UserCircle,
@@ -14,9 +15,11 @@ import {
 } from "lucide-react";
 
 import { API_BASE } from "@/utils/apiBase";
+import PatientGeneralEditModal from "./components/PatientGeneralEditModal";
 
 export default function GeneralSection() {
-    const { profile } = useOutletContext();
+    const { profile, refreshProfile } = useOutletContext();
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
     return (
         <div className="space-y-10 text-slate-800 dark:text-slate-200">
@@ -30,54 +33,80 @@ export default function GeneralSection() {
                 rounded-2xl p-8 shadow-sm
                 space-y-6
             ">
-                <div className="flex items-center gap-6">
+                <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-6">
 
-                    {/* FOTO */}
-                    <div className="relative">
-                        {profile.photo_url ? (
-                            <img
-                                src={`${API_BASE}/${profile.photo_url}`}
-                                alt={profile.first_name}
-                                className="w-24 h-24 rounded-2xl object-cover border border-slate-300 dark:border-slate-700 shadow"
-                            />
-                        ) : (
-                            <div className="
-                                w-24 h-24 rounded-2xl border
-                                border-slate-300 dark:border-slate-700
-                                bg-slate-100 dark:bg-slate-800
-                                flex items-center justify-center shadow
-                            ">
-                                <UserCircle size={60} className="text-slate-500" />
-                            </div>
-                        )}
+                        {/* FOTO */}
+                        <div className="relative">
+                            {profile.photo_url ? (
+                                <img
+                                    src={`${API_BASE}/${profile.photo_url}`}
+                                    alt={profile.first_name}
+                                    className="w-24 h-24 rounded-2xl object-cover border border-slate-300 dark:border-slate-700 shadow"
+                                />
+                            ) : (
+                                <div className="
+                                    w-24 h-24 rounded-2xl border
+                                    border-slate-300 dark:border-slate-700
+                                    bg-slate-100 dark:bg-slate-800
+                                    flex items-center justify-center shadow
+                                ">
+                                    <UserCircle size={60} className="text-slate-500" />
+                                </div>
+                            )}
+                        </div>
+
+                        {/* INFORMACIÓN PRINCIPAL */}
+                        <div className="flex-1 space-y-1">
+                            <h1 className="text-3xl font-bold text-primary">
+                                {profile.first_name} {profile.last_name} {profile.middle_name || ""}
+                            </h1>
+
+                            <p className="text-sm text-slate-500 dark:text-slate-400">
+                                Expediente: <strong className="text-primary">{profile.medical_record_number}</strong> •{" "}
+                                Código familiar: <strong className="text-primary">{profile.family_code}</strong>
+                            </p>
+
+                            {profile.types?.length > 0 && (
+                                <div className="flex gap-2 mt-2 flex-wrap">
+                                    {profile.types.map(t => (
+                                        <span
+                                            key={t.id}
+                                            className="px-3 py-1 rounded-full text-xs text-white font-medium shadow"
+                                            style={{ background: t.color }}
+                                        >
+                                            {t.name}
+                                        </span>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
                     </div>
 
-                    {/* INFORMACIÓN PRINCIPAL */}
-                    <div className="flex-1 space-y-1">
-                        <h1 className="text-3xl font-bold text-primary">
-                            {profile.first_name} {profile.last_name} {profile.middle_name || ""}
-                        </h1>
-
-                        <p className="text-sm text-slate-500 dark:text-slate-400">
-                            Expediente: <strong className="text-primary">{profile.medical_record_number}</strong> •{" "}
-                            Código familiar: <strong className="text-primary">{profile.family_code}</strong>
-                        </p>
-
-                        {profile.types?.length > 0 && (
-                            <div className="flex gap-2 mt-2 flex-wrap">
-                                {profile.types.map(t => (
-                                    <span
-                                        key={t.id}
-                                        className="px-3 py-1 rounded-full text-xs text-white font-medium shadow"
-                                        style={{ background: t.color }}
-                                    >
-                                        {t.name}
-                                    </span>
-                                ))}
-                            </div>
-                        )}
-                    </div>
+                    <button
+                        onClick={() => setIsEditModalOpen(true)}
+                        className="
+                            flex items-center gap-2
+                            px-4 py-2
+                            bg-yellow-500 text-white
+                            rounded-xl shadow-sm
+                            text-sm font-medium
+                            hover:bg-yellow-600
+                            active:scale-[0.97]
+                            transition-all duration-150
+                            cursor-pointer
+                        "
+                    >
+                        ✏️ Editar
+                    </button>
                 </div>
+
+                <PatientGeneralEditModal
+                    open={isEditModalOpen}
+                    onClose={() => setIsEditModalOpen(false)}
+                    profile={profile}
+                    refreshProfile={refreshProfile}
+                />
 
                 <Divider />
 
