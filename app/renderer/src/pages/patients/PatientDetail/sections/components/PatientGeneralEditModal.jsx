@@ -149,7 +149,7 @@ export default function PatientGeneralEditModal({ open, onClose, profile, refres
             // Clean payload: Convert empty strings to null for nullable/numeric fields
             // specifically for those that are managed as IDs or from Selects
             const payload = { ...form };
-            
+
             // Fields that should be null if empty (FKs, specific selects)
             const nullableFields = ["referral_id", "genre", "marital_status"];
             nullableFields.forEach(field => {
@@ -159,7 +159,7 @@ export default function PatientGeneralEditModal({ open, onClose, profile, refres
             });
 
             await updatePatientGeneral(profile.id, payload);
-            
+
             addToast({
                 type: "success",
                 title: "Paciente actualizado",
@@ -186,6 +186,23 @@ export default function PatientGeneralEditModal({ open, onClose, profile, refres
             onClose={onClose}
             title="Editar Información General"
             widthClass="w-[800px]"
+            footer={
+                <div className="flex items-center justify-end gap-3">
+                    <button
+                        onClick={onClose}
+                        className="px-6 py-2.5 rounded-xl text-sm font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all cursor-pointer"
+                    >
+                        Cancelar
+                    </button>
+                    <button
+                        onClick={handleSave}
+                        disabled={loading}
+                        className="px-8 py-2.5 rounded-xl bg-primary text-white text-sm font-bold shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        {loading ? "Guardando..." : "Guardar cambios"}
+                    </button>
+                </div>
+            }
         >
             <div className="flex flex-col gap-6">
 
@@ -457,22 +474,6 @@ export default function PatientGeneralEditModal({ open, onClose, profile, refres
                     </InputGroup>
                 </div>
 
-                {/* ACCIONES */}
-                <div className="flex items-center justify-end gap-3 pt-6 border-t border-slate-100 dark:border-slate-800">
-                    <button
-                        onClick={onClose}
-                        className="px-6 py-2.5 rounded-xl text-sm font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all cursor-pointer"
-                    >
-                        Cancelar
-                    </button>
-                    <button
-                        onClick={handleSave}
-                        disabled={loading}
-                        className="px-8 py-2.5 rounded-xl bg-primary text-white text-sm font-bold shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                        {loading ? "Guardando..." : "Guardar cambios"}
-                    </button>
-                </div>
             </div>
         </Modal>
     );

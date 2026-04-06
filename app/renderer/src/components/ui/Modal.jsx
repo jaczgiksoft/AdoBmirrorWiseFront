@@ -18,6 +18,7 @@ export default function Modal({
     onClose,
     title,
     children,
+    footer,
     widthClass = "w-[520px]",
     closeOnBackdrop = false,
 }) {
@@ -84,6 +85,13 @@ export default function Modal({
                         <div className="p-6 overflow-y-auto flex-1 custom-scrollbar">
                             {children}
                         </div>
+
+                        {/* Footer */}
+                        {footer && (
+                            <div className="p-6 border-t border-slate-200 dark:border-slate-800 shrink-0">
+                                {footer}
+                            </div>
+                        )}
                     </motion.div>
                 </div>
             )}
