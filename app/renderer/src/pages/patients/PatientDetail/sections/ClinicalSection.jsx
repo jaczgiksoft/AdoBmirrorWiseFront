@@ -22,9 +22,9 @@ export default function ClinicalSection() {
     const [formData, setFormData] = useState(null);
     const [loading, setLoading] = useState(false);
     const [localClinicalData, setLocalClinicalData] = useState({});
- 
+
     const STORAGE_KEY = `clinical_data_${profile?.id}`;
- 
+
     // Cargar datos locales al montar o cambiar paciente
     useEffect(() => {
         if (!profile?.id) return;
@@ -60,7 +60,7 @@ export default function ClinicalSection() {
             // Persistencia Local Temporal (Simulando API)
             localStorage.setItem(STORAGE_KEY, JSON.stringify(formData));
             setLocalClinicalData(formData);
- 
+
             // Intento de guardado en API (Si falla, lo local ya quedó guardado)
             try {
                 await updatePatient(profile.id, formData);
@@ -68,7 +68,7 @@ export default function ClinicalSection() {
             } catch (apiErr) {
                 console.warn("[ClinicalSection] API de guardado falló, procediendo con datos locales:", apiErr);
             }
- 
+
             addToast({
                 title: "Cambios guardados",
                 description: "La historia clínica se ha actualizado localmente y se sincronizará con el servidor.",

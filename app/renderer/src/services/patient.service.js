@@ -117,9 +117,47 @@ export async function createPatient(payload) {
 /**
  * 🟡 Actualizar paciente existente
  */
-export async function updatePatient(id, data) {
+export async function updatePatient(id, payload) {
     try {
-        const res = await api.put(`/patients/${id}`, data);
+        const formData = new FormData();
+
+        for (const key in payload) {
+            const value = payload[key];
+
+            // 🔹 ARCHIVO
+            if (key === "photo_file" && value instanceof File) {
+                formData.append("photo", value);
+                continue;
+            }
+
+            // 🔹 FECHA — SIEMPRE YYYY-MM-DD
+            if (key === "birth_date" && value) {
+                const dateOnly = new Date(value).toISOString().split("T")[0];
+                formData.append("birth_date", dateOnly);
+                continue;
+            }
+
+            // 🔹 CAMPOS JSON
+            if (
+                key === "patient_type_ids" ||
+                key === "alerts" ||
+                key === "billing_data" ||
+                key === "legal_representatives"
+            ) {
+                formData.append(key, JSON.stringify(value || []));
+                continue;
+            }
+
+            // 🔹 NO ENVIAR photo_url SI NO ES CAMBIO (ya que Multipart/Update podría pisar)
+            if (key === "photo_url" || key === "photo_preview") {
+                continue;
+            }
+
+            // 🔹 VALORES NORMALES
+            formData.append(key, value ?? "");
+        }
+
+        const res = await api.put(`/patients/${id}`, formData);
         return res.data;
     } catch (err) {
         console.error("❌ Error al actualizar paciente:", err);
@@ -149,6 +187,62 @@ export async function getPatientProfile(id) {
         return res.data;
     } catch (err) {
         console.error("❌ Error al obtener perfil del paciente:", err);
+        throw err.response?.data || err;
+    }
+}
+
+/**
+ * 🟡 Actualizar información general del paciente (Paso 1)
+ */
+export async function updatePatientGeneral(id, payload) {
+    try {
+        const formData = new FormData();
+
+        for (const key in payload) {
+            const value = payload[key];
+
+            // 🔹 ARCHIVO
+            if (key === "photo_file" && value instanceof File) {
+                formData.append("photo", value);
+                continue;
+            }
+
+            // 🔹 FECHA — SIEMPRE YYYY-MM-DD
+            if (key === "birth_date" && value) {
+                const dateOnly = new Date(value).toISOString().split("T")[0];
+                formData.append("birth_date", dateOnly);
+                continue;
+            }
+
+            // 🔹 CAMPOS JSON (Si hubiera en paso 1, aunque suelen ser identidad/dirección)
+            if (
+                key === "patient_type_ids" ||
+                key === "alerts" ||
+                key === "billing_data" ||
+                key === "legal_representatives"
+            ) {
+                formData.append(key, JSON.stringify(value || []));
+                continue;
+            }
+
+            // 🔹 NO ENVIAR photo_url SI NO ES CAMBIO 
+            if (key === "photo_url" || key === "photo_preview") {
+                continue;
+            }
+
+            // 🔹 VALORES NORMALES
+            // Only append if it's not null to avoid sending the string "null" 
+            // also skip empty strings for ID fields to pass isInt() validation
+            if (value === null) continue;
+            if (value === "" && (key.endsWith("_id") || key === "referral_id")) continue;
+
+            formData.append(key, value ?? "");
+        }
+
+        const res = await api.put(`/patients/${id}/general`, formData);
+        return res.data;
+    } catch (err) {
+        console.error("❌ Error al actualizar información general:", err);
         throw err.response?.data || err;
     }
 }
