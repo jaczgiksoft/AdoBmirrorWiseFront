@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import Datepicker from "react-tailwindcss-datepicker";
 
-export default function DateInput({ label, value, onChange }) {
+export default function DateInput({ label, value, onChange, popoverDirection = "down" }) {
     const [dateValue, setDateValue] = useState({
         startDate: value || null,
         endDate: value || null
@@ -16,7 +16,7 @@ export default function DateInput({ label, value, onChange }) {
 
     const handleDateChange = (newValue) => {
         setDateValue(newValue);
-        
+
         let dateString = "";
         if (newValue?.startDate) {
             const val = newValue.startDate;
@@ -30,7 +30,7 @@ export default function DateInput({ label, value, onChange }) {
                 dateString = val;
             }
         }
-        
+
         onChange(dateString);
     };
 
@@ -50,6 +50,8 @@ export default function DateInput({ label, value, onChange }) {
                 placeholder="Seleccionar fecha..."
                 readOnly={true}
                 i18n={"es"}
+                containerClassName="relative z-[9999]"
+                popoverDirection={popoverDirection}
                 inputClassName="w-full px-3 py-2.5 rounded-lg border bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 border-slate-300 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all text-sm"
             />
         </div>

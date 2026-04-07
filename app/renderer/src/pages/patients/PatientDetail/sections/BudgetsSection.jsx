@@ -14,7 +14,8 @@ import {
     Clock,
     XCircle,
     FileText,
-    CreditCard
+    CreditCard,
+    Search
 } from 'lucide-react';
 import { useHotkeys } from '@/hooks/useHotkeys';
 import { ConfirmDialog } from '@/components/feedback';
@@ -35,16 +36,6 @@ const STATUS_CONFIG = {
         colorClass: 'text-[var(--color-warning)] bg-[var(--color-warning)]/10',
         icon: Clock
     },
-    approved: {
-        label: 'Aprobado',
-        colorClass: 'text-[var(--color-success)] bg-[var(--color-success)]/10',
-        icon: CheckCircle2
-    },
-    rejected: {
-        label: 'Rechazado',
-        colorClass: 'text-[var(--color-error)] bg-[var(--color-error)]/10',
-        icon: XCircle
-    }
 };
 
 const formatCurrency = (amount) => {
@@ -82,6 +73,13 @@ export default function BudgetsSection() {
 
     // Delete State
     const [deleteId, setDeleteId] = useState(null);
+    const [filterText, setFilterText] = useState('');
+    const inputRef = useRef(null);
+
+    // Filter Logic
+    const filteredBudgets = budgets.filter(budget =>
+        budget.title?.toLowerCase().includes(filterText.toLowerCase())
+    );
 
     // Load Data (Catalog & Plans)
     useEffect(() => {
@@ -222,6 +220,27 @@ export default function BudgetsSection() {
             <SectionHeader onAdd={openCreateModal} />
 
             <div className="p-5 bg-slate-50/10 dark:bg-slate-900/10">
+                {/* Filter Input - Only show if there are budgets */}
+                {!loading && budgets.length > 0 && (
+                    <div className="relative flex items-center bg-white border border-slate-300 dark:bg-[var(--color-secondary)] dark:border-slate-700 rounded-lg w-full max-w-sm mb-4">
+                        <Search size={16} className="absolute left-2 text-slate-500 dark:text-slate-400" />
+                        <input
+                            ref={inputRef}
+                            type="text"
+                            placeholder="Filtrar por título..."
+                            value={filterText}
+                            onChange={(e) => setFilterText(e.target.value)}
+                            className="
+                                pl-7 pr-4 py-1.5 bg-transparent
+                                text-slate-700 dark:text-slate-200
+                                text-sm outline-none
+                                placeholder:text-slate-500 dark:placeholder:text-slate-500
+                                w-full
+                            "
+                        />
+                    </div>
+                )}
+
                 {loading ? (
                     <div className="py-12 flex justify-center text-slate-400 animate-pulse">
                         <span className="text-sm font-medium">Cargando presupuestos...</span>
@@ -229,24 +248,32 @@ export default function BudgetsSection() {
                 ) : budgets.length === 0 ? (
                     <EmptyState onAdd={openCreateModal} />
                 ) : (
-                    <div className="grid gap-3">
-                        <AnimatePresence mode="popLayout">
-                            {budgets.map((budget, index) => (
-                                <motion.div
-                                    key={budget.id}
-                                    initial={{ opacity: 0, y: 10 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    transition={{ delay: index * 0.05 }}
-                                >
-                                    <BudgetRow
-                                        budget={budget}
-                                        onEdit={() => openEditModal(budget)}
-                                        onDelete={() => handleDeleteClick(budget.id)}
-                                    />
-                                </motion.div>
-                            ))}
-                        </AnimatePresence>
-                    </div>
+                    <>
+                        {filteredBudgets.length === 0 ? (
+                            <div className="py-12 text-center text-slate-400 text-sm italic border border-dashed border-slate-200 dark:border-slate-700 rounded-xl">
+                                No se encontraron presupuestos con ese título.
+                            </div>
+                        ) : (
+                            <div className="grid gap-3">
+                                <AnimatePresence mode="popLayout">
+                                    {filteredBudgets.map((budget, index) => (
+                                        <motion.div
+                                            key={budget.id}
+                                            initial={{ opacity: 0, y: 10 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            transition={{ delay: index * 0.05 }}
+                                        >
+                                            <BudgetRow
+                                                budget={budget}
+                                                onEdit={() => openEditModal(budget)}
+                                                onDelete={() => handleDeleteClick(budget.id)}
+                                            />
+                                        </motion.div>
+                                    ))}
+                                </AnimatePresence>
+                            </div>
+                        )}
+                    </>
                 )}
             </div>
 
@@ -743,7 +770,8 @@ function BudgetModal({ open, mode, initialData, catalog = [], plans = [], onSave
                                             type="number"
                                             min="0"
                                             disabled={isReadOnly}
-                                            value={discountValue}
+                                            placeholder="0"
+                                            value={discountValue === 0 ? '' : discountValue}
                                             onChange={e => setDiscountValue(parseFloat(e.target.value) || 0)}
                                             className="w-full px-3 py-2 text-right bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-sm disabled:opacity-50"
                                         />
@@ -774,7 +802,8 @@ function BudgetModal({ open, mode, initialData, catalog = [], plans = [], onSave
                                             type="number"
                                             min="0"
                                             disabled={isReadOnly}
-                                            value={downPaymentValue}
+                                            placeholder="0"
+                                            value={downPaymentValue === 0 ? '' : downPaymentValue}
                                             onChange={e => setDownPaymentValue(parseFloat(e.target.value) || 0)}
                                             className="w-full px-3 py-2 text-right bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-sm disabled:opacity-50"
                                         />

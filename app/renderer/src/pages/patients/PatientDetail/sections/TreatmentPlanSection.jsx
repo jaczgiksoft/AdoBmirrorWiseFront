@@ -16,6 +16,7 @@ import {
     GripVertical,
     Search
 } from 'lucide-react';
+import { ConfirmDialog } from '@/components/feedback';
 import {
     DndContext,
     closestCenter,
@@ -53,6 +54,7 @@ export default function TreatmentPlanSection({ patientId }) {
     const [catalog, setCatalog] = useState([]);
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [deleteId, setDeleteId] = useState(null);
     const [filterText, setFilterText] = useState('');
     const inputRef = useRef(null);
 
@@ -115,11 +117,15 @@ export default function TreatmentPlanSection({ patientId }) {
         }
     };
 
-    const handleDelete = async (id) => {
-        if (!window.confirm("¿Seguro que deseas eliminar este plan?")) return;
+    const handleDeleteClick = (id) => {
+        setDeleteId(id);
+    };
+
+    const confirmDelete = async () => {
+        if (!deleteId) return;
 
         try {
-            await treatmentPlanService.deleteTreatmentPlan(id);
+            await treatmentPlanService.deleteTreatmentPlan(deleteId);
             addToast({
                 type: 'success',
                 title: 'Plan Eliminado',
@@ -133,6 +139,8 @@ export default function TreatmentPlanSection({ patientId }) {
                 title: 'Error',
                 message: 'No se pudo eliminar el plan.'
             });
+        } finally {
+            setDeleteId(null);
         }
     };
 
@@ -191,7 +199,7 @@ export default function TreatmentPlanSection({ patientId }) {
                                     <TreatmentPlanCard
                                         key={plan.id}
                                         plan={plan}
-                                        onDelete={() => handleDelete(plan.id)}
+                                        onDelete={() => handleDeleteClick(plan.id)}
                                     />
                                 ))}
                             </div>
@@ -205,6 +213,18 @@ export default function TreatmentPlanSection({ patientId }) {
                 onClose={closeModal}
                 onSave={handleSave}
                 catalog={catalog}
+            />
+
+            {/* DELETE CONFIRMATION */}
+            <ConfirmDialog
+                open={!!deleteId}
+                title="Eliminar Plan de Tratamiento"
+                message="¿Estás seguro de que deseas eliminar este plan de tratamiento? Esta acción no se puede deshacer."
+                confirmLabel="Sí, eliminar"
+                cancelLabel="Cancelar"
+                confirmVariant="error"
+                onConfirm={confirmDelete}
+                onCancel={() => setDeleteId(null)}
             />
         </div>
     );
@@ -646,7 +666,7 @@ function TreatmentPlanModal({ isOpen, onClose, onSave, catalog = [] }) {
                         </div>
 
                         <div className="grid grid-cols-2 gap-4">
-                             <div>
+                            <div>
                                 <DateInput
                                     label="Fecha de Inicio"
                                     value={startDate}

@@ -21,6 +21,7 @@ export default function AlertsSection() {
     // Modal state
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingAlert, setEditingAlert] = useState(null);
+    const [defaultIsAdmin, setDefaultIsAdmin] = useState(false);
 
     // --- MOCK ACTIONS ---
     const handleDelete = (id) => {
@@ -38,11 +39,8 @@ export default function AlertsSection() {
     };
 
     const handleAddClick = (isAdmin) => {
-        setEditingAlert(null); // Ensure we are in "create" mode
-        // We can optionally pre-fill isAdmin if the modal supported it, 
-        // but the modal handles its own state. 
-        // If we wanted to force the type, we'd need to pass it as initial data.
-        // For now, we just open the modal.
+        setEditingAlert(null);
+        setDefaultIsAdmin(isAdmin);
         setIsModalOpen(true);
     };
 
@@ -104,7 +102,7 @@ export default function AlertsSection() {
                         </h3>
                         <button
                             onClick={() => handleAddClick(false)}
-                            className="text-xs flex items-center gap-1 text-slate-500 hover:text-primary transition-colors"
+                            className="text-xs flex items-center gap-1 text-primary hover:text-primary/80 transition-colors cursor-pointer"
                         >
                             <Plus size={14} />
                             Agregar
@@ -140,7 +138,7 @@ export default function AlertsSection() {
                         </h3>
                         <button
                             onClick={() => handleAddClick(true)}
-                            className="text-xs flex items-center gap-1 text-slate-500 hover:text-primary transition-colors"
+                            className="text-xs flex items-center gap-1 text-primary hover:text-primary/80 transition-colors cursor-pointer"
                         >
                             <Plus size={14} />
                             Agregar
@@ -178,6 +176,7 @@ export default function AlertsSection() {
                 }}
                 onSave={handleSaveAlert}
                 alert={editingAlert}
+                defaultIsAdmin={defaultIsAdmin}
                 patientId={profile?.id}
             />
         </div>
