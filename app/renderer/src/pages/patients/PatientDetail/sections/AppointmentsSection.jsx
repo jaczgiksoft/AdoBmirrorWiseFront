@@ -159,7 +159,8 @@ export default function AppointmentsSection() {
                     ) : appointments.length === 0 ? (
                         <div className="text-center py-10 text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/30 rounded-xl border border-dashed border-slate-300 dark:border-slate-700">
                             <Calendar size={40} className="mx-auto mb-2 opacity-50" />
-                            <p>No se encontraron citas con los filtros seleccionados.</p>
+                            <p className="text-sm text-slate-400 dark:text-slate-500 italic">No se encontraron citas con los filtros seleccionados.</p>
+
                         </div>
                     ) : (
                         appointments.map((appointment) => (

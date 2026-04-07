@@ -16,6 +16,7 @@ import {
     GripVertical,
     Search
 } from 'lucide-react';
+import { ConfirmDialog } from '@/components/feedback';
 import {
     DndContext,
     closestCenter,
@@ -35,7 +36,7 @@ import { CSS } from '@dnd-kit/utilities';
 
 import { useHotkeys } from '@/hooks/useHotkeys';
 import { useToastStore } from '@/store/useToastStore';
-import AutocompleteInput from '@/components/inputs/AutocompleteInput';
+import { AutocompleteInput, DateInput } from '@/components/inputs';
 
 import { useOutletContext } from 'react-router-dom';
 import * as treatmentPlanService from '@/services/treatmentPlan.service';
@@ -53,6 +54,14 @@ export default function TreatmentPlanSection({ patientId }) {
     const [catalog, setCatalog] = useState([]);
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [deleteId, setDeleteId] = useState(null);
+    const [filterText, setFilterText] = useState('');
+    const inputRef = useRef(null);
+
+    // -- Filter --
+    const filteredPlans = plans.filter(plan =>
+        plan.title?.toLowerCase().includes(filterText.toLowerCase())
+    );
 
     // -- Data Loading --
     const loadData = async () => {
@@ -81,18 +90,6 @@ export default function TreatmentPlanSection({ patientId }) {
         loadData();
     }, [activeId]);
 
-    // -- Shortcuts (Global) --
-    useHotkeys(
-        {
-            n: (e) => {
-                e.preventDefault();
-                openModal();
-            }
-        },
-        [isModalOpen],
-        !isModalOpen
-    );
-
     // -- Actions --
     const openModal = () => setIsModalOpen(true);
     const closeModal = () => setIsModalOpen(false);
@@ -120,11 +117,15 @@ export default function TreatmentPlanSection({ patientId }) {
         }
     };
 
-    const handleDelete = async (id) => {
-        if (!window.confirm("¿Seguro que deseas eliminar este plan?")) return;
+    const handleDeleteClick = (id) => {
+        setDeleteId(id);
+    };
+
+    const confirmDelete = async () => {
+        if (!deleteId) return;
 
         try {
-            await treatmentPlanService.deleteTreatmentPlan(id);
+            await treatmentPlanService.deleteTreatmentPlan(deleteId);
             addToast({
                 type: 'success',
                 title: 'Plan Eliminado',
@@ -138,41 +139,92 @@ export default function TreatmentPlanSection({ patientId }) {
                 title: 'Error',
                 message: 'No se pudo eliminar el plan.'
             });
+        } finally {
+            setDeleteId(null);
         }
     };
 
     // -- Render --
     return (
-        <div className="space-y-6 text-slate-800 dark:text-slate-100">
+        <div className="
+            bg-white dark:bg-secondary 
+            border border-slate-200 dark:border-slate-700 
+            rounded-2xl shadow-sm overflow-hidden
+            text-slate-800 dark:text-slate-100
+        ">
             <SectionHeader
                 title="Planes de Tratamiento"
                 subtitle="Gestión y seguimiento de fases de tratamiento."
                 onAdd={openModal}
             />
 
-            {loading ? (
-                <div className="py-8 text-center text-slate-400 text-sm animate-pulse">
-                    Cargando planes...
-                </div>
-            ) : plans.length === 0 ? (
-                <EmptyState onAdd={openModal} />
-            ) : (
-                <div className="grid grid-cols-1 gap-4">
-                    {plans.map(plan => (
-                        <TreatmentPlanCard
-                            key={plan.id}
-                            plan={plan}
-                            onDelete={() => handleDelete(plan.id)}
+            <div className="p-5 bg-slate-50/10 dark:bg-slate-900/10">
+                {/* Filter Input - Only show if there are plans */}
+                {!loading && plans.length > 0 && (
+                    <div className="relative flex items-center bg-white border border-slate-300 dark:bg-secondary dark:border-slate-700 rounded-lg w-full max-w-sm mb-4">
+                        <Search size={16} className="absolute left-2 text-slate-500 dark:text-slate-400" />
+                        <input
+                            ref={inputRef}
+                            type="text"
+                            placeholder="Filtrar por título..."
+                            value={filterText}
+                            onChange={(e) => setFilterText(e.target.value)}
+                            className="
+                                pl-7 pr-4 py-1.5 bg-transparent
+                                text-slate-700 dark:text-slate-200
+                                text-sm outline-none
+                                placeholder:text-slate-500 dark:placeholder:text-slate-500
+                                w-full
+                            "
                         />
-                    ))}
-                </div>
-            )}
+                    </div>
+                )}
+
+                {loading ? (
+                    <div className="py-12 text-center text-slate-400 text-sm animate-pulse flex items-center justify-center gap-2">
+                        <Layout size={18} className="opacity-50" />
+                        Cargando planes...
+                    </div>
+                ) : plans.length === 0 ? (
+                    <EmptyState onAdd={openModal} />
+                ) : (
+                    <>
+                        {filteredPlans.length === 0 ? (
+                            <div className="py-12 text-center text-slate-400 text-sm italic border border-dashed border-slate-200 dark:border-slate-700 rounded-xl">
+                                No se encontraron planes con ese título.
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-1 gap-4">
+                                {filteredPlans.map(plan => (
+                                    <TreatmentPlanCard
+                                        key={plan.id}
+                                        plan={plan}
+                                        onDelete={() => handleDeleteClick(plan.id)}
+                                    />
+                                ))}
+                            </div>
+                        )}
+                    </>
+                )}
+            </div>
 
             <TreatmentPlanModal
                 isOpen={isModalOpen}
                 onClose={closeModal}
                 onSave={handleSave}
                 catalog={catalog}
+            />
+
+            {/* DELETE CONFIRMATION */}
+            <ConfirmDialog
+                open={!!deleteId}
+                title="Eliminar Plan de Tratamiento"
+                message="¿Estás seguro de que deseas eliminar este plan de tratamiento? Esta acción no se puede deshacer."
+                confirmLabel="Sí, eliminar"
+                cancelLabel="Cancelar"
+                confirmVariant="error"
+                onConfirm={confirmDelete}
+                onCancel={() => setDeleteId(null)}
             />
         </div>
     );
@@ -184,20 +236,15 @@ export default function TreatmentPlanSection({ patientId }) {
 
 function SectionHeader({ title, subtitle, onAdd }) {
     return (
-        <div className="
-            bg-white dark:bg-secondary
-            border border-slate-200 dark:border-slate-700
-            rounded-2xl p-5 shadow-sm
-            space-y-4
-        ">
+        <div className="p-5 border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-secondary">
             <div className="flex items-start justify-between">
                 <div>
                     <h2 className="text-lg font-bold flex items-center gap-2 text-primary">
-                        <ClipboardList size={20} className="opacity-80" />
+                        <ClipboardList size={22} className="opacity-90" />
                         {title}
                     </h2>
                     {subtitle && (
-                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5 leading-relaxed font-medium">
                             {subtitle}
                         </p>
                     )}
@@ -207,15 +254,15 @@ function SectionHeader({ title, subtitle, onAdd }) {
                     title="Nueva (N)"
                     className="
                         flex items-center gap-2
-            px-4 py-2
-            bg-primary/10 text-primary
-            rounded-xl shadow-sm
-            text-sm font-medium
-            hover:bg-primary hover:text-white
-            active:scale-[0.97]
-            transition-all duration-150 cursor-pointer"
+                        px-4 py-2
+                        bg-primary text-white
+                        rounded-xl shadow-sm
+                        text-sm font-semibold
+                        hover:bg-primary/90
+                        active:scale-[0.97]
+                        transition-all duration-150 cursor-pointer"
                 >
-                    <Plus size={14} />
+                    <Plus size={16} />
                     Nuevo Plan
                 </button>
             </div>
@@ -232,12 +279,7 @@ function EmptyState({ onAdd }) {
             <p className="text-sm text-slate-400 dark:text-slate-500 italic mb-4">
                 No hay planes de tratamiento activos.
             </p>
-            <button
-                onClick={onAdd}
-                className="text-primary text-xs font-semibold hover:underline"
-            >
-                Crear nuevo plan (N)
-            </button>
+
         </div>
     );
 }
@@ -625,14 +667,10 @@ function TreatmentPlanModal({ isOpen, onClose, onSave, catalog = [] }) {
 
                         <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-xs font-semibold text-slate-500 uppercase mb-1.5">
-                                    Fecha de Inicio
-                                </label>
-                                <input
-                                    type="date"
-                                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-primary/50 outline-none"
+                                <DateInput
+                                    label="Fecha de Inicio"
                                     value={startDate}
-                                    onChange={e => setStartDate(e.target.value)}
+                                    onChange={setStartDate}
                                 />
                             </div>
                             <div>

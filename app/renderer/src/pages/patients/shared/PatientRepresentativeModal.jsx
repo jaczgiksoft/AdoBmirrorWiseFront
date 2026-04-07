@@ -1,11 +1,11 @@
 import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { motion } from "framer-motion";
-import { X, UserCheck, UserPlus } from "lucide-react";
+import { X, UserCheck, UserPlus, Copy } from "lucide-react";
 import { useHotkeys } from "@/hooks/useHotkeys";
 import { ConfirmDialog } from "@/components/feedback";
 
-export default function PatientRepresentativeModal({ open, onClose, onSave, representative }) {
+export default function PatientRepresentativeModal({ open, onClose, onSave, representative, patientData }) {
     const firstRef = useRef(null);
 
     const initialForm = {
@@ -40,16 +40,35 @@ export default function PatientRepresentativeModal({ open, onClose, onSave, repr
         if (representative) {
             setForm(representative);
         } else {
+            let addr = "";
+            if (patientData) {
+                addr = [
+                    patientData.address_street_name,
+                    patientData.address_street_number,
+                    patientData.address_apartment_number ? `Int ${patientData.address_apartment_number}` : "",
+                    patientData.address_neighborhood,
+                    patientData.address_zip_code,
+                    patientData.address_city
+                ].filter(Boolean).join(", ");
+            }
+
             setForm({
                 ...initialForm,
                 temp_id: `REP-${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
+                phone: patientData?.phone_number || "",
+                email: patientData?.email || "",
+                address: addr || ""
             });
         }
         setErrors({});
-    }, [representative]);
+    }, [representative, open, patientData]);
 
     useEffect(() => {
-        if (open) firstRef.current?.focus();
+        if (open) {
+            firstRef.current?.focus();
+        } else {
+            setConfirmCancel(false);
+        }
     }, [open]);
 
     // Autocompletar credenciales cuando can_login = true
@@ -139,19 +158,22 @@ export default function PatientRepresentativeModal({ open, onClose, onSave, repr
                 >
                     {/* HEADER */}
                     <div className="flex justify-between items-start mb-5">
-                        <h2 className="text-lg font-semibold text-primary flex items-center gap-2">
-                            {representative ? (
-                                <>
-                                    <UserCheck size={20} />
-                                    Editar representante
-                                </>
-                            ) : (
-                                <>
-                                    <UserPlus size={20} />
-                                    Nuevo representante
-                                </>
-                            )}
-                        </h2>
+                        <div className="space-y-1">
+                            <h2 className="text-lg font-semibold text-primary flex items-center gap-2">
+                                {representative ? (
+                                    <>
+                                        <UserCheck size={20} />
+                                        Editar representante
+                                    </>
+                                ) : (
+                                    <>
+                                        <UserPlus size={20} />
+                                        Nuevo representante
+                                    </>
+                                )}
+                            </h2>
+
+                        </div>
 
                         <button
                             onClick={() =>

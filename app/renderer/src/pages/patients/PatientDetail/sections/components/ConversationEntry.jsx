@@ -1,5 +1,5 @@
 import React from 'react';
-import { User, Edit2, Trash2, Calendar } from 'lucide-react';
+import { NotebookPen, Edit2, Trash2, Calendar } from 'lucide-react';
 
 
 export default function ConversationEntry({ conversation, onEdit, onDelete }) {
@@ -33,7 +33,7 @@ export default function ConversationEntry({ conversation, onEdit, onDelete }) {
                     />
                 ) : (
                     <div className="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-slate-500 dark:text-slate-400 ring-2 ring-slate-100 dark:ring-slate-700">
-                        <User size={20} />
+                        <NotebookPen size={20} />
                     </div>
                 )}
             </div>

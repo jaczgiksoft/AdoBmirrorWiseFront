@@ -173,12 +173,11 @@ export default function RepresentativesSection() {
                 <Section>
                     <div
                         className="
-                grid gap-5
-                grid-cols-1
-                md:grid-cols-3
-                lg:grid-cols-5
-                xl:grid-cols-6
-            "
+                            grid gap-5
+                            grid-cols-1
+                            md:grid-cols-2
+                            lg:grid-cols-3
+                        "
                     >
                         {reps.map((r, idx) => (
                             <RepresentativeCard
@@ -197,6 +196,7 @@ export default function RepresentativesSection() {
                 onClose={() => setModalOpen(false)}
                 onSave={handleSave}
                 representative={editingIndex !== null ? reps[editingIndex] : null}
+                patientData={profile}
             />
 
             <ConfirmDialog

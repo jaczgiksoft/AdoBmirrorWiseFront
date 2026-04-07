@@ -946,6 +946,7 @@ export default function PatientForm({ open, onClose, onCreated, patientType }) {
                                     ? form.legal_representatives[representativeEditingIndex]
                                     : null
                             }
+                            patientData={form}
                         />
 
                     </div>

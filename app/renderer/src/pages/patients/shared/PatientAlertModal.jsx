@@ -5,37 +5,51 @@ import { X, ShieldAlert, AlertCircle } from "lucide-react";
 import { ConfirmDialog } from "@/components/feedback";
 import { useHotkeys } from "@/hooks/useHotkeys";
 
-export default function PatientAlertModal({ open, onClose, onSave, alert }) {
+export default function PatientAlertModal({ open, onClose, onSave, alert, defaultIsAdmin = false }) {
     const firstRef = useRef(null);
 
     const initialForm = {
         title: "",
         description: "",
-        is_admin_alert: false,
+        is_admin_alert: defaultIsAdmin,
     };
 
     const [form, setForm] = useState(initialForm);
     const [errors, setErrors] = useState({});
     const [confirmCancel, setConfirmCancel] = useState(false);
 
-    // cargar datos para editar
+    // cargar datos para editar o inicializar con preferencia
     useEffect(() => {
-        if (alert) setForm(alert);
-        else setForm(initialForm);
+        if (alert) {
+            setForm(alert);
+        } else {
+            setForm({
+                title: "",
+                description: "",
+                is_admin_alert: defaultIsAdmin,
+            });
+        }
         setErrors({});
-    }, [alert]);
+    }, [alert, defaultIsAdmin, open]);
 
     // autofocus
     useEffect(() => {
         if (open) firstRef.current?.focus();
     }, [open]);
 
-    // detectar si hay cambios → igual a StoreForm
+    // detectar si hay cambios respecto al estado inicial (nuevo o edición)
     const hasFormChanges = () => {
+        if (alert) {
+            return (
+                form.title !== alert.title ||
+                form.description !== alert.description ||
+                form.is_admin_alert !== alert.is_admin_alert
+            );
+        }
         return (
             form.title.trim() !== "" ||
             form.description.trim() !== "" ||
-            form.is_admin_alert !== false
+            form.is_admin_alert !== defaultIsAdmin
         );
     };
 
@@ -232,9 +246,9 @@ export default function PatientAlertModal({ open, onClose, onSave, alert }) {
                                 className={`
                                     w-10 h-5 rounded-full relative transition-all
                                     ${form.is_admin_alert
-                                    ? "bg-yellow-500/60"
-                                    : "bg-slate-400 dark:bg-slate-600"
-                                }
+                                        ? "bg-yellow-500/60"
+                                        : "bg-slate-400 dark:bg-slate-600"
+                                    }
                                 `}
                             >
                                 <div

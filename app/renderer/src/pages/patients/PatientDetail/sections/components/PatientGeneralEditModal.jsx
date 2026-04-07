@@ -3,8 +3,11 @@ import { Upload, X } from "lucide-react";
 import Modal from "@/components/ui/Modal";
 import Datepicker from "react-tailwindcss-datepicker";
 import { getReferrals } from "@/services/referral.service";
+import { getOccupations } from "@/services/occupation.service";
 import { updatePatientGeneral } from "@/services/patient.service";
 import { useToastStore } from "@/store/useToastStore";
+import { API_BASE } from "@/utils/apiBase";
+import { ConfirmDialog } from "@/components/feedback";
 
 /**
  * Modal to edit general patient information.
@@ -31,6 +34,7 @@ export default function PatientGeneralEditModal({ open, onClose, profile, refres
         phone_number: "",
         email: "",
         referral_id: "",
+        occupation_id: "",
         address_street_name: "",
         address_street_number: "",
         address_apartment_number: "",
@@ -44,6 +48,8 @@ export default function PatientGeneralEditModal({ open, onClose, profile, refres
     });
 
     const [referrals, setReferrals] = useState([]);
+    const [occupations, setOccupations] = useState([]);
+    const [confirmCancel, setConfirmCancel] = useState(false);
     const [birthDatePicker, setBirthDatePicker] = useState({
         startDate: null,
         endDate: null,
@@ -67,6 +73,7 @@ export default function PatientGeneralEditModal({ open, onClose, profile, refres
                 phone_number: profile.phone_number || "",
                 email: profile.email || "",
                 referral_id: profile.referral_id || "",
+                occupation_id: profile.occupation_id || "",
                 address_street_name: profile.address_street_name || "",
                 address_street_number: profile.address_street_number || "",
                 address_apartment_number: profile.address_apartment_number || "",
@@ -79,7 +86,7 @@ export default function PatientGeneralEditModal({ open, onClose, profile, refres
 
             setForm({
                 ...baseForm,
-                photo_preview: profile.photo_url ? `${import.meta.env.VITE_API_BASE}/${profile.photo_url}` : null,
+                photo_preview: profile.photo_url ? `${API_BASE}/${profile.photo_url}` : null,
             });
 
             if (profile.birth_date) {
@@ -91,17 +98,21 @@ export default function PatientGeneralEditModal({ open, onClose, profile, refres
         }
     }, [open, profile]);
 
-    // Fetch referrals
+    // Fetch referrals and occupations
     useEffect(() => {
-        const fetchReferrals = async () => {
+        const fetchData = async () => {
             try {
-                const data = await getReferrals();
-                setReferrals(data || []);
+                const [referralData, occupationData] = await Promise.all([
+                    getReferrals(),
+                    getOccupations()
+                ]);
+                setReferrals(referralData || []);
+                setOccupations(occupationData || []);
             } catch (err) {
-                console.error("Error fetching referrals:", err);
+                console.error("Error fetching dependencies:", err);
             }
         };
-        if (open) fetchReferrals();
+        if (open) fetchData();
     }, [open]);
 
     const handleChange = (e) => {
@@ -151,7 +162,7 @@ export default function PatientGeneralEditModal({ open, onClose, profile, refres
             const payload = { ...form };
 
             // Fields that should be null if empty (FKs, specific selects)
-            const nullableFields = ["referral_id", "genre", "marital_status"];
+            const nullableFields = ["referral_id", "occupation_id", "genre", "marital_status"];
             nullableFields.forEach(field => {
                 if (payload[field] === "") {
                     payload[field] = null;
@@ -189,7 +200,7 @@ export default function PatientGeneralEditModal({ open, onClose, profile, refres
             footer={
                 <div className="flex items-center justify-end gap-3">
                     <button
-                        onClick={onClose}
+                        onClick={() => setConfirmCancel(true)}
                         className="px-6 py-2.5 rounded-xl text-sm font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all cursor-pointer"
                     >
                         Cancelar
@@ -338,7 +349,7 @@ export default function PatientGeneralEditModal({ open, onClose, profile, refres
                             >
                                 <option value="">Seleccionar...</option>
                                 <option value="soltero">Soltero/a</option>
-                                <option value="casado">Casado/a</option>
+                                <option value="capacitado">Capacitado/a</option>
                                 <option value="divorciado">Divorciado/a</option>
                                 <option value="viudo">Viudo/a</option>
                                 <option value="union libre">Unión libre</option>
@@ -372,19 +383,35 @@ export default function PatientGeneralEditModal({ open, onClose, profile, refres
                             />
                         </InputGroup>
                     </div>
-                    <InputGroup label="Referido por">
-                        <select
-                            name="referral_id"
-                            value={form.referral_id || ""}
-                            onChange={handleChange}
-                            className="input"
-                        >
-                            <option value="">Sin referidor</option>
-                            {referrals.map(r => (
-                                <option key={r.id} value={r.id}>{r.name}</option>
-                            ))}
-                        </select>
-                    </InputGroup>
+                    <div className="grid grid-cols-2 gap-4">
+                        <InputGroup label="Referido por">
+                            <select
+                                name="referral_id"
+                                value={form.referral_id || ""}
+                                onChange={handleChange}
+                                className="input"
+                            >
+                                <option value="">Sin referidor</option>
+                                {referrals.map(r => (
+                                    <option key={r.id} value={r.id}>{r.name}</option>
+                                ))}
+                            </select>
+                        </InputGroup>
+
+                        <InputGroup label="Ocupación">
+                            <select
+                                name="occupation_id"
+                                value={form.occupation_id || ""}
+                                onChange={handleChange}
+                                className="input"
+                            >
+                                <option value="">Sin ocupación</option>
+                                {occupations.map(o => (
+                                    <option key={o.id} value={o.id}>{o.name}</option>
+                                ))}
+                            </select>
+                        </InputGroup>
+                    </div>
                 </div>
 
                 {/* SECCIÓN 3: DIRECCIÓN */}
@@ -414,7 +441,7 @@ export default function PatientGeneralEditModal({ open, onClose, profile, refres
                             />
                         </InputGroup>
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-3 gap-4">
                         <InputGroup label="Número int. / Depto.">
                             <input
                                 name="address_apartment_number"
@@ -433,8 +460,6 @@ export default function PatientGeneralEditModal({ open, onClose, profile, refres
                                 placeholder="Centro"
                             />
                         </InputGroup>
-                    </div>
-                    <div className="grid grid-cols-3 gap-4">
                         <InputGroup label="Código postal">
                             <input
                                 name="address_zip_code"
@@ -444,6 +469,8 @@ export default function PatientGeneralEditModal({ open, onClose, profile, refres
                                 placeholder="06000"
                             />
                         </InputGroup>
+                    </div>
+                    <div className="grid grid-cols-3 gap-4">
                         <InputGroup label="Ciudad">
                             <input
                                 name="address_city"
@@ -462,19 +489,31 @@ export default function PatientGeneralEditModal({ open, onClose, profile, refres
                                 placeholder="CDMX"
                             />
                         </InputGroup>
+                        <InputGroup label="País">
+                            <input
+                                name="address_country"
+                                value={form.address_country || ""}
+                                onChange={handleChange}
+                                className="input"
+                                placeholder="México"
+                            />
+                        </InputGroup>
                     </div>
-                    <InputGroup label="País">
-                        <input
-                            name="address_country"
-                            value={form.address_country || ""}
-                            onChange={handleChange}
-                            className="input"
-                            placeholder="México"
-                        />
-                    </InputGroup>
                 </div>
 
             </div>
+
+            {/* CONFIRM EXIT */}
+            <ConfirmDialog
+                open={confirmCancel}
+                title="Cancelar"
+                message="¿Deseas salir sin guardar los cambios?"
+                onConfirm={onClose}
+                onCancel={() => setConfirmCancel(false)}
+                confirmLabel="Salir sin guardar"
+                cancelLabel="Seguir editando"
+                confirmVariant="error"
+            />
         </Modal>
     );
 }

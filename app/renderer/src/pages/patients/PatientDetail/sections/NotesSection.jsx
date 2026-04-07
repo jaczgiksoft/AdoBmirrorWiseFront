@@ -329,12 +329,11 @@ function NoteCard({ note, onEdit, onDelete }) {
         <div
             className="
                 group relative flex flex-col gap-3
-                rounded-xl p-4 transition-all duration-200
+                rounded-xl p-4
 
                 bg-white dark:bg-slate-800
                 border border-slate-200 dark:border-slate-700
                 shadow-sm hover:shadow-md
-                hover:-translate-y-0.5
 
                 /* 📄 Fondo tipo hoja rayada */
                 bg-[linear-gradient(to_bottom,transparent_23px,rgba(148,163,184,0.25)_24px)]
@@ -346,8 +345,8 @@ function NoteCard({ note, onEdit, onDelete }) {
             <div className="flex items-start gap-3">
                 <div
                     className={`p-2 rounded-lg ${note.is_private
-                            ? "bg-amber-100 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400"
-                            : "bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400"
+                        ? "bg-amber-100 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400"
+                        : "bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400"
                         }`}
                 >
                     {note.is_private ? <Lock size={18} /> : <FileText size={18} />}

@@ -185,51 +185,70 @@ export default function HobbiesSection({ patientId }) {
     // RENDER
     // ---------------------------------------------------------
     return (
-        <div className="space-y-6 text-slate-800 dark:text-slate-100">
-            <Section
-                title="Pasatiempos"
-                icon={Smile}
-                subtitle="Intereses y actividades recreativas del paciente."
-                onAdd={openCreateModal}
-            >
-                {/* Filter Input */}
-                <div className="relative flex items-center bg-white border border-slate-300 dark:bg-secondary dark:border-slate-700 rounded-lg w-full max-w-sm mb-4">
-                    <Search size={16} className="absolute left-2 text-slate-500 dark:text-slate-400" />
-                    <input
-                        ref={inputRef}
-                        type="text"
-                        placeholder="Filtrar por título..."
-                        value={filterText}
-                        onChange={(e) => setFilterText(e.target.value)}
-                        className="
-                            pl-7 pr-4 py-1.5 bg-transparent
-                            text-slate-700 dark:text-slate-200
-                            text-sm outline-none
-                            placeholder:text-slate-500 dark:placeholder:text-slate-500
-                            w-full
-                        "
-                    />
-                </div>
+        <div className="
+            bg-white dark:bg-[var(--color-secondary)] 
+            border border-slate-200 dark:border-slate-700 
+            rounded-2xl shadow-sm overflow-hidden
+        ">
+            <SectionHeader onAdd={openCreateModal} />
 
-                {loading ? (
-                    <div className="py-8 text-center text-slate-400 text-sm animate-pulse">
-                        Cargando pasatiempos...
-                    </div>
-                ) : filteredHobbies.length === 0 ? (
-                    <EmptyState text={filterText ? "No se encontraron pasatiempos." : "No hay pasatiempos registrados. Presiona F2 para agregar uno."} />
-                ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {filteredHobbies.map(hobby => (
-                            <HobbyCard
-                                key={hobby.id}
-                                hobby={hobby}
-                                onEdit={openEditModal}
-                                onDelete={handleDeleteClick}
-                            />
-                        ))}
+            <div className="p-5 bg-slate-50/10 dark:bg-slate-900/10">
+                {/* Filter Input - Only show if there are hobbies */}
+                {!loading && hobbies.length > 0 && (
+                    <div className="relative flex items-center bg-white border border-slate-300 dark:bg-[var(--color-secondary)] dark:border-slate-700 rounded-lg w-full max-w-sm mb-4">
+                        <Search size={16} className="absolute left-2 text-slate-500 dark:text-slate-400" />
+                        <input
+                            ref={inputRef}
+                            type="text"
+                            placeholder="Filtrar por título..."
+                            value={filterText}
+                            onChange={(e) => setFilterText(e.target.value)}
+                            className="
+                                pl-7 pr-4 py-1.5 bg-transparent
+                                text-slate-700 dark:text-slate-200
+                                text-sm outline-none
+                                placeholder:text-slate-500 dark:placeholder:text-slate-500
+                                w-full
+                            "
+                        />
                     </div>
                 )}
-            </Section>
+
+                {loading ? (
+                    <div className="py-12 flex justify-center text-slate-400 animate-pulse">
+                        <span className="text-sm font-medium">Cargando pasatiempos...</span>
+                    </div>
+                ) : hobbies.length === 0 ? (
+                    <EmptyState onAdd={openCreateModal} />
+                ) : (
+                    <>
+                        {filteredHobbies.length === 0 ? (
+                            <div className="py-12 text-center text-slate-400 text-sm italic border border-dashed border-slate-200 dark:border-slate-700 rounded-xl">
+                                No se encontraron pasatiempos con ese título.
+                            </div>
+                        ) : (
+                            <div className="grid gap-3">
+                                <AnimatePresence mode="popLayout">
+                                    {filteredHobbies.map((hobby, index) => (
+                                        <motion.div
+                                            key={hobby.id}
+                                            initial={{ opacity: 0, y: 10 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            transition={{ delay: index * 0.05 }}
+                                        >
+                                            <HobbyRow
+                                                hobby={hobby}
+                                                onEdit={() => openEditModal(hobby)}
+                                                onDelete={() => handleDeleteClick(hobby.id)}
+                                            />
+                                        </motion.div>
+                                    ))}
+                                </AnimatePresence>
+                            </div>
+                        )}
+                    </>
+                )}
+            </div>
 
             {/* MODAL */}
             <HobbyModal
@@ -509,107 +528,96 @@ function HobbyModal({
 }
 
 /* ==============================================================================================
-   HELPER COMPONENTS
+   SUB-COMPONENTS
    ============================================================================================== */
-
-function Section({ title, icon: Icon, subtitle, children, onAdd }) {
+function SectionHeader({ onAdd }) {
     return (
-        <div className="
-            bg-white dark:bg-secondary
-            border border-slate-200 dark:border-slate-700
-            rounded-2xl p-5 shadow-sm
-            space-y-4
-        ">
-            <div className="flex items-start justify-between">
-                <div>
-                    <h2 className="text-lg font-bold flex items-center gap-2 text-primary">
-                        <Icon size={20} className="opacity-80" />
-                        {title}
-                    </h2>
-                    {subtitle && (
-                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
-                            {subtitle}
-                        </p>
-                    )}
+        <div className="p-5 border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-[var(--color-secondary)]">
+            <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                    <div className="p-2.5 bg-[var(--color-primary)]/10 text-[var(--color-primary)] rounded-xl">
+                        <Smile size={22} />
+                    </div>
+                    <div>
+                        <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100">Pasatiempos</h2>
+                        <p className="text-sm text-slate-500 dark:text-slate-400">Intereses y actividades recreativas del paciente.</p>
+                    </div>
                 </div>
                 <button
                     onClick={onAdd}
-                    className="
-                        flex items-center gap-1.5 px-3 py-1.5
-                        bg-primary/10 text-primary hover:bg-primary hover:text-white
-                        rounded-lg text-xs font-semibold transition-all
-                    "
+                    className="flex items-center gap-2 px-4 py-2 bg-[var(--color-primary)] hover:opacity-90 text-white text-sm font-semibold rounded-xl transition-all shadow-sm active:scale-95"
                 >
-                    <Plus size={14} />
-                    Agregar
+                    <Plus size={16} />
+                    <span>Nuevo Pasatiempo</span>
                 </button>
-            </div>
-            <div className="mt-2">
-                {children}
             </div>
         </div>
     );
 }
 
-function HobbyCard({ hobby, onEdit, onDelete }) {
+function HobbyRow({ hobby, onEdit, onDelete }) {
     return (
-        <div className="
-            group relative flex items-center gap-3
-            bg-white dark:bg-secondary
-            border border-slate-200 dark:border-slate-700
-            rounded-xl p-4 shadow-sm
-            hover:shadow-md hover:border-primary/30 transition-all duration-200
-        ">
-            {/* Icon */}
-            <div className="p-2 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400">
-                <Smile size={20} />
-            </div>
-
-            {/* Content */}
-            <div className="flex-1 min-w-0">
-                <h3 className="font-semibold text-sm text-slate-800 dark:text-slate-100 leading-tight truncate">
-                    {hobby.name}
-                </h3>
-                <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 mt-1">
-                    <Calendar size={12} />
-                    <span>
-                        {new Date(hobby.createdAt).toLocaleDateString('es-MX', {
-                            year: 'numeric', month: 'short', day: 'numeric'
-                        })}
-                    </span>
+        <div
+            onClick={onEdit}
+            className="group flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-white dark:bg-[var(--color-secondary)] border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm hover:shadow-md hover:border-[var(--color-primary)]/30 transition-all cursor-pointer"
+        >
+            <div className="flex items-start gap-4 mb-3 sm:mb-0">
+                <div className="hidden sm:flex items-center justify-center w-10 h-10 rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-400 group-hover:text-[var(--color-primary)] transition-colors">
+                    <Smile size={20} />
+                </div>
+                <div>
+                    <h3 className="font-semibold text-slate-800 dark:text-slate-100 group-hover:text-[var(--color-primary)] transition-colors">
+                        {hobby.name}
+                    </h3>
+                    <div className="flex items-center gap-3 mt-1 text-xs text-slate-500 dark:text-slate-400">
+                        <span className="flex items-center gap-1">
+                            <Calendar size={12} />
+                            {new Date(hobby.createdAt).toLocaleDateString()}
+                        </span>
+                    </div>
                 </div>
             </div>
 
-            {/* Actions Overlay (Visible on Hover) */}
-            <div className="absolute top-1/2 -translate-y-1/2 right-3 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-white/90 dark:bg-slate-800/90 rounded-lg p-1 shadow-sm">
-                <button
-                    onClick={() => onEdit(hobby)}
-                    className="p-1.5 text-slate-400 hover:text-blue-500 transition-colors"
-                    title="Editar"
-                >
-                    <Edit2 size={14} />
-                </button>
-                <button
-                    onClick={() => onDelete(hobby.id)}
-                    className="p-1.5 text-slate-400 hover:text-red-500 transition-colors"
-                    title="Eliminar"
-                >
-                    <Trash2 size={14} />
-                </button>
+            <div className="flex items-center justify-between sm:justify-end gap-6 w-full sm:w-auto">
+                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button
+                        onClick={(e) => { e.stopPropagation(); onEdit(); }}
+                        className="p-2 text-slate-400 hover:text-[var(--color-primary)] hover:bg-[var(--color-primary)]/10 rounded-lg transition-colors"
+                        title="Editar"
+                    >
+                        <Edit2 size={16} />
+                    </button>
+                    <button
+                        onClick={(e) => { e.stopPropagation(); onDelete(); }}
+                        className="p-2 text-slate-400 hover:text-[var(--color-error)] hover:bg-[var(--color-error)]/10 rounded-lg transition-colors"
+                        title="Eliminar"
+                    >
+                        <Trash2 size={16} />
+                    </button>
+                </div>
             </div>
         </div>
     );
 }
 
-function EmptyState({ text }) {
+
+
+function EmptyState({ onAdd }) {
     return (
-        <div className="text-center py-8 border border-dashed border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50/50 dark:bg-slate-800/30">
-            <div className="flex justify-center mb-2">
-                <Smile size={32} className="text-slate-300 dark:text-slate-600" />
+        <div className="flex flex-col items-center justify-center py-16 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl bg-slate-50/50 dark:bg-slate-800/20">
+            <div className="p-4 bg-white dark:bg-slate-800 rounded-full shadow-sm mb-4">
+                <Smile size={32} className="text-[var(--color-primary)]/50" />
             </div>
-            <p className="text-sm text-slate-400 dark:text-slate-500 italic">
-                {text}
+            <h3 className="text-base font-semibold text-slate-700 dark:text-slate-300">No hay pasatiempos aún</h3>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mb-6 max-w-xs text-center">
+                Registra los intereses y actividades recreativas del paciente para personalizar su atención.
             </p>
+            <button
+                onClick={onAdd}
+                className="px-4 py-2 bg-white dark:bg-[var(--color-secondary)] border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 text-sm font-medium rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors shadow-sm"
+            >
+                Agregar pasatiempo ahora
+            </button>
         </div>
     );
 }

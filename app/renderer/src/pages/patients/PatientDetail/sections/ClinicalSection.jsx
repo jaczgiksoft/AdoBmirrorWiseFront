@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useOutletContext } from "react-router-dom";
+import { DateInput } from "@/components/inputs";
 import {
     Pill,
     HeartPulse,
@@ -10,9 +11,11 @@ import {
     ScanHeart,
     Save,
     RotateCcw,
+    Pencil,
 } from "lucide-react";
 import { updatePatient } from "@/services/patient.service";
 import { useToastStore } from "@/store/useToastStore";
+import { ConfirmDialog } from "@/components/feedback";
 
 export default function ClinicalSection() {
     const { profile, refreshProfile } = useOutletContext();
@@ -22,6 +25,7 @@ export default function ClinicalSection() {
     const [formData, setFormData] = useState(null);
     const [loading, setLoading] = useState(false);
     const [localClinicalData, setLocalClinicalData] = useState({});
+    const [confirmCancel, setConfirmCancel] = useState(false);
 
     const STORAGE_KEY = `clinical_data_${profile?.id}`;
 
@@ -41,7 +45,7 @@ export default function ClinicalSection() {
     }, [profile?.id, STORAGE_KEY]);
 
     const handleEdit = () => {
-        setFormData({ ...profile });
+        setFormData({ ...profile, ...localClinicalData });
         setIsEditing(true);
     };
 
@@ -87,6 +91,25 @@ export default function ClinicalSection() {
         }
     };
 
+    const medicalFields = [
+        "has_hepatitis", "has_diabetes", "has_lung_conditions", "has_migraines",
+        "has_amigdalitis", "has_adenoiditis", "has_epilepsy", "has_rheumatic_fever",
+        "has_psychological_conditions", "has_heart_conditions", "has_hemophilia", "has_stds"
+    ];
+
+    const handleToggleAllMedical = () => {
+        const allSelected = medicalFields.every(field => data[field]);
+        const newState = !allSelected;
+        
+        setFormData(prev => {
+            const next = { ...prev };
+            medicalFields.forEach(field => {
+                next[field] = newState;
+            });
+            return next;
+        });
+    };
+
     /** Utilidad para booleanos en vista */
     const Bool = ({ value }) => (
         <span
@@ -128,23 +151,15 @@ export default function ClinicalSection() {
                     {!isEditing ? (
                         <button
                             onClick={handleEdit}
-                            className="
-                                flex items-center gap-2
-                                px-4 py-2
-                                bg-yellow-500 text-white
-                                rounded-xl shadow-sm
-                                text-sm font-medium
-                                hover:bg-yellow-600
-                                active:scale-[0.97]
-                                transition-all duration-150
-                            "
+                            className="flex items-center gap-2 px-4 py-2 bg-[var(--color-primary)] hover:opacity-90 text-white text-sm font-medium rounded-lg transition-all shadow-sm active:scale-95 cursor-pointer"
                         >
-                            ✏️ Editar
+                            <Pencil size={16} />
+                            <span>Editar</span>
                         </button>
                     ) : (
                         <>
                             <button
-                                onClick={handleCancel}
+                                onClick={() => setConfirmCancel(true)}
                                 disabled={loading}
                                 className="
                                     flex items-center gap-2
@@ -271,7 +286,25 @@ export default function ClinicalSection() {
             {/* =========================================================
                 2. CONDICIONES MÉDICAS (CHECKLIST TIPO SUMMARY)
             ========================================================= */}
-            <Section icon={HeartPulse} title="Condiciones Médicas">
+            <Section 
+                icon={HeartPulse} 
+                title="Condiciones Médicas"
+                action={isEditing && (
+                    <button 
+                        onClick={handleToggleAllMedical}
+                        className="
+                            px-2 py-0.5 rounded-lg
+                            text-[10px] font-bold uppercase tracking-wider
+                            bg-slate-100 dark:bg-slate-800 text-primary
+                            hover:bg-primary/10 transition-colors
+                            border border-slate-200 dark:border-slate-700
+                            cursor-pointer
+                        "
+                    >
+                        {medicalFields.every(f => data[f]) ? "Desmarcar todos" : "Seleccionar todos"}
+                    </button>
+                )}
+            >
                 <div className={isEditing ? "flex flex-wrap gap-2" : "grid grid-cols-3 gap-x-6 gap-y-3"}>
                     {isEditing ? (
                         <>
@@ -430,6 +463,21 @@ export default function ClinicalSection() {
                 </div>
             </Section>
 
+            {/* CONFIRM CANCEL */}
+            <ConfirmDialog
+                open={confirmCancel}
+                title="Cancelar"
+                message="¿Deseas salir sin guardar los cambios?"
+                onConfirm={() => {
+                    handleCancel();
+                    setConfirmCancel(false);
+                }}
+                onCancel={() => setConfirmCancel(false)}
+                confirmLabel="Salir sin guardar"
+                cancelLabel="Seguir editando"
+                confirmVariant="error"
+            />
+
         </div>
     );
 }
@@ -438,17 +486,20 @@ export default function ClinicalSection() {
    COMPONENTES PREMIUM
  ============================================================ */
 
-function Section({ title, icon: Icon, children }) {
+function Section({ title, icon: Icon, action, children }) {
     return (
         <div className="
             bg-white dark:bg-secondary
             border border-slate-200 dark:border-slate-700
             rounded-2xl p-5 shadow-sm space-y-4
         ">
-            <h2 className="text-lg font-bold flex items-center gap-2 text-primary">
-                <Icon size={18} className="opacity-80" />
-                {title}
-            </h2>
+            <div className="flex items-center justify-between">
+                <h2 className="text-lg font-bold flex items-center gap-2 text-primary">
+                    <Icon size={18} className="opacity-80" />
+                    {title}
+                </h2>
+                {action && <div>{action}</div>}
+            </div>
 
             {children}
         </div>
@@ -531,27 +582,6 @@ function TextInput({ label, value, onChange, placeholder, type = "text" }) {
     );
 }
 
-function DateInput({ label, value, onChange }) {
-    return (
-        <div className="space-y-1">
-            <label className="text-[11px] uppercase tracking-wide text-slate-500 dark:text-slate-400 ml-1">
-                {label}
-            </label>
-            <input
-                type="date"
-                value={value ? new Date(value).toISOString().split('T')[0] : ""}
-                onChange={(e) => onChange(e.target.value)}
-                className="
-                    w-full px-4 py-2 rounded-xl
-                    bg-slate-50 dark:bg-slate-800/50
-                    border border-slate-200 dark:border-slate-700
-                    focus:ring-2 focus:ring-primary focus:border-transparent
-                    text-sm transition-all
-                "
-            />
-        </div>
-    );
-}
 
 function ChipInput({ label, value, onClick }) {
     return (

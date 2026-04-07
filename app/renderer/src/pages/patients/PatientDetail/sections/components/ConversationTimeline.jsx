@@ -6,7 +6,7 @@ import { MessageSquare } from 'lucide-react';
 export default function ConversationTimeline({ conversations, onEdit, onDelete }) {
     const hasConversations = conversations && conversations.length > 0;
 
-    // Explicit sort: Newest first (createdAt DESC)
+    // Explicit sort: Newest first (createdAt DESC) 
     const sortedConversations = React.useMemo(() => {
         if (!hasConversations) return [];
         return [...conversations].sort((a, b) => {

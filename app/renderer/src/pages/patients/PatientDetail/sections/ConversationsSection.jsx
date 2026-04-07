@@ -272,34 +272,44 @@ export default function ConversationsSection({ patientId }) {
 function Section({ title, icon: Icon, subtitle, children, onAdd }) {
     return (
         <div className="
-            bg-transparent
-            space-y-4
+            bg-white dark:bg-secondary 
+            border border-slate-200 dark:border-slate-700 
+            rounded-2xl shadow-sm overflow-hidden
         ">
-            <div className="flex items-start justify-between">
-                <div>
-                    <h2 className="text-lg font-bold flex items-center gap-2 text-primary">
-                        <Icon size={20} className="opacity-80" />
-                        {title}
-                    </h2>
-                    {subtitle && (
-                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
-                            {subtitle}
-                        </p>
-                    )}
+            {/* Header Section */}
+            <div className="p-5 border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-secondary">
+                <div className="flex items-start justify-between">
+                    <div>
+                        <h2 className="text-lg font-bold flex items-center gap-2 text-primary">
+                            <Icon size={22} className="opacity-90" />
+                            {title}
+                        </h2>
+                        {subtitle && (
+                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5 leading-relaxed font-medium">
+                                {subtitle}
+                            </p>
+                        )}
+                    </div>
+                    <button
+                        onClick={onAdd}
+                        className="
+                            flex items-center gap-2
+                            px-4 py-2
+                            bg-primary text-white
+                            rounded-xl shadow-sm
+                            text-sm font-semibold
+                            hover:bg-primary/90
+                            active:scale-[0.97]
+                            transition-all duration-150 cursor-pointer"
+                    >
+                        <Plus size={16} />
+                        Agregar Registro
+                    </button>
                 </div>
-                <button
-                    onClick={onAdd}
-                    className="
-                        flex items-center gap-1.5 px-3 py-1.5
-                        btn-primary-soft
-                        rounded-lg text-xs font-semibold transition-all
-                    "
-                >
-                    <Plus size={14} />
-                    Agregar registro
-                </button>
             </div>
-            <div className="mt-2">
+
+            {/* Content Section */}
+            <div className="p-5 bg-slate-50/10 dark:bg-slate-900/10">
                 {children}
             </div>
         </div>
