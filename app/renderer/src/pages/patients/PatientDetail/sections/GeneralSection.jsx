@@ -12,6 +12,7 @@ import {
     Users,
     User2,
     Receipt,
+    Pencil,
 } from "lucide-react";
 
 import { API_BASE } from "@/utils/apiBase";
@@ -85,19 +86,10 @@ export default function GeneralSection() {
 
                     <button
                         onClick={() => setIsEditModalOpen(true)}
-                        className="
-                            flex items-center gap-2
-                            px-4 py-2
-                            bg-yellow-500 text-white
-                            rounded-xl shadow-sm
-                            text-sm font-medium
-                            hover:bg-yellow-600
-                            active:scale-[0.97]
-                            transition-all duration-150
-                            cursor-pointer
-                        "
+                        className="flex items-center gap-2 px-4 py-2 bg-[var(--color-primary)] hover:opacity-90 text-white text-sm font-medium rounded-lg transition-all shadow-sm active:scale-95 cursor-pointer"
                     >
-                        ✏️ Editar
+                        <Pencil size={16} />
+                        <span>Editar</span>
                     </button>
                 </div>
 

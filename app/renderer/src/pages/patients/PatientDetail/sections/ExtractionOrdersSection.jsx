@@ -258,41 +258,47 @@ export default function ExtractionOrdersSection() {
 
     // --- RENDER ---
     return (
-        <div className="space-y-6">
+        <div className="
+            bg-white dark:bg-[var(--color-secondary)] 
+            border border-slate-200 dark:border-slate-700 
+            rounded-2xl shadow-sm overflow-hidden
+        ">
             <SectionHeader
                 onAddExtraction={handleOpenCreateExtraction}
                 onAddRestorative={handleOpenCreateRestorative}
             />
 
-            {isLoading ? (
-                <div className="py-12 flex justify-center text-slate-400 animate-pulse">
-                    <span className="text-sm font-medium">Cargando órdenes...</span>
-                </div>
-            ) : orders.length === 0 ? (
-                <EmptyState
-                    onAddExtraction={handleOpenCreateExtraction}
-                    onAddRestorative={handleOpenCreateRestorative}
-                />
-            ) : (
-                <div className="grid gap-4">
-                    <AnimatePresence mode="popLayout">
-                        {orders.map((order, index) => (
-                            <motion.div
-                                key={order.id}
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: index * 0.05 }}
-                            >
-                                <OrderRow
-                                    order={order}
-                                    onEdit={() => handleEditOrder(order.id)}
-                                    onDelete={() => handleDeleteRequest(order)}
-                                />
-                            </motion.div>
-                        ))}
-                    </AnimatePresence>
-                </div>
-            )}
+            <div className="p-5 bg-slate-50/10 dark:bg-slate-900/10">
+                {isLoading ? (
+                    <div className="py-12 flex justify-center text-slate-400 animate-pulse">
+                        <span className="text-sm font-medium">Cargando órdenes...</span>
+                    </div>
+                ) : orders.length === 0 ? (
+                    <EmptyState
+                        onAddExtraction={handleOpenCreateExtraction}
+                        onAddRestorative={handleOpenCreateRestorative}
+                    />
+                ) : (
+                    <div className="grid gap-3">
+                        <AnimatePresence mode="popLayout">
+                            {orders.map((order, index) => (
+                                <motion.div
+                                    key={order.id}
+                                    initial={{ opacity: 0, y: 10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ delay: index * 0.05 }}
+                                >
+                                    <OrderRow
+                                        order={order}
+                                        onEdit={() => handleEditOrder(order.id)}
+                                        onDelete={() => handleDeleteRequest(order)}
+                                    />
+                                </motion.div>
+                            ))}
+                        </AnimatePresence>
+                    </div>
+                )}
+            </div>
 
             {/* Wizard Modal */}
             <ExtractionOrderWizard
@@ -323,7 +329,7 @@ export default function ExtractionOrdersSection() {
 
 function SectionHeader({ onAddExtraction, onAddRestorative }) {
     return (
-        <div className="flex flex-col md:flex-row items-center justify-between bg-white dark:bg-[var(--color-secondary)] border border-slate-200 dark:border-slate-700 p-5 rounded-2xl shadow-sm gap-4 md:gap-0">
+        <div className="p-5 border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-[var(--color-secondary)] flex flex-col md:flex-row items-center justify-between gap-4 md:gap-0">
             <div className="flex items-center gap-3 w-full md:w-auto">
                 <div className="p-2.5 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-xl">
                     <Activity size={22} />
@@ -337,14 +343,14 @@ function SectionHeader({ onAddExtraction, onAddRestorative }) {
             <div className="flex items-center gap-3 w-full md:w-auto">
                 <button
                     onClick={onAddRestorative}
-                    className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-white dark:bg-slate-800 border border-emerald-200 dark:border-emerald-900/50 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 text-sm font-medium rounded-lg transition-all shadow-sm active:scale-95"
+                    className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-white dark:bg-slate-800 border border-emerald-200 dark:border-emerald-900/50 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 text-sm font-semibold rounded-xl transition-all shadow-sm active:scale-95"
                 >
                     <Plus size={16} />
                     <span>Restauración</span>
                 </button>
                 <button
                     onClick={onAddExtraction}
-                    className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-white dark:bg-slate-800 border border-red-200 dark:border-red-900/50 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 text-sm font-medium rounded-lg transition-all shadow-sm active:scale-95"
+                    className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-white dark:bg-slate-800 border border-red-200 dark:border-red-900/50 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 text-sm font-semibold rounded-xl transition-all shadow-sm active:scale-95"
                 >
                     <Plus size={16} />
                     <span>Extracción</span>

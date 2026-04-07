@@ -49,7 +49,11 @@ export default function PatientBillingDataModal({
     }, [billingData]);
 
     useEffect(() => {
-        if (open) firstRef.current?.focus();
+        if (open) {
+            firstRef.current?.focus();
+        } else {
+            setConfirmCancel(false);
+        }
     }, [open]);
 
     const validateForm = () => {

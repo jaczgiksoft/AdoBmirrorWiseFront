@@ -214,35 +214,41 @@ export default function BudgetsSection() {
     // RENDER
     // ---------------------------------------------------------
     return (
-        <div className="space-y-6">
+        <div className="
+            bg-white dark:bg-[var(--color-secondary)] 
+            border border-slate-200 dark:border-slate-700 
+            rounded-2xl shadow-sm overflow-hidden
+        ">
             <SectionHeader onAdd={openCreateModal} />
 
-            {loading ? (
-                <div className="py-12 flex justify-center text-slate-400 animate-pulse">
-                    <span className="text-sm font-medium">Cargando presupuestos...</span>
-                </div>
-            ) : budgets.length === 0 ? (
-                <EmptyState onAdd={openCreateModal} />
-            ) : (
-                <div className="grid gap-4">
-                    <AnimatePresence mode="popLayout">
-                        {budgets.map((budget, index) => (
-                            <motion.div
-                                key={budget.id}
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: index * 0.05 }}
-                            >
-                                <BudgetRow
-                                    budget={budget}
-                                    onEdit={() => openEditModal(budget)}
-                                    onDelete={() => handleDeleteClick(budget.id)}
-                                />
-                            </motion.div>
-                        ))}
-                    </AnimatePresence>
-                </div>
-            )}
+            <div className="p-5 bg-slate-50/10 dark:bg-slate-900/10">
+                {loading ? (
+                    <div className="py-12 flex justify-center text-slate-400 animate-pulse">
+                        <span className="text-sm font-medium">Cargando presupuestos...</span>
+                    </div>
+                ) : budgets.length === 0 ? (
+                    <EmptyState onAdd={openCreateModal} />
+                ) : (
+                    <div className="grid gap-3">
+                        <AnimatePresence mode="popLayout">
+                            {budgets.map((budget, index) => (
+                                <motion.div
+                                    key={budget.id}
+                                    initial={{ opacity: 0, y: 10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ delay: index * 0.05 }}
+                                >
+                                    <BudgetRow
+                                        budget={budget}
+                                        onEdit={() => openEditModal(budget)}
+                                        onDelete={() => handleDeleteClick(budget.id)}
+                                    />
+                                </motion.div>
+                            ))}
+                        </AnimatePresence>
+                    </div>
+                )}
+            </div>
 
             <BudgetModal
                 open={isModalOpen}
@@ -272,23 +278,25 @@ export default function BudgetsSection() {
    ============================================================================================== */
 function SectionHeader({ onAdd }) {
     return (
-        <div className="flex items-center justify-between bg-white dark:bg-[var(--color-secondary)] border border-slate-200 dark:border-slate-700 p-5 rounded-2xl shadow-sm">
-            <div className="flex items-center gap-3">
-                <div className="p-2.5 bg-[var(--color-primary)]/10 text-[var(--color-primary)] rounded-xl">
-                    <DollarSign size={22} />
+        <div className="p-5 border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-[var(--color-secondary)]">
+            <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                    <div className="p-2.5 bg-[var(--color-primary)]/10 text-[var(--color-primary)] rounded-xl">
+                        <DollarSign size={22} />
+                    </div>
+                    <div>
+                        <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100">Presupuestos</h2>
+                        <p className="text-sm text-slate-500 dark:text-slate-400">Gestiona cotizaciones y planes de tratamiento.</p>
+                    </div>
                 </div>
-                <div>
-                    <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100">Presupuestos</h2>
-                    <p className="text-sm text-slate-500 dark:text-slate-400">Gestiona cotizaciones y planes de tratamiento.</p>
-                </div>
+                <button
+                    onClick={onAdd}
+                    className="flex items-center gap-2 px-4 py-2 bg-[var(--color-primary)] hover:opacity-90 text-white text-sm font-semibold rounded-xl transition-all shadow-sm active:scale-95"
+                >
+                    <Plus size={16} />
+                    <span>Nuevo Presupuesto</span>
+                </button>
             </div>
-            <button
-                onClick={onAdd}
-                className="flex items-center gap-2 px-4 py-2 bg-[var(--color-primary)] hover:opacity-90 text-white text-sm font-medium rounded-lg transition-all shadow-sm active:scale-95"
-            >
-                <Plus size={16} />
-                <span>Nuevo Presupuesto</span>
-            </button>
         </div>
     );
 }
