@@ -20,6 +20,8 @@ import {
     Trash2,
     Search,
     Home,
+    FilterX,
+    Filter,
 } from "lucide-react";
 
 import { Pagination } from "@/components/ui";
@@ -51,6 +53,21 @@ export default function PatientList() {
     // Nuevo modal
     const [selectTypeOpen, setSelectTypeOpen] = useState(false);
     const [newPatientType, setNewPatientType] = useState(null);
+
+    // Filtros rápidos (UI)
+    const [selectedQuickFilters, setSelectedQuickFilters] = useState([]);
+
+    const QUICK_FILTERS = [
+        { id: "debtors", label: "Deudores", color: "bg-red-500", text: "text-red-500" },
+        { id: "no_appointment", label: "Sin cita", color: "bg-amber-500", text: "text-amber-500" },
+        { id: "no_recent_payment", label: "Sin pago reciente", color: "bg-indigo-500", text: "text-indigo-500" },
+    ];
+
+    const toggleQuickFilter = (id) => {
+        setSelectedQuickFilters((prev) =>
+            prev.includes(id) ? prev.filter((f) => f !== id) : [...prev, id]
+        );
+    };
 
     const { addToast } = useToastStore();
     const limit = 8;
@@ -240,6 +257,46 @@ export default function PatientList() {
 
                 {/* ➡️ Acciones derecha */}
                 <div className="flex items-center gap-3 flex-wrap">
+
+                    {/* ⚡ Filtros rápidos */}
+                    <div className="flex items-center gap-2 flex-wrap">
+                        {QUICK_FILTERS.map((f) => {
+                            const isActive = selectedQuickFilters.includes(f.id);
+                            return (
+                                <motion.button
+                                    key={f.id}
+                                    whileHover={{ scale: 1.05 }}
+                                    whileTap={{ scale: 0.95 }}
+                                    onClick={() => toggleQuickFilter(f.id)}
+                                    className={`
+                                        px-3 py-1.5 rounded-full text-xs font-semibold
+                                        transition-all duration-200 border flex items-center gap-1.5
+                                        ${isActive
+                                            ? `${f.color} text-white border-transparent shadow-sm`
+                                            : "bg-white dark:bg-secondary border-slate-200 dark:border-slate-700 text-slate-500 hover:border-slate-300 dark:hover:border-slate-600"
+                                        }
+                                    `}
+                                >
+                                    <div className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-white' : f.color}`} />
+                                    {f.label}
+                                </motion.button>
+                            );
+                        })}
+
+                        {selectedQuickFilters.length > 0 && (
+                            <motion.button
+                                initial={{ opacity: 0, scale: 0.8 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                whileHover={{ scale: 1.05 }}
+                                onClick={() => setSelectedQuickFilters([])}
+                                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-400 hover:text-red-500 transition-colors"
+                                title="Limpiar filtros rápidos"
+                            >
+                                <FilterX size={14} />
+                                <span>Limpiar</span>
+                            </motion.button>
+                        )}
+                    </div>
 
                     {/* 🔍 Buscar + Filtros */}
                     <div
