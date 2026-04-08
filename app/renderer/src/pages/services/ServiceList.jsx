@@ -91,7 +91,7 @@ export default function ServiceList() {
         {
             escape: () => {
                 if (confirmOpen || showForm) return "prevent";
-                navigate("/dashboard");
+                navigate("/settings", { state: { from: "/services" } });
             },
             arrowdown: (e) => {
                 if (confirmOpen || showForm) return "prevent";
@@ -225,7 +225,7 @@ export default function ServiceList() {
                 {/* 🔙 Header + Buscador */}
                 <div className="flex items-center gap-4 mb-6 flex-wrap">
                     <button
-                        onClick={() => navigate("/dashboard")}
+                        onClick={() => navigate("/settings", { state: { from: "/services" } })}
                         className="flex items-center gap-1 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white transition cursor-pointer"
                         title="Ir al panel principal"
                     >

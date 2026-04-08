@@ -5,4 +5,4 @@ export default function FamilySection() {
             <p className="text-sm text-red-500">Sección a eliminar...</p>
         </div>
     );
-}
+} 

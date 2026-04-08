@@ -90,7 +90,7 @@ export default function ClinicAreaList() {
         {
             escape: () => {
                 if (confirmOpen || showForm) return "prevent";
-                navigate("/dashboard");
+                navigate("/settings", { state: { from: "/clinic-areas" } });
             },
             arrowdown: (e) => {
                 if (confirmOpen || showForm) return "prevent";
@@ -221,7 +221,7 @@ export default function ClinicAreaList() {
                 {/* 🔙 Header + Buscador */}
                 <div className="flex items-center gap-4 mb-6 flex-wrap">
                     <button
-                        onClick={() => navigate("/dashboard")}
+                        onClick={() => navigate("/settings", { state: { from: "/clinic-areas" } })}
                         className="flex items-center gap-1 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white transition cursor-pointer"
                         title="Ir al panel principal"
                     >
@@ -288,8 +288,8 @@ export default function ClinicAreaList() {
                                             <p className="font-semibold text-slate-900 dark:text-slate-100">{item.name}</p>
                                             <div className="flex items-center gap-3 text-xs text-slate-400 mt-0.5">
                                                 <span className={`flex items-center gap-1 px-2 py-0.5 rounded-full ${item.status === 'active' ? 'bg-green-500/10 text-green-500' :
-                                                        item.status === 'maintenance' ? 'bg-amber-500/10 text-amber-500' :
-                                                            'bg-slate-500/10 text-slate-500'
+                                                    item.status === 'maintenance' ? 'bg-amber-500/10 text-amber-500' :
+                                                        'bg-slate-500/10 text-slate-500'
                                                     }`}>
                                                     <Activity size={10} />
                                                     {

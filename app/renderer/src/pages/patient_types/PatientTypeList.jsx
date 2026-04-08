@@ -47,7 +47,7 @@ export default function PatientTypeList() {
     }, []);
 
     // 🔹 Filtrado y Paginación
-    const filteredItems = items.filter(type => 
+    const filteredItems = items.filter(type =>
         type.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         type.description.toLowerCase().includes(searchTerm.toLowerCase())
     );
@@ -60,7 +60,7 @@ export default function PatientTypeList() {
         {
             escape: () => {
                 if (confirmOpen || showForm) return "prevent";
-                navigate("/settings");
+                navigate("/settings", { state: { from: "/settings/patient-types" } });
             },
             arrowdown: (e) => {
                 if (confirmOpen || showForm) return "prevent";
@@ -121,7 +121,7 @@ export default function PatientTypeList() {
         const newItems = items.filter(i => i.id !== itemToDelete.id);
         setItems(newItems);
         localStorage.setItem(STORAGE_KEY, JSON.stringify(newItems));
-        
+
         setConfirmOpen(false);
         setItemToDelete(null);
 
@@ -139,7 +139,7 @@ export default function PatientTypeList() {
         } else {
             newItems = [...items, savedItem];
         }
-        
+
         setItems(newItems);
         localStorage.setItem(STORAGE_KEY, JSON.stringify(newItems));
         setShowForm(false);
@@ -156,7 +156,7 @@ export default function PatientTypeList() {
                 {/* 🔙 Header + Buscador */}
                 <div className="flex items-center gap-4 mb-6 flex-wrap">
                     <button
-                        onClick={() => navigate("/settings")}
+                        onClick={() => navigate("/settings", { state: { from: "/settings/patient-types" } })}
                         className="flex items-center gap-1 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white transition cursor-pointer"
                     >
                         <ChevronLeft size={20} />
@@ -217,13 +217,13 @@ export default function PatientTypeList() {
                                     // Borde con color dinámico
                                     style={{ borderLeftColor: item.color, borderLeftWidth: '6px' }}
                                     className={`relative flex items-center justify-between bg-white dark:bg-secondary rounded-xl px-5 py-4 cursor-pointer border-y border-r transition-all group overflow-hidden shadow-sm
-                                        ${isSelected 
-                                            ? "ring-2 ring-primary/20 border-slate-300 dark:border-slate-600 scale-[1.01]" 
+                                        ${isSelected
+                                            ? "ring-2 ring-primary/20 border-slate-300 dark:border-slate-600 scale-[1.01]"
                                             : "border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600"}
                                     `}
                                 >
                                     <div className="flex items-center gap-5">
-                                        <div 
+                                        <div
                                             className="w-12 h-12 rounded-xl flex items-center justify-center text-white shadow-md"
                                             style={{ backgroundColor: item.color }}
                                         >
@@ -239,7 +239,7 @@ export default function PatientTypeList() {
 
                                     <div className="flex items-center gap-4">
                                         {/* Color dot for visualization */}
-                                        <div 
+                                        <div
                                             className="w-4 h-4 rounded-full border border-white/20 shadow-sm"
                                             style={{ backgroundColor: item.color }}
                                             title={item.color}
