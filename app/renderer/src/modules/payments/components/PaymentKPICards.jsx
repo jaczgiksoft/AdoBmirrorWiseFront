@@ -84,25 +84,25 @@ export default function PaymentKPICards({ kpis }) {
         return (
             <div
                 key={card.label}
-                className={`flex items-center gap-4 p-4 rounded-2xl bg-white dark:bg-secondary border ${card.border} shadow-sm`}
+                className={`flex items-center gap-3 p-3 rounded-xl bg-white dark:bg-secondary border ${card.border} shadow-sm`}
             >
-                <div className={`w-10 h-10 flex items-center justify-center rounded-xl ${card.bg}`}>
-                    <Icon size={20} className={card.color} />
+                <div className={`w-8 h-8 flex items-center justify-center rounded-lg ${card.bg}`}>
+                    <Icon size={16} className={card.color} />
                 </div>
                 <div>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 leading-tight">{card.label}</p>
-                    <p className={`text-xl font-bold ${card.color}`}>{card.value}</p>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-tight">{card.label}</p>
+                    <p className={`text-base font-bold leading-tight mt-0.5 ${card.color}`}>{card.value}</p>
                 </div>
             </div>
         );
     };
 
     return (
-        <div className="space-y-4 mb-8">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="space-y-2 mb-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
                 {generalCards.map(renderCard)}
             </div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
                 {billingCards.map(renderCard)}
             </div>
         </div>

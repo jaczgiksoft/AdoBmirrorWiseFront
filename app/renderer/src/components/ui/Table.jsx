@@ -11,10 +11,10 @@ import { ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
  * @param {object} sortConfig - { key: string, direction: 'asc' | 'desc' }
  * @param {function} onSort - Function(key) to handle sorting
  */
-export default function Table({ 
-    columns, 
-    data, 
-    loading = false, 
+export default function Table({
+    columns,
+    data,
+    loading = false,
     emptyMessage = "No hay datos disponibles.",
     sortConfig = null,
     onSort = null,
@@ -37,19 +37,20 @@ export default function Table({
     }
 
     return (
-        <div className="w-full overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-secondary">
+        <div className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-secondary">
             <table className="w-full text-left border-collapse text-sm">
-                <thead>
-                    <tr className="border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 text-primary">
+                <thead className="sticky top-0 z-20 bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
+                    <tr className="border-b border-slate-200 dark:border-slate-700 text-primary">
                         {columns.map((col, index) => {
                             const isSortable = col.sortable && onSort;
                             const isSorted = sortConfig?.key === col.accessor;
                             const direction = sortConfig?.direction;
 
                             return (
-                                <th 
-                                    key={index} 
-                                    className={`px-5 py-3 font-medium whitespace-nowrap ${isSortable ? "cursor-pointer select-none hover:bg-slate-200/50 dark:hover:bg-slate-700/30 transition-colors" : ""}`}
+                                <th
+                                    key={index}
+                                    className={`px-3 py-2 text-sm font-semibold whitespace-nowrap bg-slate-50 dark:bg-slate-800
+${isSortable ? "cursor-pointer select-none hover:bg-slate-200/50 dark:hover:bg-slate-700/30 transition-colors" : ""}`}
                                     onClick={() => isSortable && onSort(col.accessor)}
                                 >
                                     <div className="flex items-center gap-2">
@@ -86,7 +87,7 @@ export default function Table({
                             {columns.map((col, colIndex) => (
                                 <td
                                     key={colIndex}
-                                    className="px-5 py-3 whitespace-nowrap text-slate-700 dark:text-slate-200"
+                                    className="px-3 py-2 whitespace-nowrap text-slate-700 dark:text-slate-200 text-sm"
                                     onClick={onRowClick ? (e) => { if (e.target !== e.currentTarget && (e.target.closest('button') || e.target.closest('a'))) e.stopPropagation(); } : undefined}
                                 >
                                     {col.render ? col.render(row) : row[col.accessor]}

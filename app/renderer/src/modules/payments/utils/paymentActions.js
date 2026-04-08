@@ -5,15 +5,16 @@
  * They simulate hardware integration (printers) or external APIs (emailing).
  * Privado al módulo de pagos.
  */
+import { generatePaymentPDF } from "../services/pdfService";
 
 export function reprintTicket(payment) {
     console.log("[MOCK] Imprimiendo ticket en terminal térmica...", payment.id);
     alert(`Enviando ticket ${payment.id} a la impresora térmica.`);
 }
 
-export function downloadPaymentPDF(payment) {
+export function downloadPaymentPDF(payment, user) {
     console.log("[MOCK] Generando y descargando PDF estructurado...", payment.id);
-    alert(`Descargando comprobante PDF para el pago ${payment.id}.`);
+    generatePaymentPDF(payment, user);
 }
 
 export function viewInvoice(payment) {

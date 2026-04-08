@@ -3,16 +3,17 @@ import Modal from "@/components/ui/Modal";
 import { Receipt, User, Calendar, CreditCard, BadgeCheck, FileX, Printer, Download, Eye, Mail } from "lucide-react";
 import { formatCurrency } from "../utils/formatCurrency";
 import { reprintTicket, downloadPaymentPDF, sendInvoiceEmail, viewInvoice } from "../utils/paymentActions";
+import { useAuthStore } from "@/store/useAuthStore";
 
 const STATUS_LABELS = {
-    paid:    { label: "Pagado",   cls: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" },
-    partial: { label: "Parcial",  cls: "bg-amber-100   text-amber-700   dark:bg-amber-900/30   dark:text-amber-400"   },
-    pending: { label: "Pendiente",cls: "bg-rose-100    text-rose-700    dark:bg-rose-900/30    dark:text-rose-400"    },
+    paid: { label: "Pagado", cls: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" },
+    partial: { label: "Parcial", cls: "bg-amber-100   text-amber-700   dark:bg-amber-900/30   dark:text-amber-400" },
+    pending: { label: "Pendiente", cls: "bg-rose-100    text-rose-700    dark:bg-rose-900/30    dark:text-rose-400" },
 };
 
 const METHOD_LABELS = {
-    efectivo:      "Efectivo",
-    tarjeta:       "Tarjeta",
+    efectivo: "Efectivo",
+    tarjeta: "Tarjeta",
     transferencia: "Transferencia",
 };
 
@@ -25,7 +26,7 @@ const METHOD_LABELS = {
  */
 export default function PaymentDetailModal({ payment, onClose }) {
     if (!payment) return null;
-
+    const { user } = useAuthStore();
     // Use ticket as primary data source if available — constraint #1
     const ticket = payment.ticket ?? {};
     const statusConfig = STATUS_LABELS[payment.status] ?? { label: payment.status, cls: "bg-slate-100 text-slate-600" };
@@ -51,8 +52,8 @@ export default function PaymentDetailModal({ payment, onClose }) {
 
             {/* ── Info Grid ── */}
             <div className="grid grid-cols-2 gap-3 mb-5">
-                <InfoRow icon={User}    label="Paciente"  value={ticket.patient ?? payment.patient_name ?? "—"} />
-                <InfoRow icon={Calendar} label="Fecha"    value={ticket.date ? new Date(ticket.date).toLocaleDateString("es-MX", { dateStyle: "long" }) : "—"} />
+                <InfoRow icon={User} label="Paciente" value={ticket.patient ?? payment.patient_name ?? "—"} />
+                <InfoRow icon={Calendar} label="Fecha" value={ticket.date ? new Date(ticket.date).toLocaleDateString("es-MX", { dateStyle: "long" }) : "—"} />
                 <InfoRow icon={CreditCard} label="Método" value={METHOD_LABELS[payment.method] ?? payment.method} />
                 <InfoRow
                     icon={payment.invoiced ? BadgeCheck : FileX}
@@ -103,14 +104,14 @@ export default function PaymentDetailModal({ payment, onClose }) {
             {/* ── Actions Footer ── */}
             <div className="border-t border-slate-200 dark:border-slate-700 pt-5 flex flex-wrap items-center justify-between gap-3">
                 <div className="flex gap-2">
-                    <button 
-                        onClick={() => reprintTicket(payment)} 
+                    <button
+                        onClick={() => reprintTicket(payment)}
                         className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 dark:text-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-lg transition"
                     >
                         <Printer size={16} /> Ticket
                     </button>
-                    <button 
-                        onClick={() => downloadPaymentPDF(payment)} 
+                    <button
+                        onClick={() => downloadPaymentPDF(payment, user)}
                         className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 dark:text-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-lg transition"
                     >
                         <Download size={16} /> PDF
@@ -119,14 +120,14 @@ export default function PaymentDetailModal({ payment, onClose }) {
 
                 {payment.invoiced && (
                     <div className="flex gap-2">
-                        <button 
-                            onClick={() => viewInvoice(payment)} 
+                        <button
+                            onClick={() => viewInvoice(payment)}
                             className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-indigo-600 bg-indigo-50 hover:bg-indigo-100 dark:text-indigo-400 dark:bg-indigo-900/30 dark:hover:bg-indigo-900/50 rounded-lg transition"
                         >
                             <Eye size={16} /> SAT
                         </button>
-                        <button 
-                            onClick={() => sendInvoiceEmail(payment)} 
+                        <button
+                            onClick={() => sendInvoiceEmail(payment)}
                             className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition shadow-md shadow-indigo-500/20"
                         >
                             <Mail size={16} /> Enviar CFDI
