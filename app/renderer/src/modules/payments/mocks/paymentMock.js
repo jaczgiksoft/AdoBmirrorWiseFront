@@ -2,7 +2,7 @@
  * modules/payments/mocks/paymentMock.js
  * 
  * Simula una llamada asincrónica al backend real para la creación y listado de pagos.
- * Mejorado para generar escenarios de negocio realistas.
+ * Genera escenarios realistas con múltiples servicios.
  */
 
 const MOCK_PATIENTS = [
@@ -16,14 +16,23 @@ const MOCK_PATIENTS = [
 const MOCK_METHODS = ["efectivo", "tarjeta", "transferencia"];
 const MOCK_SOURCES = ["appointment", "treatment", "product"];
 
+const MOCK_SERVICES = [
+    { name: "Consulta general", min: 300, max: 600 },
+    { name: "Limpieza dental", min: 500, max: 900 },
+    { name: "Extracción simple", min: 800, max: 1500 },
+    { name: "Resina dental", min: 700, max: 1200 },
+    { name: "Radiografía", min: 200, max: 400 },
+    { name: "Endodoncia", min: 2500, max: 5000 },
+    { name: "Blanqueamiento", min: 1500, max: 3000 },
+];
+
 /**
- * Utilidad privada para generar un pago con datos aleatorios realistas
- * @param {Object} [overrides={}] - Datos que provienen del payload (para preservar)
- * @returns {Object} 
+ * Genera un pago con datos realistas
  */
 function generateRealisticPayment(overrides = {}) {
     const generatedAt = overrides.created_at || new Date().toISOString();
-    // 1. Generate core logic parameters automatically (if not overwritten)
+
+    // ── PATIENT ──
     const patient = overrides.patient_id
         ? (MOCK_PATIENTS.find(p => p.id === overrides.patient_id) || { id: overrides.patient_id, name: "Paciente Especificado" })
         : MOCK_PATIENTS[Math.floor(Math.random() * MOCK_PATIENTS.length)];
@@ -31,52 +40,72 @@ function generateRealisticPayment(overrides = {}) {
     const method = overrides.method || MOCK_METHODS[Math.floor(Math.random() * MOCK_METHODS.length)];
     const source_type = overrides.source_type || MOCK_SOURCES[Math.floor(Math.random() * MOCK_SOURCES.length)];
 
-    // 2. Amounts Logic
-    // Total is between 200 and 5000 if not provided
-    const total = overrides.total !== undefined ? overrides.total : Math.floor(Math.random() * 4800) + 200;
+    // ── ITEMS (MULTI SERVICIO) ──
+    let items;
 
-    // Received Logic
+    if (overrides.items && overrides.items.length > 0) {
+        items = overrides.items.map(item => ({
+            ...item,
+            taxable: item.taxable !== undefined ? item.taxable : Math.random() > 0.5,
+            tax_rate: item.tax_rate !== undefined ? item.tax_rate : 0.16
+        }));
+    } else {
+        const itemCount = Math.floor(Math.random() * 8) + 1;
+
+        // evitar duplicados
+        const shuffled = [...MOCK_SERVICES].sort(() => 0.5 - Math.random());
+        const selected = shuffled.slice(0, itemCount);
+
+        items = selected.map(service => {
+            const price = Math.floor(
+                Math.random() * (service.max - service.min) + service.min
+            );
+
+            const qty = Math.random() > 0.7 ? 2 : 1;
+
+            return {
+                name: service.name,
+                qty,
+                price,
+                total: price * qty,
+                taxable: Math.random() > 0.3,
+                tax_rate: 0.16
+            };
+        });
+    }
+
+    // ── TOTAL ──
+    const total = overrides.total !== undefined
+        ? overrides.total
+        : items.reduce((sum, item) => sum + item.total, 0);
+
+    // ── RECEIVED ──
     let received;
     if (overrides.received !== undefined) {
         received = overrides.received;
     } else {
         const scenario = Math.random();
         if (scenario > 0.6) {
-            received = total; // 40% chance full payment
+            received = total;
         } else if (scenario > 0.2) {
-            // 40% chance partial payment (30% to 70% of total)
             const percentage = (Math.floor(Math.random() * 40) + 30) / 100;
             received = Math.floor(total * percentage);
         } else {
-            received = 0; // 20% chance pending (0 received)
+            received = 0;
         }
     }
 
-    // 3. Status Derivation
+    // ── STATUS ──
     let status;
     if (received >= total) status = "paid";
     else if (received > 0) status = "partial";
     else status = "pending";
 
-    // 4. Ticket & Invoice Logic
+    // ── INVOICE ──
     const invoiced = overrides.invoiced !== undefined ? overrides.invoiced : Math.random() > 0.5;
 
-    const items = overrides.items && overrides.items.length > 0
-        ? overrides.items.map(item => ({
-            ...item,
-            taxable: item.taxable !== undefined ? item.taxable : Math.random() > 0.5,
-            tax_rate: item.tax_rate !== undefined ? item.tax_rate : 0.16
-        }))
-        : [{
-            name: `Servicio / Producto Genérico (${source_type})`,
-            qty: 1,
-            price: total,
-            total: total,
-            taxable: Math.random() > 0.3,
-            tax_rate: 0.16
-        }];
-
     let invoice = null;
+
     if (invoiced) {
         let subtotal = 0;
         let tax = 0;
@@ -104,7 +133,6 @@ function generateRealisticPayment(overrides = {}) {
     }
 
     return {
-        // Enforce ID creation randomly matching database string length
         id: overrides.id || `pay_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
         patient_id: patient.id,
         patient_name: patient.name,
@@ -120,7 +148,7 @@ function generateRealisticPayment(overrides = {}) {
         ticket: {
             clinic: "Clínica BWISE",
             patient: patient.name,
-            items: items,
+            items,
             total,
             received,
             change: Math.max(0, received - total),
@@ -129,40 +157,28 @@ function generateRealisticPayment(overrides = {}) {
     };
 }
 
-// 🛒 MOCK MEMORY STATE: Boot with 10 completely random realistic payments
+// ── MOCK DB ──
 let mockPaymentsDB = Array.from({ length: 12 }, () => generateRealisticPayment())
-    // Sort them descending by created_at so newest is first
     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
-/**
- * Obtiene la lista de pagos mockeada.
- * @returns {Promise<import('../types/payment.types').PaymentResponse[]>}
- */
+// ── GET ──
 export async function getPaymentsMock() {
     return new Promise((resolve) => {
         setTimeout(() => {
             resolve([...mockPaymentsDB]);
-        }, 400); // simulate network
+        }, 400);
     });
 }
 
-/**
- * Crea un nuevo pago iterando los overrides de la UI devolviendo el estado combinado
- * @param {import('../types/payment.types').PaymentPayload} payload
- * @returns {Promise<import('../types/payment.types').PaymentResponse>}
- */
+// ── CREATE ──
 export async function createPaymentMock(payload) {
     return new Promise((resolve) => {
         setTimeout(() => {
-            // Apply realism generator on top of whatever the UI explicitly submitted.
-            // Eg: If the UI gave total & received, they won't be randomized. 
-            // If the UI didn't include `invoiced`, it WILL be appropriately randomized.
             const newPayment = generateRealisticPayment({
                 ...payload,
-                created_at: new Date().toISOString() // Force current time on creation
+                created_at: new Date().toISOString()
             });
 
-            // 📥 Guarda en la RAM para que getPaymentsMock lo vea luego
             mockPaymentsDB = [newPayment, ...mockPaymentsDB];
 
             resolve(newPayment);

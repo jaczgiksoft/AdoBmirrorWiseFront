@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useMemo } from "react";
 import { getPayments, createPayment } from "../services/paymentService";
 
-const PAGE_SIZE = 8;
+const PAGE_SIZE = 10;
 
 export function usePayments() {
     // ── Raw data state ──────────────────────────────────────────────────────
@@ -51,13 +51,10 @@ export function usePayments() {
         setActionLoading(true);
         try {
             await createPayment({
-                source_type: "product",
-                source_id: "prod_000",
-                method: "tarjeta",
-                total: 500,
-                received: 500,
-                items: [{ name: "Producto Mock", qty: 1, price: 500, total: 500 }]
+                source_type: "treatment",
+                method: "tarjeta"
             });
+
             await fetchPayments();
         } catch (error) {
             console.error("Error creating mock payment", error);
@@ -84,7 +81,7 @@ export function usePayments() {
             .filter(p => p.status === "paid")
             .reduce((sum, p) => sum + (p.received ?? 0), 0);
 
-        const paid    = allPayments.filter(p => p.status === "paid").length;
+        const paid = allPayments.filter(p => p.status === "paid").length;
         const partial = allPayments.filter(p => p.status === "partial").length;
         const pending = allPayments.filter(p => p.status === "pending").length;
 
@@ -97,11 +94,36 @@ export function usePayments() {
         const total_collected = allPayments.reduce((sum, p) => sum + (p.received ?? 0), 0);
         const accounts_receivable = allPayments.reduce((sum, p) => sum + Math.max(0, (p.total ?? 0) - (p.received ?? 0)), 0);
 
-        return { 
+        return {
             totalIngresos, paid, partial, pending, total: allPayments.length,
             total_invoiced, total_not_invoiced, invoices_count, non_invoiced_count,
             total_expected, total_collected, accounts_receivable
         };
+    }, [allPayments]);
+
+    // ── Today's Stats ────────────────────────────────────────────────────────
+    const todayStats = useMemo(() => {
+        const today = new Date();
+
+        const todayPayments = allPayments.filter(p => {
+            if (!p.created_at) return false;
+            const pDate = new Date(p.created_at);
+            return (
+                pDate.getDate() === today.getDate() &&
+                pDate.getMonth() === today.getMonth() &&
+                pDate.getFullYear() === today.getFullYear()
+            );
+        });
+
+        const total = todayPayments.reduce((sum, p) => sum + (p.received ?? 0), 0);
+        const count = todayPayments.length;
+        const uniquePatients = new Set(
+            todayPayments
+                .map(p => p.patient_name ?? p.ticket?.patient)
+                .filter(Boolean)
+        ).size;
+
+        return { total, count, patients: uniquePatients };
     }, [allPayments]);
 
     // ── Filtered view — memoized, applies all filters ────────────────────────
@@ -109,7 +131,7 @@ export function usePayments() {
         return allPayments.filter(p => {
             const statusMatch = filterStatus === "all" || p.status === filterStatus;
             const methodMatch = filterMethod === "all" || p.method === filterMethod;
-            
+
             let invoicedMatch = true;
             if (filterInvoiced === "invoiced") invoicedMatch = p.invoiced === true;
             if (filterInvoiced === "not_invoiced") invoicedMatch = p.invoiced === false;
@@ -144,6 +166,7 @@ export function usePayments() {
         loading,
         actionLoading,
         kpis,
+        todayStats,
         filterStatus,
         setFilterStatus,
         filterMethod,
