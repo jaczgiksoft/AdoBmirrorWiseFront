@@ -48,7 +48,7 @@ export default function PatientStatusList() {
     }, []);
 
     // 🔹 Filtrado y Paginación
-    const filteredItems = items.filter(status => 
+    const filteredItems = items.filter(status =>
         status.name.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
@@ -60,7 +60,7 @@ export default function PatientStatusList() {
         {
             escape: () => {
                 if (confirmOpen || showForm) return "prevent";
-                navigate("/settings");
+                navigate("/settings", { state: { from: "/settings/patient-statuses" } });
             },
             arrowdown: (e) => {
                 if (confirmOpen || showForm) return "prevent";
@@ -121,7 +121,7 @@ export default function PatientStatusList() {
         const newItems = items.filter(i => i.id !== itemToDelete.id);
         setItems(newItems);
         localStorage.setItem(STORAGE_KEY, JSON.stringify(newItems));
-        
+
         setConfirmOpen(false);
         setItemToDelete(null);
 
@@ -139,7 +139,7 @@ export default function PatientStatusList() {
         } else {
             newItems = [...items, savedItem];
         }
-        
+
         setItems(newItems);
         localStorage.setItem(STORAGE_KEY, JSON.stringify(newItems));
         setShowForm(false);
@@ -156,7 +156,7 @@ export default function PatientStatusList() {
                 {/* 🔙 Header + Buscador */}
                 <div className="flex items-center gap-4 mb-6 flex-wrap">
                     <button
-                        onClick={() => navigate("/settings")}
+                        onClick={() => navigate("/settings", { state: { from: "/settings/patient-statuses" } })}
                         className="flex items-center gap-1 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white transition cursor-pointer"
                     >
                         <ChevronLeft size={20} />
@@ -216,13 +216,13 @@ export default function PatientStatusList() {
                                     onClick={() => handleEditClick(item)}
                                     style={{ borderLeftColor: item.color, borderLeftWidth: '6px' }}
                                     className={`relative flex items-center justify-between bg-white dark:bg-secondary rounded-xl px-5 py-4 cursor-pointer border-y border-r transition-all group overflow-hidden shadow-sm
-                                        ${isSelected 
-                                            ? "ring-2 ring-primary/20 border-slate-300 dark:border-slate-600 shadow-md" 
+                                        ${isSelected
+                                            ? "ring-2 ring-primary/20 border-slate-300 dark:border-slate-600 shadow-md"
                                             : "border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600"}
                                     `}
                                 >
                                     <div className="flex items-center gap-5">
-                                        <div 
+                                        <div
                                             className="w-12 h-12 rounded-xl flex items-center justify-center text-white shadow-md transition-transform group-hover:scale-105"
                                             style={{ backgroundColor: item.color }}
                                         >

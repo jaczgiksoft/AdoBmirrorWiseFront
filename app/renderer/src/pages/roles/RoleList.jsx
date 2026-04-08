@@ -72,7 +72,7 @@ export default function RoleList() {
         {
             escape: () => {
                 if (confirmOpen || showForm) return "prevent";
-                navigate("/settings/users");
+                navigate("/settings", { state: { from: "/settings/roles" } });
             },
             arrowdown: (e) => {
                 if (confirmOpen || showForm) return "prevent";
@@ -168,11 +168,11 @@ export default function RoleList() {
                 {/* 🔙 Header + Buscador */}
                 <div className="flex items-center gap-4 mb-6 flex-wrap">
                     <button
-                        onClick={() => navigate("/settings")}
+                        onClick={() => navigate("/settings", { state: { from: "/settings/roles" } })}
                         className="flex items-center gap-1 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white transition cursor-pointer"
                     >
                         <ChevronLeft size={20} />
-                        <span className="text-sm font-medium">Volver a Usuarios</span>
+                        <span className="text-sm font-medium">Volver a Ajustes</span>
                     </button>
 
                     <h1 className="text-2xl font-bold text-primary leading-none flex-1">

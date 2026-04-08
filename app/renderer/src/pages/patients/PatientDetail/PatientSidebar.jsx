@@ -28,7 +28,7 @@ const links = [
     { id: "summary", label: "Resumen", icon: FileText },
     { id: "general", label: "Información general", icon: UserIcon },
     { id: "clinical", label: "Historia clínica", icon: Stethoscope },
-    { id: "family", label: "Grupo familiar", icon: Users },
+
 
     // 📌 NUEVOS, COLOCADOS EN ORDEN NATURAL
     { id: "representative", label: "Representantes", icon: Users2 },

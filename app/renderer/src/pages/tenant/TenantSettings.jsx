@@ -64,7 +64,7 @@ export default function TenantSettings() {
     // 🎹 Shortcuts
     useHotkeys({
         "ctrl+s": (e) => { e.preventDefault(); handleSave(); },
-        "escape": () => navigate("/settings")
+        "escape": () => navigate("/settings", { state: { from: "/settings/tenant" } })
     }, [form]);
 
     const handleChange = (e) => {
@@ -125,7 +125,7 @@ export default function TenantSettings() {
                 <div className="flex items-center justify-between mb-10 pb-6 border-b border-slate-200 dark:border-slate-700">
                     <div className="flex items-center gap-4">
                         <button
-                            onClick={() => navigate("/settings")}
+                            onClick={() => navigate("/settings", { state: { from: "/settings/tenant" } })}
                             className="p-2 hover:bg-white dark:hover:bg-secondary rounded-lg transition text-slate-500 hover:text-primary"
                         >
                             <ChevronLeft size={24} />

@@ -1,129 +1,149 @@
 // src/pages/Settings.jsx
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useHotkeys } from "@/hooks/useHotkeys";
 import { useAuthStore } from "@/store/useAuthStore";
 import { Wrench, UserCog, UserCircle2, Activity, Box, Share2, Database, Shield, Bell, ChevronLeft, Briefcase, Layout, Building2 } from "lucide-react";
 
+const SETTINGS_MENU = [
+    {
+        icon: <UserCog size={28} />,
+        label: "Roles",
+        description: "Gestiona roles y permisos del sistema.",
+        path: "/settings/roles",
+        category: "Usuarios",
+    },
+    {
+        icon: <UserCog size={28} />,
+        label: "Puestos de Trabajo",
+        description: "Define los cargos y responsabilidades del personal.",
+        path: "/settings/positions",
+        category: "Usuarios",
+    },
+    {
+        icon: <Database size={28} />,
+        label: "Departamentos",
+        description: "Gestiona los departamentos y sus márgenes por tienda.",
+        path: "/settings/departments",
+        category: "Tenant",
+    },
+    {
+        icon: <Database size={28} />,
+        label: "Base de Datos",
+        description: "Respaldo, restauración y mantenimiento de datos.",
+        path: "/configuracion/database",
+        category: "Generales",
+    },
+    {
+        icon: <Bell size={28} />,
+        label: "Notificaciones",
+        description: "Personaliza alertas y sonidos del sistema.",
+        path: "/configuracion/notificaciones",
+        category: "Generales",
+    },
+    {
+        icon: <Shield size={28} />,
+        label: "Seguridad",
+        description: "Opciones de bloqueo, auditoría y privacidad.",
+        path: "/configuracion/seguridad",
+        category: "Generales",
+    },
+    {
+        icon: <Wrench size={28} />,
+        label: "Preferencias del Sistema",
+        description: "Tema, idioma, formato de fecha y apariencia.",
+        path: "/configuracion/preferencias",
+        category: "Generales",
+    },
+    {
+        icon: <Briefcase size={28} />,
+        label: "Servicios",
+        description: "Gestiona los servicios y tratamientos ofrecidos.",
+        path: "/services",
+        category: "Pacientes",
+    },
+    {
+        icon: <UserCircle2 size={28} />,
+        label: "Tipo de Pacientes",
+        description: "Clasifica a tus pacientes por categorías y colores.",
+        path: "/settings/patient-types",
+        category: "Pacientes",
+    },
+    {
+        icon: <Activity size={28} />,
+        label: "Estados de Pacientes",
+        description: "Define estados operativos para el seguimiento de pacientes.",
+        path: "/settings/patient-statuses",
+        category: "Pacientes",
+    },
+    {
+        icon: <Box size={28} />,
+        label: "Brackets de Pacientes",
+        description: "Catálogo de marcas y tipos de brackets utilizados.",
+        path: "/settings/patient-brackets",
+        category: "Pacientes",
+    },
+    {
+        icon: <Briefcase size={28} />,
+        label: "Ocupaciones de Pacientes",
+        description: "Gestiona los tipos de ocupaciones para perfiles de pacientes.",
+        path: "/settings/occupations",
+        category: "Pacientes",
+    },
+    {
+        icon: <Share2 size={28} />,
+        label: "Referidos de Pacientes",
+        description: "Gestiona las fuentes de origen de tus pacientes.",
+        path: "/settings/referrals",
+        category: "Pacientes",
+    },
+    {
+        icon: <Layout size={28} />,
+        label: "Áreas Clínicas",
+        description: "Configura los consultorios y áreas de atención.",
+        path: "/clinic-areas",
+        category: "Tenant",
+    },
+    {
+        icon: <Building2 size={28} />,
+        label: "Información de la Clínica",
+        description: "Configura la identidad, datos fiscales y de contacto.",
+        path: "/settings/tenant",
+        category: "Tenant",
+    },
+];
+
 export default function Settings() {
     const navigate = useNavigate();
+    const location = useLocation();
     const { user } = useAuthStore();
 
     const TABS = ["Generales", "Tenant", "Usuarios", "Pacientes"];
     const [activeTab, setActiveTab] = useState("Generales");
 
-    const SETTINGS_MENU = [
-        {
-            icon: <UserCog size={28} />,
-            label: "Roles",
-            description: "Gestiona roles y permisos del sistema.",
-            path: "/settings/roles",
-            category: "Usuarios",
-        },
-        {
-            icon: <UserCog size={28} />,
-            label: "Puestos de Trabajo",
-            description: "Define los cargos y responsabilidades del personal.",
-            path: "/settings/positions",
-            category: "Usuarios",
-        },
-        {
-            icon: <Database size={28} />,
-            label: "Departamentos",
-            description: "Gestiona los departamentos y sus márgenes por tienda.",
-            path: "/settings/departments",
-            category: "Tenant",
-        },
-        {
-            icon: <Database size={28} />,
-            label: "Base de Datos",
-            description: "Respaldo, restauración y mantenimiento de datos.",
-            path: "/configuracion/database",
-            category: "Generales",
-        },
-        {
-            icon: <Bell size={28} />,
-            label: "Notificaciones",
-            description: "Personaliza alertas y sonidos del sistema.",
-            path: "/configuracion/notificaciones",
-            category: "Generales",
-        },
-        {
-            icon: <Shield size={28} />,
-            label: "Seguridad",
-            description: "Opciones de bloqueo, auditoría y privacidad.",
-            path: "/configuracion/seguridad",
-            category: "Generales",
-        },
-        {
-            icon: <Wrench size={28} />,
-            label: "Preferencias del Sistema",
-            description: "Tema, idioma, formato de fecha y apariencia.",
-            path: "/configuracion/preferencias",
-            category: "Generales",
-        },
-        {
-            icon: <Briefcase size={28} />,
-            label: "Servicios",
-            description: "Gestiona los servicios y tratamientos ofrecidos.",
-            path: "/services",
-            category: "Pacientes",
-        },
-        {
-            icon: <UserCircle2 size={28} />,
-            label: "Tipo de Pacientes",
-            description: "Clasifica a tus pacientes por categorías y colores.",
-            path: "/settings/patient-types",
-            category: "Pacientes",
-        },
-        {
-            icon: <Activity size={28} />,
-            label: "Estados de Pacientes",
-            description: "Define estados operativos para el seguimiento de pacientes.",
-            path: "/settings/patient-statuses",
-            category: "Pacientes",
-        },
-        {
-            icon: <Box size={28} />,
-            label: "Brackets de Pacientes",
-            description: "Catálogo de marcas y tipos de brackets utilizados.",
-            path: "/settings/patient-brackets",
-            category: "Pacientes",
-        },
-        {
-            icon: <Briefcase size={28} />,
-            label: "Ocupaciones de Pacientes",
-            description: "Gestiona los tipos de ocupaciones para perfiles de pacientes.",
-            path: "/settings/occupations",
-            category: "Pacientes",
-        },
-        {
-            icon: <Share2 size={28} />,
-            label: "Referidos de Pacientes",
-            description: "Gestiona las fuentes de origen de tus pacientes.",
-            path: "/settings/referrals",
-            category: "Pacientes",
-        },
-        {
-            icon: <Layout size={28} />,
-            label: "Áreas Clínicas",
-            description: "Configura los consultorios y áreas de atención.",
-            path: "/clinic-areas",
-            category: "Tenant",
-        },
-        {
-            icon: <Building2 size={28} />,
-            label: "Información de la Clínica",
-            description: "Configura la identidad, datos fiscales y de contacto.",
-            path: "/settings/tenant",
-            category: "Tenant",
-        },
-    ];
-
     const filteredMenu = SETTINGS_MENU.filter(item => item.category === activeTab);
 
     const [selectedIndex, setSelectedIndex] = useState(0);
+
+    // 🔹 Efecto para manejar navegación desde otros módulos
+    useEffect(() => {
+        if (location.state?.from) {
+            const fromPath = location.state.from;
+            const item = SETTINGS_MENU.find(i => i.path === fromPath);
+            if (item) {
+                // Cambiar a la pestaña correcta
+                setActiveTab(item.category);
+                
+                // Calcular el índice dentro de esa pestaña
+                const categoryMenu = SETTINGS_MENU.filter(i => i.category === item.category);
+                const index = categoryMenu.findIndex(i => i.path === fromPath);
+                if (index !== -1) {
+                    setSelectedIndex(index);
+                }
+            }
+        }
+    }, [location.state]);
 
     // 🔢 Definimos el número de columnas (por ahora 3, como en el grid tailwind)
     const COLUMNS = 3;
