@@ -536,6 +536,7 @@ function TreatmentPlanModal({ isOpen, onClose, onSave, catalog = [] }) {
     const [durationMonths, setDurationMonths] = useState(6);
     const [isMain, setIsMain] = useState(false);
     const [treatments, setTreatments] = useState([]);
+    const [errors, setErrors] = useState({});
 
     // DnD Sensors
     const sensors = useSensors(
@@ -553,6 +554,7 @@ function TreatmentPlanModal({ isOpen, onClose, onSave, catalog = [] }) {
             setDurationMonths(6);
             setIsMain(false);
             setTreatments([]);
+            setErrors({});
         }
     }, [isOpen]);
 
@@ -615,8 +617,18 @@ function TreatmentPlanModal({ isOpen, onClose, onSave, catalog = [] }) {
         }
     };
 
+    const validateForm = () => {
+        const newErrors = {};
+        if (!title.trim()) newErrors.title = 'Campo obligatorio';
+        if (!startDate) newErrors.startDate = 'Campo obligatorio';
+        if (!durationMonths) newErrors.durationMonths = 'Campo obligatorio';
+
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
+    };
+
     const handleSubmit = () => {
-        if (!title.trim()) return;
+        if (!validateForm()) return;
 
         onSave({
             title,
@@ -652,17 +664,18 @@ function TreatmentPlanModal({ isOpen, onClose, onSave, catalog = [] }) {
                     {/* Basic Info */}
                     <div className="space-y-4">
                         <div>
-                            <label className="block text-xs font-semibold text-slate-500 uppercase mb-1.5">
+                            <label className="block text-xs font-semibold text-slate-500 uppercase mb-1.5 label-required">
                                 Título del Plan
                             </label>
                             <input
                                 type="text"
                                 autoFocus
-                                className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-primary/50 outline-none transition-all"
+                                className={`w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border ${errors.title ? "border-error ring-1 ring-error/50" : "border-slate-200 dark:border-slate-700"} rounded-lg text-sm focus:ring-2 focus:ring-primary/50 outline-none transition-all`}
                                 placeholder="Ej: Fase 1 Ortodoncia"
                                 value={title}
                                 onChange={e => setTitle(e.target.value)}
                             />
+                            {errors.title && <p className="text-error text-[10px] mt-1">{errors.title}</p>}
                         </div>
 
                         <div className="grid grid-cols-2 gap-4">
@@ -671,19 +684,22 @@ function TreatmentPlanModal({ isOpen, onClose, onSave, catalog = [] }) {
                                     label="Fecha de Inicio"
                                     value={startDate}
                                     onChange={setStartDate}
+                                    required={true}
                                 />
+                                {errors.startDate && <p className="text-error text-[10px] mt-1">{errors.startDate}</p>}
                             </div>
                             <div>
-                                <label className="block text-xs font-semibold text-slate-500 uppercase mb-1.5">
+                                <label className="block text-xs font-semibold text-slate-500 uppercase mb-1.5 label-required">
                                     Duración (meses)
                                 </label>
                                 <input
                                     type="number"
                                     min="1"
-                                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-primary/50 outline-none"
+                                    className={`w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border ${errors.durationMonths ? "border-error ring-1 ring-error/50" : "border-slate-200 dark:border-slate-700"} rounded-lg text-sm focus:ring-2 focus:ring-primary/50 outline-none`}
                                     value={durationMonths}
                                     onChange={e => setDurationMonths(parseInt(e.target.value) || 0)}
                                 />
+                                {errors.durationMonths && <p className="text-error text-[10px] mt-1">{errors.durationMonths}</p>}
                             </div>
                         </div>
 

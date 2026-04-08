@@ -329,6 +329,7 @@ function SectionHeader({ onAdd }) {
 }
 
 function BudgetRow({ budget, onEdit, onDelete }) {
+    const [hoveredAction, setHoveredAction] = useState(null);
     const StatusIcon = STATUS_CONFIG[budget.status].icon;
     const total = calculateTotal(budget.items);
 
@@ -369,21 +370,62 @@ function BudgetRow({ budget, onEdit, onDelete }) {
                     <span className="text-[10px] text-slate-400 uppercase tracking-wider font-medium">Total</span>
                 </div>
 
-                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button
-                        onClick={(e) => { e.stopPropagation(); onEdit(); }}
-                        className="p-2 text-slate-400 hover:text-[var(--color-primary)] hover:bg-[var(--color-primary)]/10 rounded-lg transition-colors"
-                        title="Editar"
-                    >
-                        <Edit2 size={16} />
-                    </button>
-                    <button
-                        onClick={(e) => { e.stopPropagation(); onDelete(); }}
-                        className="p-2 text-slate-400 hover:text-[var(--color-error)] hover:bg-[var(--color-error)]/10 rounded-lg transition-colors"
-                        title="Eliminar"
-                    >
-                        <Trash2 size={16} />
-                    </button>
+                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all duration-200 translate-y-1 group-hover:translate-y-0">
+                    <div className="relative">
+                        <button
+                            onClick={(e) => { e.stopPropagation(); onEdit(); }}
+                            onMouseEnter={() => setHoveredAction('edit')}
+                            onMouseLeave={() => setHoveredAction(null)}
+                            className="p-2 text-slate-400 hover:text-[var(--color-primary)] hover:bg-[var(--color-primary)]/10 rounded-lg transition-colors"
+                        >
+                            <Edit2 size={16} />
+                        </button>
+                        <AnimatePresence>
+                            {hoveredAction === 'edit' && (
+                                <motion.div
+                                    initial={{ opacity: 0, y: 5 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={{ opacity: 0, y: 5 }}
+                                    className="
+                                        absolute bottom-full left-1/2 -translate-x-1/2 mb-2
+                                        px-2 py-1 rounded text-[10px] font-medium
+                                        bg-slate-800 text-white shadow-xl whitespace-nowrap
+                                        z-50
+                                    "
+                                >
+                                    Editar
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                    </div>
+
+                    <div className="relative">
+                        <button
+                            onClick={(e) => { e.stopPropagation(); onDelete(); }}
+                            onMouseEnter={() => setHoveredAction('delete')}
+                            onMouseLeave={() => setHoveredAction(null)}
+                            className="p-2 text-slate-400 hover:text-[var(--color-error)] hover:bg-[var(--color-error)]/10 rounded-lg transition-colors"
+                        >
+                            <Trash2 size={16} />
+                        </button>
+                        <AnimatePresence>
+                            {hoveredAction === 'delete' && (
+                                <motion.div
+                                    initial={{ opacity: 0, y: 5 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={{ opacity: 0, y: 5 }}
+                                    className="
+                                        absolute bottom-full left-1/2 -translate-x-1/2 mb-2
+                                        px-2 py-1 rounded text-[10px] font-medium
+                                        bg-[var(--color-error)] text-white shadow-xl whitespace-nowrap
+                                        z-50
+                                    "
+                                >
+                                    Eliminar
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                    </div>
                 </div>
             </div>
         </div>
@@ -422,6 +464,7 @@ function BudgetModal({ open, mode, initialData, catalog = [], plans = [], onSave
     const [title, setTitle] = useState('');
     const [status, setStatus] = useState('pending');
     const [items, setItems] = useState([defaultItem]);
+    const [errors, setErrors] = useState({});
 
     // Linking Fields
     const [selectedPlanId, setSelectedPlanId] = useState(null); // ID only
@@ -477,6 +520,7 @@ function BudgetModal({ open, mode, initialData, catalog = [], plans = [], onSave
                 setDownPaymentValue(0);
                 setDiscountType('fixed');
                 setDiscountValue(0);
+                setErrors({});
             }
             setTimeout(() => titleRef.current?.focus(), 100);
         }
@@ -525,19 +569,24 @@ function BudgetModal({ open, mode, initialData, catalog = [], plans = [], onSave
         }));
     };
 
-    const handleSaveInternal = () => {
-        if (!title.trim()) {
-            addToast({ type: 'error', title: 'Falta información', message: 'El título es obligatorio.' });
-            return;
-        }
+    const validateForm = () => {
+        const newErrors = {};
+        if (!title.trim()) newErrors.title = 'El título es obligatorio.';
 
-        // Filter out empty items if needed, or validate them
         const validItems = items.filter(i => i.description.trim());
-        if (validItems.length === 0) {
-            addToast({ type: 'error', title: 'Sin ítems', message: 'Agrega al menos un ítem valido.' });
-            return;
-        }
+        if (validItems.length === 0) newErrors.items = 'Agrega al menos un ítem válido.';
 
+        if (!startDate) newErrors.startDate = 'Campo obligatorio';
+        if (!duration) newErrors.duration = 'Campo obligatorio';
+
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
+    };
+
+    const handleSaveInternal = () => {
+        if (!validateForm()) return;
+
+        const validItems = items.filter(i => i.description.trim());
         onSave({
             title,
             status,
@@ -599,15 +648,18 @@ function BudgetModal({ open, mode, initialData, catalog = [], plans = [], onSave
                         {/* Header */}
                         <div className="px-6 pt-6 pb-2">
                             <div className="flex justify-between items-start mb-4">
-                                <input
-                                    ref={titleRef}
-                                    type="text"
-                                    disabled={isReadOnly}
-                                    value={title}
-                                    onChange={(e) => setTitle(e.target.value)}
-                                    placeholder="Título del presupuesto..."
-                                    className="w-full text-2xl font-bold bg-transparent border-none outline-none placeholder:text-slate-300 dark:placeholder:text-slate-600 text-slate-800 dark:text-slate-100 disabled:opacity-70 disabled:cursor-not-allowed"
-                                />
+                                <div className="w-full">
+                                    <input
+                                        ref={titleRef}
+                                        type="text"
+                                        disabled={isReadOnly}
+                                        value={title}
+                                        onChange={(e) => setTitle(e.target.value)}
+                                        placeholder="Título del presupuesto..."
+                                        className={`w-full text-2xl font-bold bg-transparent border-b-2 ${errors.title ? "border-error" : "border-transparent focus:border-primary/30"} outline-none placeholder:text-slate-300 dark:placeholder:text-slate-600 text-slate-800 dark:text-slate-100 disabled:opacity-70 disabled:cursor-not-allowed transition-all`}
+                                    />
+                                    {errors.title && <p className="text-error text-xs mt-1 font-medium">{errors.title}</p>}
+                                </div>
                                 {isReadOnly && (
                                     <div className="ml-4 flex items-center gap-1.5 px-3 py-1 bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 rounded-full text-xs font-bold uppercase tracking-wider whitespace-nowrap">
                                         <CheckCircle2 size={14} />
@@ -636,30 +688,32 @@ function BudgetModal({ open, mode, initialData, catalog = [], plans = [], onSave
                                     </div>
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-semibold text-slate-500 uppercase mb-1.5">
+                                    <label className="block text-xs font-semibold text-slate-500 uppercase mb-1.5 label-required">
                                         Fecha Inicio
                                     </label>
                                     <input
                                         type="date"
                                         disabled={isReadOnly}
-                                        className="w-full px-3 py-2 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary/20 disabled:opacity-50"
+                                        className={`w-full px-3 py-2 bg-white dark:bg-slate-700 border ${errors.startDate ? "border-error ring-1 ring-error/50" : "border-slate-200 dark:border-slate-600"} rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary/20 disabled:opacity-50`}
                                         value={startDate}
                                         onChange={(e) => setStartDate(e.target.value)}
                                     />
+                                    {errors.startDate && <p className="text-error text-[10px] mt-1">{errors.startDate}</p>}
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-semibold text-slate-500 uppercase mb-1.5">
+                                    <label className="block text-xs font-semibold text-slate-500 uppercase mb-1.5 label-required">
                                         Duración (Meses)
                                     </label>
                                     <input
                                         type="number"
                                         min="1"
                                         disabled={isReadOnly}
-                                        className="w-full px-3 py-2 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary/20 disabled:opacity-50"
+                                        className={`w-full px-3 py-2 bg-white dark:bg-slate-700 border ${errors.duration ? "border-error ring-1 ring-error/50" : "border-slate-200 dark:border-slate-600"} rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary/20 disabled:opacity-50`}
                                         value={duration}
                                         onChange={(e) => setDuration(e.target.value)}
                                         placeholder="Ej: 6"
                                     />
+                                    {errors.duration && <p className="text-error text-[10px] mt-1">{errors.duration}</p>}
                                 </div>
                             </div>
 
@@ -743,6 +797,7 @@ function BudgetModal({ open, mode, initialData, catalog = [], plans = [], onSave
                                     Agregar ítem
                                 </button>
                             )}
+                            {errors.items && <p className="text-error text-xs mt-2 font-medium">{errors.items}</p>}
 
                             {/* Financial Summary Controls */}
                             <div className={`mt-8 grid grid-cols-1 sm:grid-cols-2 gap-6 pt-6 border-t border-slate-100 dark:border-slate-800 ${isReadOnly ? 'pointer-events-none opacity-80' : ''}`}>

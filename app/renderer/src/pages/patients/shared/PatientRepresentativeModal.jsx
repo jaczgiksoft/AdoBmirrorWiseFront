@@ -88,12 +88,14 @@ export default function PatientRepresentativeModal({ open, onClose, onSave, repr
     const validateForm = () => {
         const newErrors = {};
         if (!form.full_name.trim()) newErrors.full_name = "Campo obligatorio";
+        if (!form.relationship) newErrors.relationship = "Campo obligatorio";
+        if (!form.phone) newErrors.phone = "Campo obligatorio";
 
         if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email))
             newErrors.email = "Correo inválido";
 
-        if (form.can_login) {
-            if (!form.phone) newErrors.phone = "Requerido para generar usuario";
+        if (form.can_login && !form.phone) {
+            newErrors.phone = "Requerido para generar usuario";
         }
 
         setErrors(newErrors);
@@ -210,26 +212,29 @@ export default function PatientRepresentativeModal({ open, onClose, onSave, repr
 
                         {/* Relación */}
                         <div>
-                            <label className="block text-sm mb-1">Relación</label>
+                            <label className="block text-sm mb-1 label-required">Relación</label>
                             <select
                                 name="relationship"
                                 value={form.relationship}
                                 onChange={(e) =>
                                     setForm((f) => ({ ...f, relationship: e.target.value }))
                                 }
-                                className="input"
+                                className={`input ${errors.relationship ? "border-error ring-1 ring-error/50" : ""}`}
                             >
                                 <option value="">Seleccionar...</option>
                                 {RELATIONSHIP_OPTIONS.map((opt) => (
                                     <option key={opt} value={opt}>{opt}</option>
                                 ))}
                             </select>
+                            {errors.relationship && (
+                                <p className="text-error text-xs">{errors.relationship}</p>
+                            )}
                         </div>
 
                         {/* Teléfonos */}
                         <div className="grid grid-cols-2 gap-3">
                             <div>
-                                <label className="block text-sm mb-1">Teléfono</label>
+                                <label className="block text-sm mb-1 label-required">Teléfono</label>
                                 <input
                                     name="phone"
                                     value={form.phone}
@@ -237,8 +242,11 @@ export default function PatientRepresentativeModal({ open, onClose, onSave, repr
                                     onChange={(e) =>
                                         setForm((f) => ({ ...f, phone: e.target.value }))
                                     }
-                                    className={`input ${errors.phone ? "border-error" : ""}`}
+                                    className={`input ${errors.phone ? "border-error ring-1 ring-error/50" : ""}`}
                                 />
+                                {errors.phone && (
+                                    <p className="text-error text-xs">{errors.phone}</p>
+                                )}
                             </div>
 
                             <div>

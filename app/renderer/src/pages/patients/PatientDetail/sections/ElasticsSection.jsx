@@ -1,6 +1,8 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
-import { Layers, Plus, X, Calendar, Clock, Undo2, Redo2, Trash2, Loader2 } from 'lucide-react';
+import { Layers, Plus, X, Calendar, Clock, Undo2, Redo2, Trash2, Loader2, LayoutGrid, XCircle } from 'lucide-react';
+import { DateInput } from '@/components/inputs';
+import { ConfirmDialog } from '@/components/feedback';
 import bracketImg from '@/assets/images/odontogram/bracket.svg';
 import bracketGanchoImg from '@/assets/images/odontogram/bracket-gancho.svg';
 import tadImg from '@/assets/images/odontogram/tad.svg';
@@ -47,6 +49,37 @@ export const HOOK_BRACKET_CONFIG = {
     36: { scale: 1.45, offsetX: 0, offsetY: 8, rotate: 0, flipX: false },
     37: { scale: 1.45, offsetX: 0, offsetY: 4, rotate: 0, flipX: false },
     38: { scale: 1.45, offsetX: 0, offsetY: -3, rotate: 0, flipX: false },
+};
+
+// =========================================================================
+// MICRO-AJUSTES PARA BRACKETS NORMALES (POSICIÓN X e Y)
+// =========================================================================
+export const NORMAL_BRACKET_CONFIG = {
+    // Brackets dentales superiores
+    11: { offsetX: 0, offsetY: 0 },
+    12: { offsetX: 0, offsetY: 0 },
+    13: { offsetX: 0, offsetY: 0 },
+    14: { offsetX: 0, offsetY: 0 },
+    15: { offsetX: 0, offsetY: 0 },
+
+    21: { offsetX: 0, offsetY: 0 },
+    22: { offsetX: 0, offsetY: 0 },
+    23: { offsetX: 0, offsetY: 0 },
+    24: { offsetX: 0, offsetY: 0 },
+    25: { offsetX: 0, offsetY: 0 },
+
+    // Brackets dentales inferiores
+    31: { offsetX: 0, offsetY: 0 },
+    32: { offsetX: 0, offsetY: 0 },
+    33: { offsetX: 0, offsetY: 0 },
+    34: { offsetX: 0, offsetY: 0 },
+    35: { offsetX: 0, offsetY: 0 },
+
+    41: { offsetX: 0, offsetY: 0 },
+    42: { offsetX: 0, offsetY: 0 },
+    43: { offsetX: 0, offsetY: 0 },
+    44: { offsetX: 0, offsetY: 0 },
+    45: { offsetX: 0, offsetY: 0 },
 };
 
 // Configuración base de la línea Y para TADs (separada por maxilar y mandíbula)
@@ -137,7 +170,7 @@ const LOWER_LEFT = [31, 32, 33, 34, 35, 36, 37, 38];
 
 // No more mock instructions here, we use the hook
 const INACTIVE_TYPES = ['extraction', 'missing', 'unerupted'];
- 
+
 import { usePatientElasticsData } from '@/hooks/usePatientElasticsData';
 
 export default function ElasticsSection() {
@@ -160,6 +193,7 @@ export default function ElasticsSection() {
     // Segment-based State
     // activeChain: { typeId: string, segments: Array<{from, to, config}>, lastPoint: number | null, startPoint: number | null }
     const [actionType, setActionType] = useState('elastics');
+    const [showConfirmClear, setShowConfirmClear] = useState(false);
     const [tads, setTads] = useState({});
     const [brackets, setBrackets] = useState({}); // New state for brackets
     const [activeChain, setActiveChain] = useState({ segments: [], lastPoint: null, startPoint: null });
@@ -361,17 +395,20 @@ export default function ElasticsSection() {
 
         // Dynamic Calculation based on THIS tooth's dimensions
         const bracketYOffset = tooth.isUpper ? (tooth.height * 0.75) : (tooth.height * 0.15);
-        const bracketXOffset = (tooth.width - 20) / 2;
+        const bracketXOffset = (tooth.width - 28) / 2; // Fixed from 20 to 28 (baseSize)
 
-        // Apply Micro-adjustments if it's a hook bracket
-        const hookConfig = HOOK_BRACKET_CONFIG[id];
-        const customOffsetX = hookConfig ? (hookConfig.offsetX || 0) : 0;
-        const customOffsetY = hookConfig ? (hookConfig.offsetY || 0) : 0;
+        // Apply Micro-adjustments if it's a hook bracket or normal bracket
+        const hookConfig = HOOK_BRACKET_CONFIG[String(id)];
+        const normalConfig = NORMAL_BRACKET_CONFIG[String(id)];
+        const activeConfig = hookConfig || normalConfig;
 
-        // Center of the 20x20 bracket is +10 + custom offsets
+        const customOffsetX = activeConfig ? (activeConfig.offsetX || 0) : 0;
+        const customOffsetY = activeConfig ? (activeConfig.offsetY || 0) : 0;
+
+        // Center of the 28x28 bracket is +14 + custom offsets
         return {
-            x: tooth.x + bracketXOffset + 10 + customOffsetX,
-            y: tooth.y + bracketYOffset + 10 + customOffsetY
+            x: tooth.x + bracketXOffset + 14 + customOffsetX,
+            y: tooth.y + bracketYOffset + 14 + customOffsetY
         };
     };
 
@@ -624,12 +661,12 @@ export default function ElasticsSection() {
             setCompletedChains(history[newIndex].completedChains);
         }
     }, [history, historyIndex]);
- 
+
     const handleSaveInstruction = async () => {
         if (isReadOnly) return;
-        
+
         const type = ELASTIC_TYPES.find(t => t.id === selectedElasticTypeId);
-        
+
         const newInstruction = {
             startDate,
             endDate,
@@ -657,14 +694,14 @@ export default function ElasticsSection() {
         setHours('');
         setNotes('');
         setSelectedElasticTypeId(ELASTIC_TYPES[0].id);
-        
+
         // Reset Odontogram to last "global" state
         loadGlobalOdontogram();
         setCompletedChains([]);
         setActiveChain({ segments: [], lastPoint: null, startPoint: null });
         setHistory([{ activeChain: { segments: [], lastPoint: null, startPoint: null }, completedChains: [] }]);
         setHistoryIndex(0);
-        
+
         setIsModalOpen(true);
     };
 
@@ -675,18 +712,18 @@ export default function ElasticsSection() {
         setHours(inst.hours?.replace(' horas', '') || '');
         setNotes(inst.notes || '');
         setSelectedElasticTypeId(inst.typeId || ELASTIC_TYPES[0].id);
-        
+
         // Load Snapshotted Odontogram
         if (inst.odontogramData) {
             setCompletedChains(inst.odontogramData.completedChains || []);
             setBrackets(inst.odontogramData.brackets || {});
             setTads(inst.odontogramData.tads || {});
         }
-        
+
         setActiveChain({ segments: [], lastPoint: null, startPoint: null });
         setHistory([{ activeChain: { segments: [], lastPoint: null, startPoint: null }, completedChains: inst.odontogramData?.completedChains || [] }]);
         setHistoryIndex(0);
-        
+
         setIsModalOpen(true);
     };
 
@@ -699,15 +736,73 @@ export default function ElasticsSection() {
         }
     }, [history, historyIndex]);
 
+    const executeClear = useCallback(() => {
+        const newActive = { segments: [], lastPoint: null, startPoint: null };
+        const newCompleted = [];
+        setActiveChain(newActive);
+        setCompletedChains(newCompleted);
+        pushToHistory(newActive, newCompleted);
+        setShowConfirmClear(false);
+    }, [pushToHistory]);
+
     const handleClear = useCallback(() => {
         if (activeChain.segments.length > 0 || completedChains.length > 0) {
-            const newActive = { segments: [], lastPoint: null, startPoint: null };
-            const newCompleted = [];
-            setActiveChain(newActive);
-            setCompletedChains(newCompleted);
-            pushToHistory(newActive, newCompleted);
+            setShowConfirmClear(true);
         }
-    }, [activeChain, completedChains, historyIndex]);
+    }, [activeChain.segments.length, completedChains.length]);
+
+    const handleAddAllBrackets = useCallback(() => {
+        if (isReadOnly) return;
+
+        const allToothIds = [...UPPER_RIGHT, ...UPPER_LEFT, ...LOWER_RIGHT, ...LOWER_LEFT];
+        const newBrackets = { ...brackets };
+        let changed = false;
+
+        allToothIds.forEach(id => {
+            const state = toothStates[id] || 'original';
+            if (!INACTIVE_TYPES.includes(state) && !newBrackets[id]) {
+                newBrackets[id] = true;
+                changed = true;
+            }
+        });
+
+        if (changed) {
+            setBrackets(newBrackets);
+        }
+    }, [brackets, isReadOnly, toothStates]);
+
+    const handleAddAllTads = useCallback(() => {
+        if (isReadOnly) return;
+
+        const newTads = { ...tads };
+        let changed = false;
+
+        teethData.forEach((tooth, idx) => {
+            if (idx === teethData.length - 1) return;
+
+            const nextTooth = teethData[idx + 1];
+
+            const q1 = parseInt(String(tooth.id)[0]);
+            const q2 = parseInt(String(nextTooth.id)[0]);
+            if (q1 !== q2) return;
+
+            const pos1 = parseInt(String(tooth.id)[1]);
+            const pos2 = parseInt(String(nextTooth.id)[1]);
+            if (pos1 === 8 || pos2 === 8) return;
+
+            const pairId = [tooth.id, nextTooth.id].sort((a, b) => a - b).join('-');
+            if (pairId === '11-21' || pairId === '31-41') return;
+
+            if (!newTads[pairId]) {
+                newTads[pairId] = true;
+                changed = true;
+            }
+        });
+
+        if (changed) {
+            setTads(newTads);
+        }
+    }, [tads, isReadOnly, teethData]);
 
     // Keyboard Shortcuts (CTRL+Z, CTRL+Y)
     useEffect(() => {
@@ -803,7 +898,7 @@ export default function ElasticsSection() {
                                                 </span>
                                             )}
                                         </div>
- 
+
                                         <div className="flex items-center gap-4 text-xs text-slate-500 dark:text-slate-400">
                                             <div className="flex items-center gap-1.5">
                                                 <Calendar size={12} />
@@ -884,6 +979,23 @@ export default function ElasticsSection() {
                                             className="p-1.5 rounded-md text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-700 hover:text-red-600 dark:hover:text-red-400 hover:shadow-sm disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:shadow-none transition-all active:scale-95 disabled:active:scale-100"
                                         >
                                             <Trash2 size={16} />
+                                        </button>
+                                        <div className="w-[1px] h-4 bg-slate-300 dark:bg-slate-600 mx-1"></div>
+                                        <button
+                                            onClick={handleAddAllBrackets}
+                                            disabled={isReadOnly}
+                                            title="Agregar todos los brackets"
+                                            className="p-1.5 rounded-md text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-700 hover:text-primary dark:hover:text-primary hover:shadow-sm disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:shadow-none transition-all active:scale-95 disabled:active:scale-100"
+                                        >
+                                            <LayoutGrid size={16} />
+                                        </button>
+                                        <button
+                                            onClick={handleAddAllTads}
+                                            disabled={isReadOnly}
+                                            title="Agregar todos los TADs"
+                                            className="p-1.5 rounded-md text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-700 hover:text-primary dark:hover:text-primary hover:shadow-sm disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:shadow-none transition-all active:scale-95 disabled:active:scale-100"
+                                        >
+                                            <XCircle size={16} />
                                         </button>
                                     </div>
                                 </div>
@@ -1062,22 +1174,25 @@ export default function ElasticsSection() {
                                                     {teethData.map((tooth) => {
                                                         // Dynamic positioning relative to tooth size
                                                         const bracketYOffset = tooth.isUpper ? (tooth.height * 0.75) : (tooth.height * 0.15);
-                                                        const bracketXOffset = (tooth.width - 20) / 2;
+                                                        const bracketXOffset = (tooth.width - 28) / 2; // Fixed from 20 to 28 (baseSize)
                                                         const activeIndex = activeChain.lastPoint === tooth.id || activeChain.startPoint === tooth.id || activeChain.segments.some(s => s.from === tooth.id || s.to === tooth.id);
                                                         const isActive = activeIndex;
                                                         const isOrigin = activeChain.startPoint === tooth.id;
                                                         const isCompleted = completedChains.some(chain => chain.segments.some(s => s.from === tooth.id || s.to === tooth.id));
 
                                                         // Micro-Adjustments Configuration
-                                                        const hookConfig = HOOK_BRACKET_CONFIG[tooth.id];
+                                                        const hookConfig = HOOK_BRACKET_CONFIG[String(tooth.id)];
+                                                        const normalConfig = NORMAL_BRACKET_CONFIG[String(tooth.id)];
+                                                        const activeConfig = hookConfig || normalConfig;
+
                                                         const useHookBracket = !!hookConfig;
                                                         const currentBracketImg = useHookBracket ? bracketGanchoImg : bracketImg;
 
-                                                        const scale = hookConfig ? (hookConfig.scale || 1) : 1;
-                                                        const offsetX = hookConfig ? (hookConfig.offsetX || 0) : 0;
-                                                        const offsetY = hookConfig ? (hookConfig.offsetY || 0) : 0;
-                                                        const rotate = hookConfig ? (hookConfig.rotate || 0) : 0;
-                                                        const flipX = hookConfig ? !!hookConfig.flipX : false;
+                                                        const scale = activeConfig ? (activeConfig.scale || 1) : 1;
+                                                        const offsetX = activeConfig ? (activeConfig.offsetX || 0) : 0;
+                                                        const offsetY = activeConfig ? (activeConfig.offsetY || 0) : 0;
+                                                        const rotate = activeConfig ? (activeConfig.rotate || 0) : 0;
+                                                        const flipX = activeConfig ? !!activeConfig.flipX : false;
 
                                                         const baseSize = 28;
                                                         const sizeW = baseSize * scale;
@@ -1153,7 +1268,7 @@ export default function ElasticsSection() {
                                         <input type="radio" name="actionType" value="elastics" checked={actionType === 'elastics'} onChange={() => setActionType('elastics')} disabled={isReadOnly} className="w-4 h-4 text-primary focus:ring-primary disabled:opacity-50" />
                                         <span className="text-sm text-slate-700 dark:text-slate-300">Colocar Elásticos</span>
                                     </label>
- 
+
                                     {/* Configuración de Ruta (Interno/Externo) */}
                                     <div className="flex items-center gap-3">
                                         <button
@@ -1174,7 +1289,7 @@ export default function ElasticsSection() {
                                                 <span className="absolute inset-0 rounded-lg ring-2 ring-primary dark:ring-primary animate-pulse opacity-20 pointer-events-none" />
                                             )}
                                         </button>
- 
+
                                         <button
                                             onClick={() => setElasticRouting('internal')}
                                             disabled={isReadOnly}
@@ -1205,43 +1320,19 @@ export default function ElasticsSection() {
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div className="space-y-1.5">
-                                        <label className="text-xs font-medium text-slate-500 dark:text-slate-400">
-                                            Fecha de Inicio
-                                        </label>
-                                        <input
-                                            type="date"
+                                        <DateInput
+                                            label="Fecha de Inicio"
                                             value={startDate}
-                                            onChange={(e) => setStartDate(e.target.value)}
+                                            onChange={setStartDate}
                                             readOnly={isReadOnly}
-                                            className="
-                                                w-full px-3 py-2 rounded-lg text-sm
-                                                bg-slate-50 dark:bg-slate-800
-                                                border border-slate-200 dark:border-slate-700
-                                                focus:ring-2 focus:ring-primary/20 focus:border-primary
-                                                outline-none transition-all
-                                                text-slate-700 dark:text-slate-200
-                                                read-only:opacity-70 read-only:cursor-default
-                                            "
                                         />
                                     </div>
                                     <div className="space-y-1.5">
-                                        <label className="text-xs font-medium text-slate-500 dark:text-slate-400">
-                                            Fecha de Fin (Opcional)
-                                        </label>
-                                        <input
-                                            type="date"
+                                        <DateInput
+                                            label="Fecha de Fin (Opcional)"
                                             value={endDate}
-                                            onChange={(e) => setEndDate(e.target.value)}
+                                            onChange={setEndDate}
                                             readOnly={isReadOnly}
-                                            className="
-                                                w-full px-3 py-2 rounded-lg text-sm
-                                                bg-slate-50 dark:bg-slate-800
-                                                border border-slate-200 dark:border-slate-700
-                                                focus:ring-2 focus:ring-primary/20 focus:border-primary
-                                                outline-none transition-all
-                                                text-slate-700 dark:text-slate-200
-                                                read-only:opacity-70 read-only:cursor-default
-                                            "
                                         />
                                     </div>
                                 </div>
@@ -1350,6 +1441,18 @@ export default function ElasticsSection() {
                     </div>
                 </div>
             )}
+
+            <ConfirmDialog
+                open={showConfirmClear}
+                title="¿Limpiar todos los elásticos?"
+                message="Esta acción eliminará todos los elásticos y cadenas actuales del odontograma. ¿Estás seguro de que deseas continuar?"
+                confirmLabel="Sí, limpiar todo"
+                cancelLabel="Cancelar"
+                confirmVariant="error"
+                onConfirm={executeClear}
+                onCancel={() => setShowConfirmClear(false)}
+            />
         </div>
     );
 }
+

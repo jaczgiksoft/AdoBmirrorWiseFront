@@ -556,6 +556,8 @@ function SectionHeader({ onAdd }) {
 }
 
 function HobbyRow({ hobby, onEdit, onDelete }) {
+    const [hoveredAction, setHoveredAction] = useState(null);
+
     return (
         <div
             onClick={onEdit}
@@ -579,21 +581,62 @@ function HobbyRow({ hobby, onEdit, onDelete }) {
             </div>
 
             <div className="flex items-center justify-between sm:justify-end gap-6 w-full sm:w-auto">
-                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button
-                        onClick={(e) => { e.stopPropagation(); onEdit(); }}
-                        className="p-2 text-slate-400 hover:text-[var(--color-primary)] hover:bg-[var(--color-primary)]/10 rounded-lg transition-colors"
-                        title="Editar"
-                    >
-                        <Edit2 size={16} />
-                    </button>
-                    <button
-                        onClick={(e) => { e.stopPropagation(); onDelete(); }}
-                        className="p-2 text-slate-400 hover:text-[var(--color-error)] hover:bg-[var(--color-error)]/10 rounded-lg transition-colors"
-                        title="Eliminar"
-                    >
-                        <Trash2 size={16} />
-                    </button>
+                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all duration-200 translate-y-1 group-hover:translate-y-0">
+                    <div className="relative">
+                        <button
+                            onClick={(e) => { e.stopPropagation(); onEdit(); }}
+                            onMouseEnter={() => setHoveredAction('edit')}
+                            onMouseLeave={() => setHoveredAction(null)}
+                            className="p-2 text-slate-400 hover:text-[var(--color-primary)] hover:bg-[var(--color-primary)]/10 rounded-lg transition-colors"
+                        >
+                            <Edit2 size={16} />
+                        </button>
+                        <AnimatePresence>
+                            {hoveredAction === 'edit' && (
+                                <motion.div
+                                    initial={{ opacity: 0, y: 5 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={{ opacity: 0, y: 5 }}
+                                    className="
+                                        absolute bottom-full left-1/2 -translate-x-1/2 mb-2
+                                        px-2 py-1 rounded text-[10px] font-medium
+                                        bg-slate-800 text-white shadow-xl whitespace-nowrap
+                                        z-50
+                                    "
+                                >
+                                    Editar
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                    </div>
+
+                    <div className="relative">
+                        <button
+                            onClick={(e) => { e.stopPropagation(); onDelete(); }}
+                            onMouseEnter={() => setHoveredAction('delete')}
+                            onMouseLeave={() => setHoveredAction(null)}
+                            className="p-2 text-slate-400 hover:text-[var(--color-error)] hover:bg-[var(--color-error)]/10 rounded-lg transition-colors"
+                        >
+                            <Trash2 size={16} />
+                        </button>
+                        <AnimatePresence>
+                            {hoveredAction === 'delete' && (
+                                <motion.div
+                                    initial={{ opacity: 0, y: 5 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={{ opacity: 0, y: 5 }}
+                                    className="
+                                        absolute bottom-full left-1/2 -translate-x-1/2 mb-2
+                                        px-2 py-1 rounded text-[10px] font-medium
+                                        bg-[var(--color-error)] text-white shadow-xl whitespace-nowrap
+                                        z-50
+                                    "
+                                >
+                                    Eliminar
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                    </div>
                 </div>
             </div>
         </div>

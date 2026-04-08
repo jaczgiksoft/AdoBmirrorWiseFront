@@ -1719,6 +1719,8 @@ function ActionPanel({
     onOpenVoiceSettings, hasVoiceSupport,
     onSaveToElastics, savedToElastics
 }) {
+    const [hoveredAction, setHoveredAction] = useState(null);
+
     return (
         <div className="bg-white dark:bg-[var(--color-secondary)] p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm mt-6 flex flex-col md:flex-row items-center justify-between gap-4">
             {/* General Actions */}
@@ -1743,17 +1745,38 @@ function ActionPanel({
                 >
                     Aplicar
                 </button>
-                <button
-                    type="button"
-                    onClick={() => {
-                        console.log("[DEBUG] Reset button clicked");
-                        onReset();
-                    }}
-                    className="btn btn-sm md:btn-md bg-white dark:bg-slate-700 hover:bg-red-50 dark:hover:bg-red-900/20 text-red-500 hover:text-red-600 border border-slate-200 dark:border-slate-600 shadow-sm transition-colors whitespace-nowrap"
-                    title="Limpiar todo el odontograma"
-                >
-                    Limpiar odontograma
-                </button>
+
+                <div className="relative">
+                    <button
+                        type="button"
+                        onClick={() => {
+                            console.log("[DEBUG] Reset button clicked");
+                            onReset();
+                        }}
+                        onMouseEnter={() => setHoveredAction('reset')}
+                        onMouseLeave={() => setHoveredAction(null)}
+                        className="btn btn-sm md:btn-md bg-white dark:bg-slate-700 hover:bg-red-50 dark:hover:bg-red-900/20 text-red-500 hover:text-red-600 border border-slate-200 dark:border-slate-600 shadow-sm transition-colors whitespace-nowrap"
+                    >
+                        Limpiar odontograma
+                    </button>
+                    <AnimatePresence>
+                        {hoveredAction === 'reset' && (
+                            <motion.div
+                                initial={{ opacity: 0, y: 5 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: 5 }}
+                                className="
+                                    absolute bottom-full left-1/2 -translate-x-1/2 mb-2
+                                    px-2 py-1 rounded text-[10px] font-medium
+                                    bg-red-600 text-white shadow-xl whitespace-nowrap
+                                    z-50
+                                "
+                            >
+                                Limpiar todo el odontograma
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+                </div>
             </div>
             <div className="hidden md:block w-px h-8 bg-slate-400 dark:bg-slate-700 mx-1"></div>
             <div className="flex items-center gap-2 md:gap-4 w-full md:w-auto justify-between md:justify-end flex-wrap md:flex-wrap lg:flex-nowrap">
@@ -1762,8 +1785,9 @@ function ActionPanel({
                     <button
                         type="button"
                         onClick={onSaveToElastics}
+                        onMouseEnter={() => setHoveredAction('save')}
+                        onMouseLeave={() => setHoveredAction(null)}
                         className="btn btn-sm md:btn-md bg-white dark:bg-slate-700 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-700 shadow-sm transition-colors whitespace-nowrap flex items-center gap-2"
-                        title="Guardar diseño actual del odontograma para este paciente"
                     >
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
@@ -1776,20 +1800,57 @@ function ActionPanel({
                             ✓ ¡Guardado!
                         </span>
                     )}
+                    <AnimatePresence>
+                        {hoveredAction === 'save' && (
+                            <motion.div
+                                initial={{ opacity: 0, y: 5 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: 5 }}
+                                className="
+                                    absolute bottom-full left-1/2 -translate-x-1/2 mb-2
+                                    px-2 py-1 rounded text-[10px] font-medium
+                                    bg-slate-800 text-white shadow-xl whitespace-nowrap
+                                    z-50
+                                "
+                            >
+                                Guardar diseño actual del odontograma para este paciente
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
                 </div>
 
                 {hasVoiceSupport && (
-                    <button
-                        type="button"
-                        onClick={onOpenVoiceSettings}
-                        className="btn btn-sm md:btn-md bg-white dark:bg-slate-700 hover:bg-slate-50 dark:hover:bg-slate-600/80 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-600 shadow-sm transition-colors whitespace-nowrap flex items-center gap-2"
-                        title="Configuración de Voz"
-                    >
-                        <svg className="w-4 h-4 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
-                        </svg>
-                        Ajustes de Voz
-                    </button>
+                    <div className="relative">
+                        <button
+                            type="button"
+                            onClick={onOpenVoiceSettings}
+                            onMouseEnter={() => setHoveredAction('voice')}
+                            onMouseLeave={() => setHoveredAction(null)}
+                            className="btn btn-sm md:btn-md bg-white dark:bg-slate-700 hover:bg-slate-50 dark:hover:bg-slate-600/80 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-600 shadow-sm transition-colors whitespace-nowrap flex items-center gap-2"
+                        >
+                            <svg className="w-4 h-4 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                            </svg>
+                            Ajustes de Voz
+                        </button>
+                        <AnimatePresence>
+                            {hoveredAction === 'voice' && (
+                                <motion.div
+                                    initial={{ opacity: 0, y: 5 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={{ opacity: 0, y: 5 }}
+                                    className="
+                                        absolute bottom-full left-1/2 -translate-x-1/2 mb-2
+                                        px-2 py-1 rounded text-[10px] font-medium
+                                        bg-slate-800 text-white shadow-xl whitespace-nowrap
+                                        z-50
+                                    "
+                                >
+                                    Configuración de Voz
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                    </div>
                 )}
             </div>
         </div>
@@ -1813,6 +1874,7 @@ export default function OdontogramSection() {
     const [hoveredMenuItem, setHoveredMenuItem] = useState(null);
     const [hoveredPreviewType, setHoveredPreviewType] = useState(null);
     const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+    const [hoveredAction, setHoveredAction] = useState(null);
 
     // Feedback temporal al guardar para Elásticos
     const [savedToElastics, setSavedToElastics] = useState(false);
@@ -3609,37 +3671,79 @@ export default function OdontogramSection() {
 
                         {/* --- PANEL DE CONTROL UNDO/REDO --- */}
                         <div className="flex flex-shrink-0 items-center bg-slate-100 dark:bg-slate-800/50 rounded-lg p-1 border border-slate-200 dark:border-slate-700 shadow-sm">
-                            <button
-                                type="button"
-                                onClick={handleUndo}
-                                disabled={historyState.past.length === 0}
-                                className={`px-3 py-1.5 rounded-md flex items-center gap-1.5 text-xs font-semibold transition-colors ${historyState.past.length === 0
-                                    ? 'text-slate-400 dark:text-slate-600 cursor-not-allowed opacity-50'
-                                    : 'text-slate-700 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700 hover:shadow-sm'
-                                    }`}
-                                title="Deshacer (Ctrl + Z)"
-                            >
-                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" />
-                                </svg>
-                                Deshacer
-                            </button>
+                            <div className="relative">
+                                <button
+                                    type="button"
+                                    onClick={handleUndo}
+                                    onMouseEnter={() => setHoveredAction('undo')}
+                                    onMouseLeave={() => setHoveredAction(null)}
+                                    disabled={historyState.past.length === 0}
+                                    className={`px-3 py-1.5 rounded-md flex items-center gap-1.5 text-xs font-semibold transition-colors ${historyState.past.length === 0
+                                        ? 'text-slate-400 dark:text-slate-600 cursor-not-allowed opacity-50'
+                                        : 'text-slate-700 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700 hover:shadow-sm'
+                                        }`}
+                                >
+                                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" />
+                                    </svg>
+                                    Deshacer
+                                </button>
+                                <AnimatePresence>
+                                    {hoveredAction === 'undo' && (
+                                        <motion.div
+                                            initial={{ opacity: 0, y: 5 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            exit={{ opacity: 0, y: 5 }}
+                                            className="
+                                                absolute bottom-full left-1/2 -translate-x-1/2 mb-2
+                                                px-2 py-1 rounded text-[10px] font-medium
+                                                bg-slate-800 text-white shadow-xl whitespace-nowrap
+                                                z-50
+                                            "
+                                        >
+                                            Deshacer (Ctrl + Z)
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
+                            </div>
+
                             <div className="w-px h-5 bg-slate-300 dark:bg-slate-600 mx-1"></div>
-                            <button
-                                type="button"
-                                onClick={handleRedo}
-                                disabled={historyState.future.length === 0}
-                                className={`px-3 py-1.5 rounded-md flex items-center gap-1.5 text-xs font-semibold transition-colors ${historyState.future.length === 0
-                                    ? 'text-slate-400 dark:text-slate-600 cursor-not-allowed opacity-50'
-                                    : 'text-slate-700 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700 hover:shadow-sm'
-                                    }`}
-                                title="Rehacer (Ctrl + Y)"
-                            >
-                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 15l6-6m0 0l-6-6m6 6H9a6 6 0 000 12h3" />
-                                </svg>
-                                Rehacer
-                            </button>
+
+                            <div className="relative">
+                                <button
+                                    type="button"
+                                    onClick={handleRedo}
+                                    onMouseEnter={() => setHoveredAction('redo')}
+                                    onMouseLeave={() => setHoveredAction(null)}
+                                    disabled={historyState.future.length === 0}
+                                    className={`px-3 py-1.5 rounded-md flex items-center gap-1.5 text-xs font-semibold transition-colors ${historyState.future.length === 0
+                                        ? 'text-slate-400 dark:text-slate-600 cursor-not-allowed opacity-50'
+                                        : 'text-slate-700 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700 hover:shadow-sm'
+                                        }`}
+                                >
+                                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 15l6-6m0 0l-6-6m6 6H9a6 6 0 000 12h3" />
+                                    </svg>
+                                    Rehacer
+                                </button>
+                                <AnimatePresence>
+                                    {hoveredAction === 'redo' && (
+                                        <motion.div
+                                            initial={{ opacity: 0, y: 5 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            exit={{ opacity: 0, y: 5 }}
+                                            className="
+                                                absolute bottom-full left-1/2 -translate-x-1/2 mb-2
+                                                px-2 py-1 rounded text-[10px] font-medium
+                                                bg-slate-800 text-white shadow-xl whitespace-nowrap
+                                                z-50
+                                            "
+                                        >
+                                            Rehacer (Ctrl + Y)
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
+                            </div>
                         </div>
                     </div>
                 </div>

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import Datepicker from "react-tailwindcss-datepicker";
 
-export default function DateInput({ label, value, onChange, popoverDirection = "down" }) {
+export default function DateInput({ label, value, onChange, popoverDirection = "down", required = false }) {
     const [dateValue, setDateValue] = useState({
         startDate: value || null,
         endDate: value || null
@@ -37,7 +37,7 @@ export default function DateInput({ label, value, onChange, popoverDirection = "
     return (
         <div className="space-y-1">
             {label && (
-                <label className="text-[11px] uppercase tracking-wide text-slate-500 dark:text-slate-400 ml-1">
+                <label className={`text-[11px] uppercase tracking-wide text-slate-500 dark:text-slate-400 ml-1 ${required ? 'label-required' : ''}`}>
                     {label}
                 </label>
             )}

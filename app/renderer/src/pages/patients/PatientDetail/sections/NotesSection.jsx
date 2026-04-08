@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useOutletContext } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
     StickyNote,
     Plus,
@@ -317,6 +318,7 @@ function Section({ title, icon: Icon, subtitle, children, onAdd }) {
 }
 
 function NoteCard({ note, onEdit, onDelete }) {
+    const [hoveredAction, setHoveredAction] = useState(null);
     const employee = note.user?.employee;
 
     const employeeName = employee
@@ -416,24 +418,65 @@ function NoteCard({ note, onEdit, onDelete }) {
             {/* Acciones */}
             <div className="
                 absolute top-3 right-3 flex items-center gap-1
-                opacity-0 group-hover:opacity-100 transition-opacity
+                opacity-0 group-hover:opacity-100 transition-all duration-200 translate-y-1 group-hover:translate-y-0
                 bg-white/90 dark:bg-slate-800/90
                 rounded-lg p-1 shadow-sm
             ">
-                <button
-                    onClick={() => onEdit(note)}
-                    className="p-1.5 text-slate-400 hover:text-blue-500 transition-colors"
-                    title="Editar"
-                >
-                    <Edit2 size={14} />
-                </button>
-                <button
-                    onClick={() => onDelete(note.id)}
-                    className="p-1.5 text-slate-400 hover:text-red-500 transition-colors"
-                    title="Eliminar"
-                >
-                    <Trash2 size={14} />
-                </button>
+                <div className="relative">
+                    <button
+                        onClick={() => onEdit(note)}
+                        onMouseEnter={() => setHoveredAction('edit')}
+                        onMouseLeave={() => setHoveredAction(null)}
+                        className="p-1.5 text-slate-400 hover:text-blue-500 transition-colors"
+                    >
+                        <Edit2 size={14} />
+                    </button>
+                    <AnimatePresence>
+                        {hoveredAction === 'edit' && (
+                            <motion.div
+                                initial={{ opacity: 0, y: 5 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: 5 }}
+                                className="
+                                    absolute bottom-full left-1/2 -translate-x-1/2 mb-2
+                                    px-2 py-1 rounded text-[10px] font-medium
+                                    bg-slate-800 text-white shadow-xl whitespace-nowrap
+                                    z-50
+                                "
+                            >
+                                Editar
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+                </div>
+
+                <div className="relative">
+                    <button
+                        onClick={() => onDelete(note.id)}
+                        onMouseEnter={() => setHoveredAction('delete')}
+                        onMouseLeave={() => setHoveredAction(null)}
+                        className="p-1.5 text-slate-400 hover:text-red-500 transition-colors"
+                    >
+                        <Trash2 size={14} />
+                    </button>
+                    <AnimatePresence>
+                        {hoveredAction === 'delete' && (
+                            <motion.div
+                                initial={{ opacity: 0, y: 5 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: 5 }}
+                                className="
+                                    absolute bottom-full left-1/2 -translate-x-1/2 mb-2
+                                    px-2 py-1 rounded text-[10px] font-medium
+                                    bg-red-600 text-white shadow-xl whitespace-nowrap
+                                    z-50
+                                "
+                            >
+                                Eliminar
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+                </div>
             </div>
         </div>
     );

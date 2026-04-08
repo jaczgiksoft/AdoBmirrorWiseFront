@@ -1,8 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { NotebookPen, Edit2, Trash2, Calendar } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 
 export default function ConversationEntry({ conversation, onEdit, onDelete }) {
+    const [hoveredAction, setHoveredAction] = useState(null);
     const employee = conversation.user?.employee;
 
     const employeeName = employee
@@ -67,22 +69,64 @@ export default function ConversationEntry({ conversation, onEdit, onDelete }) {
             </div>
 
             {/* Actions (Hover Only) */}
-            <div className="absolute top-4 right-4 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-white dark:bg-secondary shadow-sm border border-slate-200 dark:border-slate-700 rounded-lg p-0.5">
-                <button
-                    onClick={() => onEdit(conversation)}
-                    className="p-1.5 text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-md transition-all"
-                    title="Editar"
-                >
-                    <Edit2 size={14} />
-                </button>
+            <div className="absolute top-4 right-4 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all duration-200 translate-y-1 group-hover:translate-y-0 bg-white dark:bg-secondary shadow-sm border border-slate-200 dark:border-slate-700 rounded-lg p-0.5 h-fit">
+                <div className="relative">
+                    <button
+                        onClick={() => onEdit(conversation)}
+                        onMouseEnter={() => setHoveredAction('edit')}
+                        onMouseLeave={() => setHoveredAction(null)}
+                        className="p-1.5 text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-md transition-all"
+                    >
+                        <Edit2 size={14} />
+                    </button>
+                    <AnimatePresence>
+                        {hoveredAction === 'edit' && (
+                            <motion.div
+                                initial={{ opacity: 0, y: 5 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: 5 }}
+                                className="
+                                    absolute bottom-full left-1/2 -translate-x-1/2 mb-2
+                                    px-2 py-1 rounded text-[10px] font-medium
+                                    bg-slate-800 text-white shadow-xl whitespace-nowrap
+                                    z-50
+                                "
+                            >
+                                Editar
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+                </div>
+
                 <div className="w-px h-4 bg-slate-200 dark:bg-slate-700" />
-                <button
-                    onClick={() => onDelete(conversation.id)}
-                    className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-all"
-                    title="Eliminar"
-                >
-                    <Trash2 size={14} />
-                </button>
+
+                <div className="relative">
+                    <button
+                        onClick={() => onDelete(conversation.id)}
+                        onMouseEnter={() => setHoveredAction('delete')}
+                        onMouseLeave={() => setHoveredAction(null)}
+                        className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-all"
+                    >
+                        <Trash2 size={14} />
+                    </button>
+                    <AnimatePresence>
+                        {hoveredAction === 'delete' && (
+                            <motion.div
+                                initial={{ opacity: 0, y: 5 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: 5 }}
+                                className="
+                                    absolute bottom-full left-1/2 -translate-x-1/2 mb-2
+                                    px-2 py-1 rounded text-[10px] font-medium
+                                    bg-red-600 text-white shadow-xl whitespace-nowrap
+                                    z-50
+                                "
+                            >
+                                Eliminar
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+                </div>
             </div>
         </div>
     );
