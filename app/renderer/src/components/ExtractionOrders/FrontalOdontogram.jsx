@@ -1,26 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useParams } from 'react-router-dom';
 
-// Load tooth SVGs (reusing the ones from OdontogramSection)
-const toothImages = import.meta.glob('@/assets/images/odontogram/*/*.svg', {
-    eager: true,
-    as: 'url'
-});
+// Centralized helpers for SVG generation
+import { getToothSrc, generateCombinedSvgDataUrl } from '@/pages/patients/PatientDetail/sections/components/toothSvgHelpers';
 
-const getToothSrc = (id, type) => {
-    // Try to find the specific type first
-    const specificTypeEntry = Object.entries(toothImages).find(([path]) =>
-        path.includes(`/odontogram/${type}/tooth-${id}.svg`)
-    );
-
-    if (specificTypeEntry) return specificTypeEntry[1];
-
-    // Fallback to original
-    const originalEntry = Object.entries(toothImages).find(([path]) =>
-        path.includes(`/odontogram/original/tooth-${id}.svg`)
-    );
-
-    return originalEntry ? originalEntry[1] : null;
-};
+// Assets for brackets and TADs
+import bracketImg from '@/assets/images/odontogram/bracket.svg';
+import bracketGanchoImg from '@/assets/images/odontogram/bracket-gancho.svg';
+import tadImg from '@/assets/images/odontogram/tad.svg';
 
 const QUADRANTS = {
     q1: [18, 17, 16, 15, 14, 13, 12, 11], // Upper Right
@@ -30,33 +17,48 @@ const QUADRANTS = {
 };
 
 const TEETH_TO_SCALE = [18, 17, 16, 26, 27, 28, 36, 37, 38, 46, 47, 48];
+const BRACKET_HOOK_IDS = [16, 17, 18, 26, 27, 28, 36, 37, 38, 46, 47, 48];
 
+const INACTIVE_TYPES = ['extraction', 'missing', 'unerupted'];
 
-function FrontalTooth({ id, isExtracted, onClick, isUpper }) {
-    // Determine source based on state
-    // If extracted, use the specific 'extraction' asset which includes the visual indicator
-    const type = isExtracted ? 'extraction' : 'original';
-    const src = getToothSrc(id, type);
+function FrontalTooth({ id, isPendingExtraction, globalState, hasBracket, hasTad, onClick, isUpper }) {
+    const isImplantCrown = globalState === 'implant-crown';
+    const activeTypes = isImplantCrown ? ['implant', 'crown'] : (globalState ? globalState.split('+') : ['original']);
+    const isCombined = activeTypes.length > 1 || isImplantCrown;
+    const baseType = activeTypes[0] || 'original';
+
+    // Prioritize the 'extraction' asset if it's pending in this order
+    // OR if it's already extracted/missing in global state
+    const isActuallyExtracted = isPendingExtraction || INACTIVE_TYPES.includes(baseType);
+    
+    const src = useMemo(() => {
+        if (isPendingExtraction) return getToothSrc(id, 'extraction');
+        if (isCombined) return generateCombinedSvgDataUrl(id, activeTypes);
+        return getToothSrc(id, baseType);
+    }, [id, isPendingExtraction, isCombined, baseType, activeTypes]);
+
     const shouldScale = TEETH_TO_SCALE.includes(id);
 
     if (!src) return <div className="w-10 h-14 bg-red-100 text-xs flex items-center justify-center">{id}</div>;
 
     const NumberLabel = (
-        <span className={`text-[10px] md:text-xs font-black transition-colors z-20 ${isExtracted ? 'text-red-600' : 'text-slate-400 group-hover:text-slate-600 dark:text-slate-500'}`}>
+        <span className={`text-[10px] md:text-xs font-black transition-colors z-20 ${isActuallyExtracted ? 'text-red-600' : 'text-slate-400 group-hover:text-slate-600 dark:text-slate-500'}`}>
             {id}
         </span>
     );
 
+    const isBracketHook = BRACKET_HOOK_IDS.includes(id);
+
     return (
         <div
-            onClick={() => onClick(id)}
-            className="flex flex-col items-center cursor-pointer group relative mx-0 transition-all hover:z-20"
+            onClick={() => !INACTIVE_TYPES.includes(baseType) && onClick(id)}
+            className={`flex flex-col items-center group relative mx-0 transition-all hover:z-20 ${INACTIVE_TYPES.includes(baseType) ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
         >
             {/* Number ABOVE for Upper Arch */}
             {isUpper && NumberLabel}
 
             <div className={`relative h-14 md:h-38 transition-all duration-200 
-                ${isExtracted ? '' : 'hover:scale-110 drop-shadow-lg'}`}
+                ${isActuallyExtracted ? '' : 'hover:scale-110 drop-shadow-lg'}`}
             >
                 <img
                     src={src}
@@ -64,6 +66,26 @@ function FrontalTooth({ id, isExtracted, onClick, isUpper }) {
                     className="w-full h-full object-contain pointer-events-none"
                     draggable="false"
                 />
+
+                {/* Brackets Overlay (Contextual) */}
+                {hasBracket && !isActuallyExtracted && (
+                    <div className={`absolute ${isUpper ? 'top-[70%]' : 'top-[15%]'} left-1/2 -translate-x-1/2 w-4 h-4 md:w-8 md:h-8 pointer-events-none opacity-80`}>
+                        <img 
+                            src={isBracketHook ? bracketGanchoImg : bracketImg} 
+                            className="w-full h-full object-contain" 
+                            style={{ 
+                                transform: isUpper && isBracketHook ? 'rotate(180deg)' : 'none' 
+                            }}
+                        />
+                    </div>
+                )}
+
+                {/* TAD Indicator (Contextual) */}
+                {hasTad && !isActuallyExtracted && (
+                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-4 h-4 md:w-6 md:h-6 pointer-events-none opacity-90 brightness-110">
+                        <img src={tadImg} className="w-full h-full object-contain" />
+                    </div>
+                )}
             </div>
 
             {/* Number BELOW for Lower Arch */}
@@ -72,17 +94,20 @@ function FrontalTooth({ id, isExtracted, onClick, isUpper }) {
     );
 }
 
-function Quadrant({ teeth, teethStatus, onToothClick, isUpper }) {
+function Quadrant({ teeth, teethStatus, globalToothStates, globalBrackets, globalTads, onToothClick, isUpper }) {
     return (
         <div className="flex items-end justify-center">
             {teeth.map(id => {
                 const status = teethStatus[id];
-                const isExtracted = status && status.extraction === true;
+                const isPendingExtraction = status && status.extraction === true;
                 return (
                     <FrontalTooth
                         key={id}
                         id={id}
-                        isExtracted={isExtracted}
+                        isPendingExtraction={isPendingExtraction}
+                        globalState={globalToothStates[id]}
+                        hasBracket={globalBrackets[id]}
+                        hasTad={globalTads[id] || Object.keys(globalTads).some(k => k.includes(String(id)))}
                         onClick={onToothClick}
                         isUpper={isUpper}
                     />
@@ -93,43 +118,95 @@ function Quadrant({ teeth, teethStatus, onToothClick, isUpper }) {
 }
 
 export default function FrontalOdontogram({ teethStatus, onStatusChange }) {
+    const { id: patientId } = useParams();
+
+    // Global Registry States (Loaded from LocalStorage)
+    const [globalToothStates, setGlobalToothStates] = useState({});
+    const [globalBrackets, setGlobalBrackets] = useState({});
+    const [globalTads, setGlobalTads] = useState({});
+
+    const loadGlobalOdontogram = useCallback(() => {
+        if (!patientId) return;
+        const STORAGE_KEY = `odontogram_data_${patientId}`;
+        try {
+            const raw = localStorage.getItem(STORAGE_KEY);
+            if (!raw) return;
+
+            const parsed = JSON.parse(raw);
+            if (parsed.brackets) setGlobalBrackets(parsed.brackets);
+            if (parsed.tads) setGlobalTads(parsed.tads);
+            if (parsed.toothStates) setGlobalToothStates(parsed.toothStates);
+        } catch (err) {
+            console.error('[FrontalOdontogram] Error loading global data:', err);
+        }
+    }, [patientId]);
+
+    useEffect(() => {
+        loadGlobalOdontogram();
+    }, [loadGlobalOdontogram]);
 
     const handleToothClick = (id) => {
         const currentStatus = teethStatus[id];
         const isExtracted = currentStatus && currentStatus.extraction === true;
 
         if (isExtracted) {
-            // Toggle OFF -> Send null (clear extraction)
             onStatusChange(id, null);
         } else {
-            // Toggle ON -> Send extraction: true
             onStatusChange(id, { extraction: true });
         }
     };
 
     return (
         <div className="flex flex-col items-center justify-center p-4 relative select-none">
-            {/* Background pattern */}
             <div className="absolute inset-0 pointer-events-none opacity-5 bg-[radial-gradient(#cbd5e1_1px,transparent_1px)] dark:bg-[radial-gradient(#475569_1px,transparent_1px)] [background-size:20px_20px]"></div>
 
             <div className="relative z-0 scale-90 md:scale-100 transition-transform">
-                {/* Labels */}
                 <div className="text-center mb-6 text-xs font-bold tracking-[0.2em] text-slate-400 dark:text-slate-500 uppercase">
                     Superior (Maxilar)
                 </div>
 
-                {/* Upper Arch */}
                 <div className="flex items-end justify-center gap-1 md:gap-4 pb-6 border-b border-slate-200 dark:border-slate-700/50">
-                    <Quadrant teeth={QUADRANTS.q1} teethStatus={teethStatus} onToothClick={handleToothClick} isUpper={true} />
+                    <Quadrant 
+                        teeth={QUADRANTS.q1} 
+                        teethStatus={teethStatus} 
+                        globalToothStates={globalToothStates}
+                        globalBrackets={globalBrackets}
+                        globalTads={globalTads}
+                        onToothClick={handleToothClick} 
+                        isUpper={true} 
+                    />
                     <div className="w-px h-20 bg-slate-200 dark:bg-slate-700 mx-1"></div>
-                    <Quadrant teeth={QUADRANTS.q2} teethStatus={teethStatus} onToothClick={handleToothClick} isUpper={true} />
+                    <Quadrant 
+                        teeth={QUADRANTS.q2} 
+                        teethStatus={teethStatus} 
+                        globalToothStates={globalToothStates}
+                        globalBrackets={globalBrackets}
+                        globalTads={globalTads}
+                        onToothClick={handleToothClick} 
+                        isUpper={true} 
+                    />
                 </div>
 
-                {/* Lower Arch */}
                 <div className="flex items-start justify-center gap-1 md:gap-4 pt-6">
-                    <Quadrant teeth={QUADRANTS.q4} teethStatus={teethStatus} onToothClick={handleToothClick} isUpper={false} />
+                    <Quadrant 
+                        teeth={QUADRANTS.q4} 
+                        teethStatus={teethStatus} 
+                        globalToothStates={globalToothStates}
+                        globalBrackets={globalBrackets}
+                        globalTads={globalTads}
+                        onToothClick={handleToothClick} 
+                        isUpper={false} 
+                    />
                     <div className="w-px h-20 bg-slate-200 dark:bg-slate-700 mx-1"></div>
-                    <Quadrant teeth={QUADRANTS.q3} teethStatus={teethStatus} onToothClick={handleToothClick} isUpper={false} />
+                    <Quadrant 
+                        teeth={QUADRANTS.q3} 
+                        teethStatus={teethStatus} 
+                        globalToothStates={globalToothStates}
+                        globalBrackets={globalBrackets}
+                        globalTads={globalTads}
+                        onToothClick={handleToothClick} 
+                        isUpper={false} 
+                    />
                 </div>
 
                 <div className="text-center mt-6 text-xs font-bold tracking-[0.2em] text-slate-400 dark:text-slate-500 uppercase">
@@ -138,9 +215,10 @@ export default function FrontalOdontogram({ teethStatus, onStatusChange }) {
             </div>
 
             <div className="mt-6 flex items-center gap-2 text-xs text-slate-400 bg-slate-50 dark:bg-slate-800/50 px-3 py-1.5 rounded-full border border-slate-100 dark:border-slate-800">
-                <span className="w-2 h-2 rounded-full bg-red-500"></span>
+                <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
                 <span>Seleccione los dientes a extraer</span>
             </div>
         </div>
     );
 }
+

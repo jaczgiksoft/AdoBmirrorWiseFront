@@ -137,9 +137,16 @@ export default function ExtractionOrdersSection() {
             const teethStatus = {};
             if (fullOrder.teeth) {
                 fullOrder.teeth.forEach(t => {
-                    teethStatus[t.tooth_id] = {
+                    let processedAreas = [];
+                    if (Array.isArray(t.areas)) {
+                        processedAreas = t.areas;
+                    } else if (typeof t.areas === 'string') {
+                        try { processedAreas = JSON.parse(t.areas); } catch(e) { processedAreas = []; }
+                    }
+
+                    teethStatus[t.tooth_id || t.tooth] = {
                         extraction: t.extraction,
-                        ...t.areas.reduce((acc, area) => ({ ...acc, [area]: 'treatment' }), {})
+                        ...processedAreas.reduce((acc, area) => ({ ...acc, [area]: 'treatment' }), {})
                     };
                 });
             }
@@ -361,6 +368,8 @@ function SectionHeader({ onAddExtraction, onAddRestorative }) {
 }
 
 function OrderRow({ order, onEdit, onDelete }) {
+    const [hoveredAction, setHoveredAction] = useState(null);
+
     // Config based on status + extractions presence
     const statusConfig = {
         'Pendiente': { color: 'text-amber-600 bg-amber-50 dark:bg-amber-900/20 dark:text-amber-400', icon: Clock },
@@ -420,27 +429,89 @@ function OrderRow({ order, onEdit, onDelete }) {
                 </div>
 
                 {/* Actions */}
-                <div className="flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                    <button
-                        onClick={(e) => { e.stopPropagation(); onEdit(); }}
-                        className="p-2 text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
-                        title="Editar"
-                    >
-                        <Edit2 size={16} />
-                    </button>
-                    <button
-                        className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
-                        title="Exportar PDF"
-                    >
-                        <FileText size={16} />
-                    </button>
-                    <button
-                        onClick={(e) => { e.stopPropagation(); onDelete(); }}
-                        className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
-                        title="Eliminar"
-                    >
-                        <Trash2 size={16} />
-                    </button>
+                <div className="flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all duration-200 sm:translate-y-1 sm:group-hover:translate-y-0">
+                    <div className="relative">
+                        <button
+                            onClick={(e) => { e.stopPropagation(); onEdit(); }}
+                            onMouseEnter={() => setHoveredAction('edit')}
+                            onMouseLeave={() => setHoveredAction(null)}
+                            className="p-2 text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+                        >
+                            <Edit2 size={16} />
+                        </button>
+                        <AnimatePresence>
+                            {hoveredAction === 'edit' && (
+                                <motion.div
+                                    initial={{ opacity: 0, y: 5 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={{ opacity: 0, y: 5 }}
+                                    className="
+                                        absolute bottom-full left-1/2 -translate-x-1/2 mb-2
+                                        px-2 py-1 rounded text-[10px] font-medium
+                                        bg-slate-800 text-white shadow-xl whitespace-nowrap
+                                        z-50
+                                    "
+                                >
+                                    Editar
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                    </div>
+
+                    <div className="relative">
+                        <button
+                            onMouseEnter={() => setHoveredAction('export')}
+                            onMouseLeave={() => setHoveredAction(null)}
+                            className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+                        >
+                            <FileText size={16} />
+                        </button>
+                        <AnimatePresence>
+                            {hoveredAction === 'export' && (
+                                <motion.div
+                                    initial={{ opacity: 0, y: 5 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={{ opacity: 0, y: 5 }}
+                                    className="
+                                        absolute bottom-full left-1/2 -translate-x-1/2 mb-2
+                                        px-2 py-1 rounded text-[10px] font-medium
+                                        bg-slate-800 text-white shadow-xl whitespace-nowrap
+                                        z-50
+                                    "
+                                >
+                                    Exportar PDF
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                    </div>
+
+                    <div className="relative">
+                        <button
+                            onClick={(e) => { e.stopPropagation(); onDelete(); }}
+                            onMouseEnter={() => setHoveredAction('delete')}
+                            onMouseLeave={() => setHoveredAction(null)}
+                            className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                        >
+                            <Trash2 size={16} />
+                        </button>
+                        <AnimatePresence>
+                            {hoveredAction === 'delete' && (
+                                <motion.div
+                                    initial={{ opacity: 0, y: 5 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={{ opacity: 0, y: 5 }}
+                                    className="
+                                        absolute bottom-full left-1/2 -translate-x-1/2 mb-2
+                                        px-2 py-1 rounded text-[10px] font-medium
+                                        bg-red-600 text-white shadow-xl whitespace-nowrap
+                                        z-50
+                                    "
+                                >
+                                    Eliminar
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                    </div>
                 </div>
             </div>
         </div>
