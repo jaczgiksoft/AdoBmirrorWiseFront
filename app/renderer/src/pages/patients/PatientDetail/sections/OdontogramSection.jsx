@@ -3,7 +3,9 @@ import { createPortal } from 'react-dom';
 import { useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import bracketImg from '@/assets/images/odontogram/bracket.svg';
+import bracketRotoImg from '@/assets/images/odontogram/bracket-roto.svg';
 import bracketGanchoImg from '@/assets/images/odontogram/bracket-gancho.svg';
+import bracketGanchoRotoImg from '@/assets/images/odontogram/bracket-gancho-roto.svg';
 import tadImg from '@/assets/images/odontogram/tad.svg';
 import SingleTooth from '@/components/ExtractionOrders/SingleTooth';
 import ConfirmDialog from '@/components/feedback/ConfirmDialog';
@@ -14,13 +16,13 @@ import VoiceSettingsModal from './VoiceSettingsModal';
 // 1. Asset Loading & Helpers
 // ==========================================
 
-import { 
-    toothImages, 
-    toothRawSvgs, 
-    getToothRaw, 
-    getToothSrc, 
-    getBaseSvgType, 
-    generateCombinedSvgDataUrl 
+import {
+    toothImages,
+    toothRawSvgs,
+    getToothRaw,
+    getToothSrc,
+    getBaseSvgType,
+    generateCombinedSvgDataUrl
 } from './components/toothSvgHelpers';
 
 // Helper to handle combined state toggling
@@ -645,7 +647,7 @@ const buildInitialToothStates = () => {
 // ==========================================
 
 // Individual Tooth Component (Frontal) - Unchanged visuals
-function Tooth({ id, type, hasBracket, isSelectedBracket, isBracketMode, onToothClick, onToothRightClick, currentClinicalAction, onResize, hideLabel, hoveredPreviewType }) {
+function Tooth({ id, type, hasBracket, isBroken, isSelectedBracket, isBracketMode, onToothClick, onToothRightClick, currentClinicalAction, onResize, hideLabel, hoveredPreviewType }) {
     const isImplantCrown = type === 'implant-crown';
     const activeTypes = isImplantCrown ? ['implant', 'crown'] : (type ? type.split('+') : ['original']);
     const isCombined = activeTypes.length > 1 || isImplantCrown;
@@ -775,8 +777,12 @@ function Tooth({ id, type, hasBracket, isSelectedBracket, isBracketMode, onTooth
                             className={`absolute ${bracketPositionClass} left-1/2 -translate-x-1/2 z-20 pointer-events-none transition-transform duration-200 ${isSelectedBracket ? 'drop-shadow-[0_0_4px_rgba(59,130,246,0.6)]' : ''}`}
                         >
                             <img
-                                src={BRACKET_HOOK_CONFIG.teethIds.includes(parseInt(id, 10)) ? bracketGanchoImg : bracketImg}
-                                alt="Bracket"
+                                src={
+                                    BRACKET_HOOK_CONFIG.teethIds.includes(parseInt(id, 10))
+                                        ? (isBroken ? bracketGanchoRotoImg : bracketGanchoImg)
+                                        : (isBroken ? bracketRotoImg : bracketImg)
+                                }
+                                alt={isBroken ? "Bracket Roto" : "Bracket"}
                                 className={`object-contain opacity-90 drop-shadow-sm transition-transform duration-200 ${BRACKET_HOOK_CONFIG.teethIds.includes(parseInt(id, 10)) ? BRACKET_HOOK_CONFIG.sizeClasses : BRACKET_HOOK_CONFIG.defaultSizeClasses} ${isSelectedBracket ? 'scale-125' : ''}`}
                                 style={
                                     BRACKET_HOOK_CONFIG.teethIds.includes(parseInt(id, 10)) && BRACKET_HOOK_CONFIG.adjustments && BRACKET_HOOK_CONFIG.adjustments[id]
@@ -1061,6 +1067,8 @@ function ArchRow({ activeRadialTooth, teethIds, toothStates, brackets, bracketWi
 
         return (
             <svg className="absolute inset-0 z-[15] pointer-events-none w-full h-full overflow-visible">
+                {/* Solid wires between brackets are disabled as requested */}
+                {/* 
                 {solidWiresToRender.map(({ pairId, x1, x2 }) => {
                     const y = isUpper ? 138 : 28;
                     const cX1 = `calc(50% + ${x1}px)`;
@@ -1078,7 +1086,8 @@ function ArchRow({ activeRadialTooth, teethIds, toothStates, brackets, bracketWi
                             strokeLinecap="round"
                         />
                     );
-                })}
+                })} 
+                */}
 
                 {dashedWiresToRender.map(({ connectionId, bracketX, tadX, isTadUpper }) => {
                     const bY = isUpper ? 138 : 28;
@@ -1178,6 +1187,7 @@ function ArchRow({ activeRadialTooth, teethIds, toothStates, brackets, bracketWi
                             id={id}
                             type={toothStates[id]}
                             hasBracket={!!brackets[id]}
+                            isBroken={!!brackets[id]?.isBroken}
                             isSelectedBracket={selectedBracket === id}
                             isBracketMode={isBracketMode}
                             onToothClick={isTadMode ? () => { } : onToothClick}
@@ -2082,7 +2092,18 @@ export default function OdontogramSection() {
 
             // Actualizar todos los estados clínicos
             if (parsed.toothStates) setToothStates(parsed.toothStates);
-            if (parsed.brackets) setBrackets(parsed.brackets);
+
+            // Migración de brackets (boolean -> object)
+            let finalBrackets = parsed.brackets || {};
+            let migrationNeeded = false;
+            Object.keys(finalBrackets).forEach(id => {
+                if (typeof finalBrackets[id] === 'boolean') {
+                    finalBrackets[id] = { isBroken: false };
+                    migrationNeeded = true;
+                }
+            });
+            setBrackets(finalBrackets);
+
             if (parsed.bracketWires) setBracketWires(parsed.bracketWires);
             if (parsed.tads) setTads(parsed.tads);
             if (parsed.tadWires) setTadWires(parsed.tadWires);
@@ -2094,7 +2115,7 @@ export default function OdontogramSection() {
                 past: [],
                 present: {
                     toothStates: parsed.toothStates || buildInitialToothStates(),
-                    brackets: parsed.brackets || {},
+                    brackets: finalBrackets,
                     bracketWires: parsed.bracketWires || {},
                     tads: parsed.tads || {},
                     tadWires: parsed.tadWires || {},
@@ -2194,12 +2215,12 @@ export default function OdontogramSection() {
         try {
             // Guardamos el estado COMPLETO del odontograma
             const dataToSave = {
-                toothStates:     historyState.present.toothStates,
-                brackets:        historyState.present.brackets,
-                bracketWires:    historyState.present.bracketWires,
-                tads:            historyState.present.tads,
-                tadWires:        historyState.present.tadWires,
-                surfaceStates:   historyState.present.surfaceStates,
+                toothStates: historyState.present.toothStates,
+                brackets: historyState.present.brackets,
+                bracketWires: historyState.present.bracketWires,
+                tads: historyState.present.tads,
+                tadWires: historyState.present.tadWires,
+                surfaceStates: historyState.present.surfaceStates,
                 periodontalData: historyState.present.periodontalData,
             };
             localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
@@ -2290,7 +2311,7 @@ export default function OdontogramSection() {
             if (INACTIVE_TYPES.includes(toothStates[id])) return;
 
             if (!brackets[id]) {
-                setBrackets(prev => ({ ...prev, [id]: true }));
+                setBrackets(prev => ({ ...prev, [id]: { isBroken: false } }));
             } else {
                 if (selectedBracket === id) {
                     setBrackets(prev => {
@@ -2318,24 +2339,31 @@ export default function OdontogramSection() {
                         return next;
                     });
                 } else if (selectedBracket) {
-                    const isSameArch =
-                        (UPPER_ARCH_IDS.includes(id) && UPPER_ARCH_IDS.includes(selectedBracket)) ||
-                        (LOWER_ARCH_IDS.includes(id) && LOWER_ARCH_IDS.includes(selectedBracket));
-
-                    if (isSameArch) {
-                        const pairId = [id, selectedBracket].sort((a, b) => a - b).join('-');
-                        setBracketWires(prev => {
-                            const next = { ...prev };
-                            if (next[pairId]) {
-                                delete next[pairId];
-                            } else {
-                                next[pairId] = true;
-                            }
-                            return next;
-                        });
+                    if (true) { // Desactivado: no crear líneas entre brackets por ahora
                         setSelectedBracket(id);
                     } else {
-                        setSelectedBracket(id);
+                        // El código original para crear líneas entre brackets ha sido desactivado
+                        /*
+                        const isSameArch =
+                            (UPPER_ARCH_IDS.includes(id) && UPPER_ARCH_IDS.includes(selectedBracket)) ||
+                            (LOWER_ARCH_IDS.includes(id) && LOWER_ARCH_IDS.includes(selectedBracket));
+
+                        if (isSameArch) {
+                            const pairId = [id, selectedBracket].sort((a, b) => a - b).join('-');
+                            setBracketWires(prev => {
+                                const next = { ...prev };
+                                if (next[pairId]) {
+                                    delete next[pairId];
+                                } else {
+                                    next[pairId] = true;
+                                }
+                                return next;
+                            });
+                            setSelectedBracket(id);
+                        } else {
+                            setSelectedBracket(id);
+                        }
+                        */
                     }
                 } else {
                     setSelectedBracket(id);
@@ -2400,7 +2428,7 @@ export default function OdontogramSection() {
         Object.values(QUADRANTS).flat().forEach(id => {
             const state = toothStates[id];
             if (!INACTIVE_TYPES.includes(state)) {
-                if (!newBrackets[id]) newBrackets[id] = true;
+                if (!newBrackets[id]) newBrackets[id] = { isBroken: false };
             }
         });
         setBrackets(newBrackets);
@@ -3655,16 +3683,43 @@ export default function OdontogramSection() {
 
                             <AnimatePresence>
                                 {isBracketMode && (
-                                    <motion.button
-                                        initial={{ opacity: 0, scale: 0.9, width: 0 }}
-                                        animate={{ opacity: 1, scale: 1, width: 'auto' }}
-                                        exit={{ opacity: 0, scale: 0.9, width: 0 }}
-                                        onClick={handleApplyAllBrackets}
-                                        type="button"
-                                        className="px-3 py-1.5 rounded-md flex items-center gap-1.5 text-xs font-semibold transition-colors bg-white dark:bg-slate-700 hover:bg-slate-50 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-600 shadow-sm ml-1 overflow-hidden whitespace-nowrap"
-                                    >
-                                        Aplicar a todos
-                                    </motion.button>
+                                    <div className="flex items-center gap-1.5 ml-1">
+                                        <motion.button
+                                            initial={{ opacity: 0, scale: 0.9, width: 0 }}
+                                            animate={{ opacity: 1, scale: 1, width: 'auto' }}
+                                            exit={{ opacity: 0, scale: 0.9, width: 0 }}
+                                            onClick={handleApplyAllBrackets}
+                                            type="button"
+                                            className="px-3 py-1.5 rounded-md flex items-center gap-1.5 text-xs font-semibold transition-colors bg-white dark:bg-slate-700 hover:bg-slate-50 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-600 shadow-sm overflow-hidden whitespace-nowrap"
+                                        >
+                                            Aplicar a todos
+                                        </motion.button>
+
+                                        {selectedBracket && (
+                                            <motion.button
+                                                initial={{ opacity: 0, x: -10 }}
+                                                animate={{ opacity: 1, x: 0 }}
+                                                exit={{ opacity: 0, x: -10 }}
+                                                onClick={() => {
+                                                    const isBroken = !!brackets[selectedBracket]?.isBroken;
+                                                    setBrackets(prev => ({
+                                                        ...prev,
+                                                        [selectedBracket]: { ...prev[selectedBracket], isBroken: !isBroken }
+                                                    }));
+                                                }}
+                                                type="button"
+                                                className={`px-3 py-1.5 rounded-md flex items-center gap-1.5 text-xs font-semibold transition-all border shadow-sm overflow-hidden whitespace-nowrap ${brackets[selectedBracket]?.isBroken
+                                                    ? 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 border-red-200 dark:border-red-800'
+                                                    : 'bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-800'
+                                                    }`}
+                                            >
+                                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                                </svg>
+                                                {brackets[selectedBracket]?.isBroken ? 'Reparar Bracket' : 'Bracket Roto'}
+                                            </motion.button>
+                                        )}
+                                    </div>
                                 )}
                             </AnimatePresence>
                         </div>
