@@ -8,6 +8,7 @@ import bracketGanchoImg from '@/assets/images/odontogram/bracket-gancho.svg';
 import tadImg from '@/assets/images/odontogram/tad.svg';
 
 import { getToothSrc, generateCombinedSvgDataUrl } from './components/toothSvgHelpers';
+import * as odontogramService from '@/services/odontogram.service';
 
 // 2. Constants & Helper Data - DYNAMIC LAYOUT CONFIG
 const TOOTH_CONFIG = {
@@ -219,26 +220,48 @@ export default function ElasticsSection() {
     // Cargar datos guardados desde el Odontograma (localStorage)
     // Se ejecuta al montar el componente y cada vez que cambia el patientId
     // ==========================================
-    const loadGlobalOdontogram = useCallback(() => {
+    // ==========================================
+    // Cargar datos guardados desde el Odontograma (Backend)
+    // Se ejecuta al montar el componente y cada vez que cambia el patientId
+    // ==========================================
+    const loadGlobalOdontogram = useCallback(async () => {
         if (!patientId) return;
-        const STORAGE_KEY = `odontogram_data_${patientId}`;
         try {
-            const raw = localStorage.getItem(STORAGE_KEY);
-            if (!raw) return;
+            const response = await odontogramService.getOdontogramByPatientId(patientId);
+            const odontogram = response.data;
 
-            const parsed = JSON.parse(raw);
+            if (!odontogram) return;
 
-            if (parsed.brackets && typeof parsed.brackets === 'object') {
-                setBrackets(parsed.brackets);
+            // Mapear datos globales
+            let global = odontogram.global_data || {};
+            if (typeof global === 'string') {
+                try { global = JSON.parse(global); } catch (e) { global = {}; }
             }
-            if (parsed.tads && typeof parsed.tads === 'object') {
-                setTads(parsed.tads);
+
+            // Mapear detalles por diente
+            const newToothStates = {};
+            const newBrackets = {};
+
+            if (odontogram.details && Array.isArray(odontogram.details)) {
+                odontogram.details.forEach(detail => {
+                    const tid = detail.tooth_id;
+                    
+                    let status = detail.status || {};
+                    if (typeof status === 'string') {
+                        try { status = JSON.parse(status); } catch (e) { status = {}; }
+                    }
+
+                    if (status.toothState) newToothStates[tid] = status.toothState;
+                    if (status.brackets) newBrackets[tid] = status.brackets;
+                });
             }
-            if (parsed.toothStates && typeof parsed.toothStates === 'object') {
-                setToothStates(parsed.toothStates);
-            }
+
+            if (Object.keys(newBrackets).length > 0) setBrackets(newBrackets);
+            if (global.tads && typeof global.tads === 'object') setTads(global.tads);
+            if (Object.keys(newToothStates).length > 0) setToothStates(newToothStates);
+
         } catch (err) {
-            console.error('[ElasticsSection] Error al cargar datos del odontograma desde localStorage:', err);
+            console.error('[ElasticsSection] Error al cargar datos del odontograma desde backend:', err);
         }
     }, [patientId]);
 

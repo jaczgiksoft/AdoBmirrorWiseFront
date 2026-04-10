@@ -7,8 +7,10 @@ import { ConfirmDialog } from '@/components/feedback';
 import OdontogramStep from './Steps/OdontogramStep';
 import RadiographsStep from './Steps/RadiographsStep';
 import AdditionalDataStep from './Steps/AdditionalDataStep';
+import * as odontogramService from '@/services/odontogram.service';
+import { useToastStore } from '@/store/useToastStore';
 
-const ExtractionOrderWizard = ({ isOpen, onClose, onSave, mode = 'create', initialData = null, clinicalMode }) => {
+const ExtractionOrderWizard = ({ isOpen, onClose, onSave, mode = 'create', initialData = null, clinicalMode, patientId }) => {
     const [step, setStep] = useState(1);
     const [teethStatus, setTeethStatus] = useState({});
     const [files, setFiles] = useState([]);
@@ -16,23 +18,78 @@ const ExtractionOrderWizard = ({ isOpen, onClose, onSave, mode = 'create', initi
 
     // State for Reset Confirmation
     const [showResetConfirm, setShowResetConfirm] = useState(false);
+    const [isOdontogramLoading, setIsOdontogramLoading] = useState(false);
+    const { addToast } = useToastStore();
 
     useEffect(() => {
-        if (isOpen) {
-            setStep(1);
-            setShowResetConfirm(false);
+        const loadInitialData = async () => {
+            if (isOpen) {
+                setStep(1);
+                setShowResetConfirm(false);
 
-            if (mode === 'edit' && initialData) {
-                setTeethStatus(initialData.teethStatus || {});
-                setFiles(initialData.files || []);
-                setFormData(initialData.formData || {});
-            } else {
-                setTeethStatus({});
-                setFiles([]);
-                setFormData({});
+                if (mode === 'edit' && initialData) {
+                    setTeethStatus(initialData.teethStatus || {});
+                    setFiles(initialData.files || []);
+                    setFormData(initialData.formData || {});
+                } else if (mode === 'create' && patientId) {
+                    // Cargar el estado actual del odontograma maestro
+                    try {
+                        setIsOdontogramLoading(true);
+                        const response = await odontogramService.getOdontogramByPatientId(patientId);
+                        const odontogram = response.data;
+
+                        if (odontogram && odontogram.details) {
+                            const initialTeethStatus = {};
+                            odontogram.details.forEach(detail => {
+                                let status = detail.status || {};
+                                if (typeof status === 'string') {
+                                    try { status = JSON.parse(status); } catch (e) { status = {}; }
+                                }
+                                
+                                let caras = detail.caras || {};
+                                if (typeof caras === 'string') {
+                                    try { caras = JSON.parse(caras); } catch (e) { caras = {}; }
+                                }
+
+                                const isExtraction = status.toothState === 'missing' || status.toothState === 'extraction';
+                                
+                                // Mapear a la estructura que usa este wizard
+                                initialTeethStatus[detail.tooth_id] = {
+                                    north: caras.north || null,
+                                    south: caras.south || null,
+                                    east: caras.east || null,
+                                    west: caras.west || null,
+                                    center: caras.center || null,
+                                    extraction: isExtraction
+                                };
+                            });
+                            setTeethStatus(initialTeethStatus);
+                        } else {
+                            setTeethStatus({});
+                        }
+                    } catch (error) {
+                        console.error("Error loading master odontogram:", error);
+                        addToast({
+                            type: 'error',
+                            title: 'Error',
+                            message: 'No se pudo precargar el odontograma actual.'
+                        });
+                        setTeethStatus({});
+                    } finally {
+                        setIsOdontogramLoading(false);
+                    }
+                    setFiles([]);
+                    setFormData({});
+                } else {
+                    setTeethStatus({});
+                    setFiles([]);
+                    setFormData({});
+                }
             }
-        }
-    }, [isOpen, mode, initialData]);
+        };
+
+        loadInitialData();
+    }, [isOpen, mode, initialData, patientId]);
 
     // Validation Logic
     const hasSelection = Object.values(teethStatus).some(t => t && (t.extraction || Object.values(t).some(v => v !== null && v !== false)));

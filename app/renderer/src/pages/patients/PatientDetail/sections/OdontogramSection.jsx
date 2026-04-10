@@ -2207,7 +2207,11 @@ export default function OdontogramSection() {
                     setToothNotes({});
                 } else {
                     // Mapear datos globales
-                    const global = odontogram.global_data || {};
+                    let global = odontogram.global_data || {};
+                    if (typeof global === 'string') {
+                        try { global = JSON.parse(global); } catch (e) { global = {}; }
+                    }
+
                     setBracketWires(global.bracketWires || {});
                     setTads(global.tads || {});
                     setTadWires(global.tadWires || {});
@@ -2222,12 +2226,22 @@ export default function OdontogramSection() {
                     if (odontogram.details && Array.isArray(odontogram.details)) {
                         odontogram.details.forEach(detail => {
                             const tid = detail.tooth_id;
-                            const status = detail.status || {};
+                            
+                            let status = detail.status || {};
+                            if (typeof status === 'string') {
+                                try { status = JSON.parse(status); } catch (e) { status = {}; }
+                            }
+
+                            let caras = detail.caras || null;
+                            if (typeof caras === 'string') {
+                                try { caras = JSON.parse(caras); } catch (e) { caras = null; }
+                            }
+
                             if (status.toothState) newToothStates[tid] = status.toothState;
                             if (status.brackets) newBrackets[tid] = status.brackets;
                             if (status.periodontalData) newPeriodontalData[tid] = status.periodontalData;
                             if (status.toothNote) newToothNotes[tid] = status.toothNote;
-                            if (detail.caras) newSurfaceStates[tid] = detail.caras;
+                            if (caras) newSurfaceStates[tid] = caras;
                         });
                     }
 
@@ -2255,6 +2269,7 @@ export default function OdontogramSection() {
                 }
 
                 setTimeout(() => {
+
                     isInitialLoad.current = false;
                 }, 100);
 

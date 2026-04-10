@@ -315,6 +315,7 @@ export default function ExtractionOrdersSection() {
                 mode={modalMode}
                 initialData={wizardData}
                 clinicalMode={clinicalMode}
+                patientId={patientId}
             />
 
             <ConfirmDialog
