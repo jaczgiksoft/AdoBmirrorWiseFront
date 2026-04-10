@@ -11,7 +11,8 @@ const validChannels = [
     "ping",
     "app:open-settings",
     "shortcut:save",
-    "system:get-pcname"
+    "system:get-pcname",
+    "app:open-kiosk"
 ];
 
 contextBridge.exposeInMainWorld("electronAPI", {
@@ -27,6 +28,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
      * ⚙️ Aplicación
      */
     exitApp: () => ipcRenderer.invoke("app:exit"),
+    openKiosk: () => ipcRenderer.invoke("app:open-kiosk"),
 
     /**
      * 🧩 Utilidades

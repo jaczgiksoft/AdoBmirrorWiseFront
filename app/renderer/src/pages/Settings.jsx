@@ -26,7 +26,7 @@ const SETTINGS_MENU = [
         label: "Departamentos",
         description: "Gestiona los departamentos y sus márgenes por tienda.",
         path: "/settings/departments",
-        category: "Tenant",
+        category: "Clinica",
     },
     {
         icon: <Database size={28} />,
@@ -103,14 +103,14 @@ const SETTINGS_MENU = [
         label: "Áreas Clínicas",
         description: "Configura los consultorios y áreas de atención.",
         path: "/clinic-areas",
-        category: "Tenant",
+        category: "Clinica",
     },
     {
         icon: <Building2 size={28} />,
         label: "Información de la Clínica",
         description: "Configura la identidad, datos fiscales y de contacto.",
         path: "/settings/tenant",
-        category: "Tenant",
+        category: "Clinica",
     },
 ];
 
@@ -119,7 +119,7 @@ export default function Settings() {
     const location = useLocation();
     const { user } = useAuthStore();
 
-    const TABS = ["Generales", "Tenant", "Usuarios", "Pacientes"];
+    const TABS = ["Generales", "Clinica", "Usuarios", "Pacientes"];
     const [activeTab, setActiveTab] = useState("Generales");
 
     const filteredMenu = SETTINGS_MENU.filter(item => item.category === activeTab);
@@ -134,7 +134,7 @@ export default function Settings() {
             if (item) {
                 // Cambiar a la pestaña correcta
                 setActiveTab(item.category);
-                
+
                 // Calcular el índice dentro de esa pestaña
                 const categoryMenu = SETTINGS_MENU.filter(i => i.category === item.category);
                 const index = categoryMenu.findIndex(i => i.path === fromPath);
@@ -188,7 +188,7 @@ export default function Settings() {
 
             // Tab keys (1, 2, 3, 4)
             1: (e) => { console.log("Tab 1 - Generales"); e.preventDefault(); setActiveTab("Generales"); setSelectedIndex(0); },
-            2: (e) => { console.log("Tab 2 - Tenant"); e.preventDefault(); setActiveTab("Tenant"); setSelectedIndex(0); },
+            2: (e) => { console.log("Tab 2 - Clinica"); e.preventDefault(); setActiveTab("Clinica"); setSelectedIndex(0); },
             3: (e) => { console.log("Tab 3 - Usuarios"); e.preventDefault(); setActiveTab("Usuarios"); setSelectedIndex(0); },
             4: (e) => { console.log("Tab 4 - Pacientes"); e.preventDefault(); setActiveTab("Pacientes"); setSelectedIndex(0); },
 

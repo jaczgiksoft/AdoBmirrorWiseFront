@@ -247,7 +247,7 @@ export default function InventoryChart({ movements = [], allMovements = [], item
                             <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
                         ))}
                     </Pie>
-                    <Tooltip content={<CustomPieTooltip />} />
+                    <Tooltip content={<CustomPieTooltip />} isAnimationActive={false} />
                     <Legend iconType="circle" layout="horizontal" verticalAlign="bottom" wrapperStyle={{ paddingTop: '10px' }} formatter={(value) => <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 tracking-tight truncate max-w-[120px] inline-flex align-bottom mr-2">{value}</span>} />
                 </PieChart>
             </ResponsiveContainer>
@@ -329,7 +329,7 @@ export default function InventoryChart({ movements = [], allMovements = [], item
                             <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
                         ))}
                     </Pie>
-                    <Tooltip content={<CustomPieTooltip />} />
+                    <Tooltip content={<CustomPieTooltip />} isAnimationActive={false} />
                     <Legend iconType="circle" layout="horizontal" verticalAlign="bottom" wrapperStyle={{ paddingTop: '10px' }} formatter={(value) => <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 tracking-tight truncate max-w-[120px] inline-flex align-bottom mr-2">{value}</span>} />
                 </PieChart>
             </ResponsiveContainer>
@@ -375,7 +375,7 @@ export default function InventoryChart({ movements = [], allMovements = [], item
                             <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
                         ))}
                     </Pie>
-                    <Tooltip content={<CustomPieTooltip />} />
+                    <Tooltip content={<CustomPieTooltip />} isAnimationActive={false} />
                     <Legend iconType="circle" layout="horizontal" verticalAlign="bottom" wrapperStyle={{ paddingTop: '10px' }} formatter={(value) => <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 tracking-tight truncate max-w-[120px] inline-flex align-bottom mr-2">{value}</span>} />
                 </PieChart>
             </ResponsiveContainer>

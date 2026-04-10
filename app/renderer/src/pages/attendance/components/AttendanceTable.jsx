@@ -3,7 +3,7 @@ import React from "react";
 import { Clock, User, Trash2, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { Table } from "@/components/ui";
 
-export default function AttendanceTable({ records, onDelete }) {
+export default function AttendanceTable({ records, onDelete, sortConfig, onSort }) {
     const columns = [
         {
             header: "Empleado",
@@ -98,6 +98,12 @@ export default function AttendanceTable({ records, onDelete }) {
     ];
 
     return (
-        <Table columns={columns} data={records} emptyMessage="No hay registros de asistencias." />
+        <Table 
+            columns={columns} 
+            data={records} 
+            sortConfig={sortConfig}
+            onSort={onSort}
+            emptyMessage="No hay registros de asistencias." 
+        />
     );
 }

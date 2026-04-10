@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import api from "@/services/api";
 import { fetchCurrentUser } from "@/services/auth.service";
 import { useAuthStore } from "@/store/useAuthStore";
-import { Loader2, LogIn, Eye, EyeOff } from "lucide-react";
+import { Loader2, LogIn, Eye, EyeOff, ScreenShare } from "lucide-react";
 import { useHotkeys } from "@/hooks/useHotkeys";
 import { ConfirmDialog } from "@/components/feedback";
 import mainLogo from "@/assets/images/logo/BWISE-logo.png";
@@ -99,8 +99,17 @@ export default function LoginPage() {
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ duration: 0.4 }}
-                    className="bg-secondary/90 rounded-2xl shadow-hard p-8 w-[340px] text-center border border-white/10"
+                    className="bg-secondary/90 rounded-2xl shadow-hard p-8 w-[340px] text-center border border-white/10 relative overflow-hidden"
                 >
+                    {/* 📺 Kiosk Trigger Button */}
+                    <button
+                        type="button"
+                        onClick={() => window.electronAPI.openKiosk()}
+                        className="absolute top-4 right-4 p-2 rounded-lg text-slate-500 hover:text-sky-400 hover:bg-sky-500/10 hover:shadow-[0_0_15px_rgba(56,189,248,0.3)] transition-all duration-300 group"
+                        title="Abrir Kiosko de Auto-confirmación"
+                    >
+                        <ScreenShare size={20} className="group-hover:scale-110 transition-transform" />
+                    </button>
                     <div className="flex flex-col items-center mb-6">
                         <motion.img
                             src={mainLogo}

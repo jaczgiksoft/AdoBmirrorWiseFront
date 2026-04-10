@@ -332,7 +332,7 @@ export default function EmployeeList() {
                                 className="pl-10 pr-20 py-2.5 bg-transparent text-slate-800 dark:text-slate-200 text-sm outline-none placeholder:text-slate-500 w-48 md:w-64"
                             />
                             <div className="absolute right-1">
-                                <EmployeeFilterDropdown 
+                                <EmployeeFilterDropdown
                                     filters={{ statusFilter, userFilter }}
                                     onApply={(f) => {
                                         setStatusFilter(f.statusFilter);
