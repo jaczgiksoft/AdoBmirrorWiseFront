@@ -647,7 +647,7 @@ const buildInitialToothStates = () => {
 // ==========================================
 
 // Individual Tooth Component (Frontal) - Unchanged visuals
-function Tooth({ id, type, hasBracket, isBroken, isSelectedBracket, isBracketMode, onToothClick, onToothRightClick, currentClinicalAction, onResize, hideLabel, hoveredPreviewType }) {
+function Tooth({ id, type, hasBracket, isBroken, repairCount = 0, isSelectedBracket, isBracketMode, onToothClick, onToothRightClick, currentClinicalAction, onResize, hideLabel, hoveredPreviewType, hasNote, onNoteClick }) {
     const isImplantCrown = type === 'implant-crown';
     const activeTypes = isImplantCrown ? ['implant', 'crown'] : (type ? type.split('+') : ['original']);
     const isCombined = activeTypes.length > 1 || isImplantCrown;
@@ -774,7 +774,7 @@ function Tooth({ id, type, hasBracket, isBroken, isSelectedBracket, isBracketMod
                             initial={{ opacity: 0, scale: 0.5, y: -5 }}
                             animate={{ opacity: 1, scale: isSelectedBracket ? 1.02 : 1, y: 0 }}
                             exit={{ opacity: 0, scale: 0.5 }}
-                            className={`absolute ${bracketPositionClass} left-1/2 -translate-x-1/2 z-20 pointer-events-none transition-transform duration-200 ${isSelectedBracket ? 'drop-shadow-[0_0_4px_rgba(59,130,246,0.6)]' : ''}`}
+                            className={`absolute ${bracketPositionClass} left-1/2 -translate-x-1/2 z-20 pointer-events-auto transition-transform duration-200 group/bracket ${isSelectedBracket ? 'drop-shadow-[0_0_4px_rgba(59,130,246,0.6)]' : ''}`}
                         >
                             <img
                                 src={
@@ -792,9 +792,38 @@ function Tooth({ id, type, hasBracket, isBroken, isSelectedBracket, isBracketMod
                                         : {}
                                 }
                             />
+                            {repairCount > 0 && (
+                                <div className="absolute -top-7 left-1/2 -translate-x-1/2 opacity-0 group-hover/bracket:opacity-100 transition-all duration-200 bg-slate-800/90 dark:bg-slate-700/90 text-white text-[10px] px-2 py-1 rounded-md shadow-lg whitespace-nowrap z-50 pointer-events-none backdrop-blur-sm border border-white/10 flex items-center gap-1.5">
+                                    <span className="opacity-70">Repuestos:</span>
+                                    <span className="font-bold text-sky-300">{repairCount}</span>
+                                </div>
+                            )}
                         </motion.div>
                     )}
                 </AnimatePresence>
+
+                {/* Eye Icon for Notes */}
+                {!isInvalidDeciduous && (
+                    <button
+                        type="button"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onNoteClick(id);
+                        }}
+                        className={`
+                            absolute right-[-4px] z-50 p-1 rounded-full bg-white dark:bg-slate-800 shadow-sm border border-slate-200 dark:border-slate-700
+                            transition-all duration-200 transform hover:scale-110
+                            ${isMaxillary ? 'bottom-0' : 'top-0'}
+                            ${hasNote ? 'opacity-100' : 'opacity-0 group-hover:opacity-50'}
+                        `}
+                        title={hasNote ? "Ver/Editar nota" : "Agregar nota"}
+                    >
+                        <svg className={`w-3 h-3 ${hasNote ? 'text-blue-500' : 'text-slate-400'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
+                    </button>
+                )}
             </div>
             {/* Tooth Number Label */}
             <div className={`flex flex-col items-center leading-none select-none transition-opacity duration-300 ${hideLabel ? 'opacity-0' : 'opacity-100'}`}>
@@ -928,7 +957,7 @@ const getDynamicOffset = (
     return base;
 };
 
-function ArchRow({ activeRadialTooth, teethIds, toothStates, brackets, bracketWires, tadWires, selectedBracket, tads, periodontalData, isBracketMode, isTadMode, isPeriodontalMode, periodontalUpperY, periodontalLowerY, periodontalUpperThickness, periodontalLowerThickness, onToothClick, onToothRightClick, onTadClick, currentClinicalAction, onToothResize, toothWidths, baseToothWidths, isUpper, hoveredPreviewType }) {
+function ArchRow({ activeRadialTooth, teethIds, toothStates, brackets, bracketWires, tadWires, selectedBracket, tads, periodontalData, isBracketMode, isTadMode, isPeriodontalMode, periodontalUpperY, periodontalLowerY, periodontalUpperThickness, periodontalLowerThickness, onToothClick, onToothRightClick, onTadClick, currentClinicalAction, onToothResize, toothWidths, baseToothWidths, isUpper, hoveredPreviewType, toothNotes, onNoteClick }) {
     // Generate TAD slots based on teeth list
     // Iterate through pairable teeth (e.g. 18-17, 17-16...)
     // Since teethIds includes both Left and Right, we need to be careful not to create a TAD across the midline (11-21) if not desired.
@@ -1170,7 +1199,7 @@ function ArchRow({ activeRadialTooth, teethIds, toothStates, brackets, bracketWi
                 return (
                     <div
                         key={id}
-                        className={`absolute ${activeRadialTooth === id ? 'z-[100] opacity-0 pointer-events-none' : 'z-10 transition-all duration-300'}`}
+                        className={`absolute ${activeRadialTooth === id ? 'z-[100] opacity-0 pointer-events-none' : 'z-10 hover:z-50 transition-all duration-300'}`}
                         style={{
                             left: `calc(50% + ${xPos}px)`,
                             transform: typeOffsetX !== 0 || typeOffsetY !== 0
@@ -1188,6 +1217,7 @@ function ArchRow({ activeRadialTooth, teethIds, toothStates, brackets, bracketWi
                             type={toothStates[id]}
                             hasBracket={!!brackets[id]}
                             isBroken={!!brackets[id]?.isBroken}
+                            repairCount={brackets[id]?.repairCount || 0}
                             isSelectedBracket={selectedBracket === id}
                             isBracketMode={isBracketMode}
                             onToothClick={isTadMode ? () => { } : onToothClick}
@@ -1196,6 +1226,8 @@ function ArchRow({ activeRadialTooth, teethIds, toothStates, brackets, bracketWi
                             onResize={onToothResize}
                             hideLabel={activeRadialTooth === id}
                             hoveredPreviewType={activeRadialTooth === id ? hoveredPreviewType : null}
+                            hasNote={!!(toothNotes && toothNotes[id])}
+                            onNoteClick={onNoteClick}
                         />
 
                     </div>
@@ -1598,6 +1630,66 @@ function PeriodontalModal({ isOpen, onClose, onSave, toothId, initialData }) {
     );
 }
 
+function ToothNoteModal({ isOpen, onClose, onSave, toothId, initialNote }) {
+    const [note, setNote] = useState(initialNote || '');
+
+    useEffect(() => {
+        if (isOpen) {
+            setNote(initialNote || '');
+        }
+    }, [isOpen, initialNote]);
+
+    if (!isOpen || !toothId) return null;
+
+    const handleSave = () => {
+        onSave(toothId, note);
+        onClose();
+    };
+
+    return (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+            <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-md w-full p-0 overflow-hidden"
+            >
+                <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-slate-800/80">
+                    <div>
+                        <h3 className="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                            <span className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 flex items-center justify-center text-sm">
+                                {toothId}
+                            </span>
+                            Nota del Diente
+                        </h3>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Escribe una nota interna para este diente.</p>
+                    </div>
+                    <button onClick={onClose} className="btn btn-sm btn-circle btn-ghost text-slate-500 hover:text-slate-800 dark:hover:text-slate-200">
+                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                    </button>
+                </div>
+
+                <div className="p-6">
+                    <textarea
+                        autoFocus
+                        className="textarea textarea-bordered w-full h-32 text-sm bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-blue-500 transition-all resize-none"
+                        placeholder="Escribe aquí cualquier observación o nota importante..."
+                        value={note}
+                        onChange={(e) => setNote(e.target.value)}
+                    />
+                </div>
+
+                <div className="px-6 py-4 bg-slate-50 dark:bg-slate-800/80 border-t border-slate-200 dark:border-slate-700 flex justify-end items-center gap-3">
+                    <button type="button" onClick={onClose} className="btn btn-ghost border border-slate-300 dark:border-slate-600">Cancelar</button>
+                    <button type="button" onClick={handleSave} className="btn btn-primary bg-blue-600 hover:bg-blue-700 border-none shadow-md shadow-blue-500/30 font-bold">
+                        Guardar Nota
+                    </button>
+                </div>
+            </motion.div>
+        </div>
+    );
+}
+
 function ClinicalActionModal({ isOpen, onClose, onSelect }) {
     if (!isOpen) return null;
     return (
@@ -1899,6 +1991,8 @@ export default function OdontogramSection() {
     const [isTadMode, setIsTadMode] = useState(false);
     const [isPeriodontalMode, setIsPeriodontalMode] = useState(false);
     const [activePeriodontalTooth, setActivePeriodontalTooth] = useState(null);
+    const [toothNotes, setToothNotes] = useState({});
+    const [activeNoteTooth, setActiveNoteTooth] = useState(null);
 
     const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false);
     const [voiceSettings, setVoiceSettings] = useState({ isMuted: false, selectedVoiceURI: '' });
@@ -2066,7 +2160,8 @@ export default function OdontogramSection() {
             tads: {},
             tadWires: {},
             surfaceStates: {},
-            periodontalData: {}
+            periodontalData: {},
+            toothNotes: {}
         },
         future: []
     }));
@@ -2098,7 +2193,7 @@ export default function OdontogramSection() {
             let migrationNeeded = false;
             Object.keys(finalBrackets).forEach(id => {
                 if (typeof finalBrackets[id] === 'boolean') {
-                    finalBrackets[id] = { isBroken: false };
+                    finalBrackets[id] = { isBroken: false, repairCount: 0 };
                     migrationNeeded = true;
                 }
             });
@@ -2109,6 +2204,7 @@ export default function OdontogramSection() {
             if (parsed.tadWires) setTadWires(parsed.tadWires);
             if (parsed.surfaceStates) setSurfaceStates(parsed.surfaceStates);
             if (parsed.periodontalData) setPeriodontalData(parsed.periodontalData);
+            if (parsed.toothNotes) setToothNotes(parsed.toothNotes);
 
             // Sincronizar historial con los datos cargados
             setHistoryState({
@@ -2120,7 +2216,8 @@ export default function OdontogramSection() {
                     tads: parsed.tads || {},
                     tadWires: parsed.tadWires || {},
                     surfaceStates: parsed.surfaceStates || {},
-                    periodontalData: parsed.periodontalData || {}
+                    periodontalData: parsed.periodontalData || {},
+                    toothNotes: parsed.toothNotes || {}
                 },
                 future: []
             });
@@ -2140,13 +2237,13 @@ export default function OdontogramSection() {
             isUndoRedoAction.current = false;
             return;
         }
-        const newState = { toothStates, brackets, bracketWires, tads, tadWires, surfaceStates, periodontalData };
+        const newState = { toothStates, brackets, bracketWires, tads, tadWires, surfaceStates, periodontalData, toothNotes };
         setHistoryState(prev => {
             if (JSON.stringify(prev.present) === JSON.stringify(newState)) return prev;
             const newPast = [...prev.past, prev.present].slice(-50);
             return { past: newPast, present: newState, future: [] };
         });
-    }, [toothStates, brackets, bracketWires, tads, tadWires, surfaceStates, periodontalData]);
+    }, [toothStates, brackets, bracketWires, tads, tadWires, surfaceStates, periodontalData, toothNotes]);
 
     const handleUndo = useCallback(() => {
         setHistoryState(prev => {
@@ -2162,6 +2259,7 @@ export default function OdontogramSection() {
             setTadWires(previousState.tadWires || {});
             setSurfaceStates(previousState.surfaceStates);
             setPeriodontalData(previousState.periodontalData || {});
+            setToothNotes(previousState.toothNotes || {});
 
             setSelectedBracket(null);
 
@@ -2183,6 +2281,7 @@ export default function OdontogramSection() {
             setTadWires(nextState.tadWires || {});
             setSurfaceStates(nextState.surfaceStates);
             setPeriodontalData(nextState.periodontalData || {});
+            setToothNotes(nextState.toothNotes || {});
 
             setSelectedBracket(null);
 
@@ -2222,6 +2321,7 @@ export default function OdontogramSection() {
                 tadWires: historyState.present.tadWires,
                 surfaceStates: historyState.present.surfaceStates,
                 periodontalData: historyState.present.periodontalData,
+                toothNotes: historyState.present.toothNotes,
             };
             localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
             setSavedToElastics(true);
@@ -2271,6 +2371,18 @@ export default function OdontogramSection() {
         setPendingCombination(null);
     };
 
+    const handleNoteSave = (id, note) => {
+        setToothNotes(prev => {
+            const next = { ...prev };
+            if (note.trim()) {
+                next[id] = note;
+            } else {
+                delete next[id];
+            }
+            return next;
+        });
+    };
+
     const cleanupBracketsForTooth = useCallback((toothId) => {
         setBrackets(prev => {
             if (!prev[toothId]) return prev;
@@ -2311,7 +2423,7 @@ export default function OdontogramSection() {
             if (INACTIVE_TYPES.includes(toothStates[id])) return;
 
             if (!brackets[id]) {
-                setBrackets(prev => ({ ...prev, [id]: { isBroken: false } }));
+                setBrackets(prev => ({ ...prev, [id]: { isBroken: false, repairCount: 0 } }));
             } else {
                 if (selectedBracket === id) {
                     setBrackets(prev => {
@@ -2428,7 +2540,7 @@ export default function OdontogramSection() {
         Object.values(QUADRANTS).flat().forEach(id => {
             const state = toothStates[id];
             if (!INACTIVE_TYPES.includes(state)) {
-                if (!newBrackets[id]) newBrackets[id] = { isBroken: false };
+                if (!newBrackets[id]) newBrackets[id] = { isBroken: false, repairCount: 0 };
             }
         });
         setBrackets(newBrackets);
@@ -3606,6 +3718,7 @@ export default function OdontogramSection() {
         setSurfaceStates({});
         setToothWidths({});
         setPeriodontalData({});
+        setToothNotes({});
 
         // 3. Reset UI Modes
         setIsBracketMode(false);
@@ -3702,21 +3815,30 @@ export default function OdontogramSection() {
                                                 exit={{ opacity: 0, x: -10 }}
                                                 onClick={() => {
                                                     const isBroken = !!brackets[selectedBracket]?.isBroken;
-                                                    setBrackets(prev => ({
-                                                        ...prev,
-                                                        [selectedBracket]: { ...prev[selectedBracket], isBroken: !isBroken }
-                                                    }));
+                                                    setBrackets(prev => {
+                                                        const current = prev[selectedBracket] || { isBroken: false, repairCount: 0 };
+                                                        // Increment repair count when moving from broken to repaired
+                                                        const nextRepairCount = isBroken ? (current.repairCount || 0) + 1 : (current.repairCount || 0);
+                                                        return {
+                                                            ...prev,
+                                                            [selectedBracket]: {
+                                                                ...current,
+                                                                isBroken: !isBroken,
+                                                                repairCount: nextRepairCount
+                                                            }
+                                                        };
+                                                    });
                                                 }}
                                                 type="button"
                                                 className={`px-3 py-1.5 rounded-md flex items-center gap-1.5 text-xs font-semibold transition-all border shadow-sm overflow-hidden whitespace-nowrap ${brackets[selectedBracket]?.isBroken
-                                                    ? 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 border-red-200 dark:border-red-800'
+                                                    ? 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 border-green-200 dark:border-green-800'
                                                     : 'bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-800'
                                                     }`}
                                             >
                                                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                                                 </svg>
-                                                {brackets[selectedBracket]?.isBroken ? 'Reparar Bracket' : 'Bracket Roto'}
+                                                {brackets[selectedBracket]?.isBroken ? 'Repuesto de Bracket' : 'Bracket Roto'}
                                             </motion.button>
                                         )}
                                     </div>
@@ -3859,6 +3981,8 @@ export default function OdontogramSection() {
                                 baseToothWidths={baseToothWidths}
                                 isUpper={true}
                                 hoveredPreviewType={hoveredPreviewType}
+                                toothNotes={historyState.present.toothNotes}
+                                onNoteClick={(id) => setActiveNoteTooth(id)}
                             />
 
                             {/* ROW 2: OCCLUSAL */}
@@ -3922,6 +4046,8 @@ export default function OdontogramSection() {
                                 baseToothWidths={baseToothWidths}
                                 isUpper={false}
                                 hoveredPreviewType={hoveredPreviewType}
+                                toothNotes={historyState.present.toothNotes}
+                                onNoteClick={(id) => setActiveNoteTooth(id)}
                             />
                         </div>
 
@@ -3975,6 +4101,14 @@ export default function OdontogramSection() {
                 onSave={handlePeriodontalSave}
                 toothId={activePeriodontalTooth}
                 initialData={activePeriodontalTooth ? periodontalData[activePeriodontalTooth] : null}
+            />
+
+            <ToothNoteModal
+                isOpen={!!activeNoteTooth}
+                onClose={() => setActiveNoteTooth(null)}
+                onSave={handleNoteSave}
+                toothId={activeNoteTooth}
+                initialNote={activeNoteTooth ? toothNotes[activeNoteTooth] : ''}
             />
 
             {console.log("[DEBUG] ConfirmDialog render check:", isResetDialogOpen)}
@@ -4117,6 +4251,8 @@ export default function OdontogramSection() {
                                                 id={id}
                                                 type={displayToothStates[id]}
                                                 hasBracket={!!brackets[id]}
+                                                isBroken={!!brackets[id]?.isBroken}
+                                                repairCount={brackets[id]?.repairCount || 0}
                                                 isSelectedBracket={false}
                                                 isBracketMode={false}
                                                 onToothClick={() => { }}

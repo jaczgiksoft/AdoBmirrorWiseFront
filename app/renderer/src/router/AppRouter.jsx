@@ -60,6 +60,8 @@ import BillingSection from "@/pages/patients/PatientDetail/sections/BillingSecti
 import InventoryPage from "@/pages/inventory/InventoryPage";
 import PaymentsPage from "@/modules/payments/pages/PaymentsPage";
 import AttendancePage from "@/pages/attendance/AttendancePage";
+import FiltroList from "@/pages/filtro/FiltroList";
+import ConfirmationKiosk from "@/pages/kiosk/ConfirmationKiosk";
 
 /* ──────────────────────────────────────────────
  🔒 RUTA PRIVADA
@@ -144,6 +146,7 @@ export default function AppRouter() {
                 {/* 🟦 RUTAS PÚBLICAS */}
                 <Route path="/" element={<SplashScreen />} />
                 <Route path="/login" element={<LoginPage />} />
+                <Route path="/kiosk" element={<ConfirmationKiosk />} />
 
                 {/* 🟢 RUTAS PRIVADAS */}
                 <Route
@@ -448,6 +451,18 @@ export default function AppRouter() {
                         <PrivateRoute>
                             <PrivateLayout>
                                 <AttendancePage />
+                            </PrivateLayout>
+                        </PrivateRoute>
+                    }
+                />
+
+                {/* 📊 Filtro (Nuevo) */}
+                <Route
+                    path="/filtro"
+                    element={
+                        <PrivateRoute>
+                            <PrivateLayout>
+                                <FiltroList />
                             </PrivateLayout>
                         </PrivateRoute>
                     }

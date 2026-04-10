@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 
 import { PageHeader } from "@/components/layout";
 import { ConfirmDialog } from "@/components/feedback";
+import { Pagination } from "@/components/ui";
 import { useAttendance } from "./hooks/useAttendance";
 
 import AttendanceTable from "./components/AttendanceTable";
@@ -29,12 +30,21 @@ export default function AttendancePage() {
     const [selectedLateness, setSelectedLateness] = useState("all");
     const [dateRange, setDateRange] = useState({ startDate: null, endDate: null });
 
+    const [currentPage, setCurrentPage] = useState(1);
+    const [sortConfig, setSortConfig] = useState({ key: "dateTime", direction: "desc" });
+    const ITEMS_PER_PAGE = 10;
+
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [recordToDelete, setRecordToDelete] = useState(null);
 
+    // Reset page when filters change
+    React.useEffect(() => {
+        setCurrentPage(1);
+    }, [searchTerm, selectedType, selectedLateness, dateRange]);
+
     // -- Memoized Filtering --
     const filteredRecords = useMemo(() => {
-        return records.filter(rec => {
+        const filtered = records.filter(rec => {
             // 🔍 Search Filter
             const matchesSearch = rec.employeeName.toLowerCase().includes(searchTerm.toLowerCase());
 
@@ -58,7 +68,26 @@ export default function AttendancePage() {
 
             return matchesSearch && matchesType && matchesLateness && matchesDate;
         });
-    }, [records, searchTerm, selectedType, selectedLateness, dateRange]);
+
+        // 📋 Sorting Logic
+        if (!sortConfig.key) return filtered;
+
+        return [...filtered].sort((a, b) => {
+            const aValue = a[sortConfig.key];
+            const bValue = b[sortConfig.key];
+
+            if (aValue < bValue) return sortConfig.direction === "asc" ? -1 : 1;
+            if (aValue > bValue) return sortConfig.direction === "asc" ? 1 : -1;
+            return 0;
+        });
+    }, [records, searchTerm, selectedType, selectedLateness, dateRange, sortConfig]);
+
+    // -- Pagination Logic --
+    const totalPages = Math.ceil(filteredRecords.length / ITEMS_PER_PAGE);
+    const paginatedRecords = useMemo(() => {
+        const start = (currentPage - 1) * ITEMS_PER_PAGE;
+        return filteredRecords.slice(start, start + ITEMS_PER_PAGE);
+    }, [filteredRecords, currentPage]);
 
     // -- Handlers --
     const handleSave = (data) => {
@@ -71,6 +100,14 @@ export default function AttendancePage() {
             deleteRecord(recordToDelete.id);
             setRecordToDelete(null);
         }
+    };
+
+    const handleSort = (key) => {
+        let direction = "asc";
+        if (sortConfig.key === key && sortConfig.direction === "asc") {
+            direction = "desc";
+        }
+        setSortConfig({ key, direction });
     };
 
     return (
@@ -127,10 +164,21 @@ export default function AttendancePage() {
                 </div>
                 <div className="overflow-x-auto">
                     <AttendanceTable
-                        records={filteredRecords}
+                        records={paginatedRecords}
                         onDelete={setRecordToDelete}
+                        sortConfig={sortConfig}
+                        onSort={handleSort}
                     />
                 </div>
+            </div>
+
+            {/* Pagination Controls */}
+            <div className="flex justify-end pr-2">
+                <Pagination
+                    page={currentPage}
+                    totalPages={totalPages}
+                    onPageChange={setCurrentPage}
+                />
             </div>
 
             {/* Modals */}

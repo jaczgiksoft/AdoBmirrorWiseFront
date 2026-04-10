@@ -224,11 +224,10 @@ export default function PaymentsPage() {
                     <button
                         key={tab.key}
                         onClick={() => setActiveTab(tab.key)}
-                        className={`px-4 py-1.5 rounded-md text-sm font-semibold transition ${
-                            activeTab === tab.key
-                                ? "bg-white dark:bg-slate-700 shadow-sm text-primary"
-                                : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
-                        }`}
+                        className={`px-4 py-1.5 rounded-md text-sm font-semibold transition ${activeTab === tab.key
+                            ? "bg-white dark:bg-slate-700 shadow-sm text-primary"
+                            : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
+                            }`}
                     >
                         {tab.label}
                     </button>
@@ -249,8 +248,8 @@ export default function PaymentsPage() {
                                         key={opt.value}
                                         onClick={() => setFilterStatus(opt.value)}
                                         className={`px-3 py-1.5 rounded-md text-sm font-semibold transition ${filterStatus === opt.value
-                                                ? "bg-white dark:bg-slate-700 shadow-sm text-primary"
-                                                : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
+                                            ? "bg-white dark:bg-slate-700 shadow-sm text-primary"
+                                            : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
                                             }`}
                                     >
                                         {opt.label}
@@ -265,8 +264,8 @@ export default function PaymentsPage() {
                                         key={opt.value}
                                         onClick={() => setFilterMethod(opt.value)}
                                         className={`px-3 py-1.5 rounded-md text-sm font-semibold transition ${filterMethod === opt.value
-                                                ? "bg-white dark:bg-slate-700 shadow-sm text-primary"
-                                                : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
+                                            ? "bg-white dark:bg-slate-700 shadow-sm text-primary"
+                                            : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
                                             }`}
                                     >
                                         {opt.label}
@@ -281,8 +280,8 @@ export default function PaymentsPage() {
                                         key={opt.value}
                                         onClick={() => setFilterInvoiced(opt.value)}
                                         className={`px-3 py-1.5 rounded-md text-sm font-semibold transition ${filterInvoiced === opt.value
-                                                ? "bg-white dark:bg-slate-700 shadow-sm text-primary"
-                                                : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
+                                            ? "bg-white dark:bg-slate-700 shadow-sm text-primary"
+                                            : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
                                             }`}
                                     >
                                         {opt.label}

@@ -11,7 +11,8 @@ import {
     Calendar,
     FileText,
     CreditCard,
-    Clock
+    Clock,
+    TrendingUp
 } from "lucide-react";
 
 export const MODULE_CONFIG = {
@@ -94,5 +95,13 @@ export const MODULE_CONFIG = {
         color: "#f59e0b", // Amber
         path: "/payments",
         key: null,
+    },
+    filtro: {
+        order: 13,
+        label: "Filtro",
+        icon: TrendingUp,
+        color: "#3b82f6", // Blue
+        path: "/filtro",
+        key: "F2",
     },
 };

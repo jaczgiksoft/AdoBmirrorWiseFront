@@ -7,6 +7,7 @@ const net = require("net");
 const os = require("os");
 
 let mainWindow = null;
+let kioskWindow = null;
 let backendServer = null; // referencia global al servidor backend
 
 /**
@@ -205,8 +206,43 @@ ipcMain.handle("system:get-pcname", async () => {
 });
 
 
-// ❌ Cierre desde renderer (Login → “Cerrar aplicación”)
 ipcMain.handle("app:exit", async () => {
     console.log("🛑 Cierre solicitado desde renderer");
     app.quit();
+});
+
+// 📺 Kiosko de Auto-confirmación
+ipcMain.handle("app:open-kiosk", async () => {
+    if (kioskWindow && !kioskWindow.isDestroyed()) {
+        kioskWindow.focus();
+        return;
+    }
+
+    kioskWindow = new BrowserWindow({
+        width: 1024,
+        height: 768,
+        minWidth: 800,
+        minHeight: 600,
+        autoHideMenuBar: true,
+        frame: false, // Frame-less for kiosk feel
+        webPreferences: {
+            preload: path.join(__dirname, "preload.js"),
+            contextIsolation: true,
+            nodeIntegration: false,
+        },
+    });
+
+    const isDev = !app.isPackaged;
+    const vitePort = process.env.VITE_PORT || 5173;
+    const devURL = `http://localhost:${vitePort}`;
+    
+    if (isDev) {
+        kioskWindow.loadURL(`${devURL}/kiosk`);
+    } else {
+        kioskWindow.loadFile(path.join(__dirname, "../renderer/dist/index.html"), { hash: "/kiosk" });
+    }
+
+    kioskWindow.on("closed", () => {
+        kioskWindow = null;
+    });
 });

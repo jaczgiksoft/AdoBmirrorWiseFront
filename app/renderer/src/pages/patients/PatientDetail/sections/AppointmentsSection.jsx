@@ -13,7 +13,10 @@ import {
     ChevronUp,
     Filter,
     X,
-    Loader2
+    Loader2,
+    Timer,
+    UserX,
+    ClockAlert
 } from 'lucide-react';
 import { getAppointments } from '../../../../services/appointment.service';
 import { useOutletContext } from 'react-router-dom';
@@ -71,8 +74,32 @@ export default function AppointmentsSection() {
     };
 
     // Common input styles
+    // Common input styles
     const inputClass = "w-full px-3 py-2 text-sm text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 transition-colors";
     const labelClass = "block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1";
+
+    // --- KPI CALCULATIONS ---
+    const kpis = {
+        totalMinutes: appointments
+            .filter(a => a.status === 'finalizada')
+            .reduce((acc, a) => acc + (a.effective_minutes || (a.services?.reduce((sAcc, s) => sAcc + (s.duration_minutes || 0), 0)) || 0), 0),
+        absences: appointments.filter(a => a.status === 'no_show').length,
+        lateArrivals: appointments.filter(a => {
+            if (!a.checkin_at || !a.start_time || !a.date) return false;
+            const checkinTime = new Date(a.checkin_at);
+            const [h, m] = a.start_time.split(':').map(Number);
+            const [y, mon, d] = a.date.split('-').map(Number);
+            const scheduledTime = new Date(y, mon - 1, d, h, m, 0);
+            return checkinTime > scheduledTime;
+        }).length
+    };
+
+    const formatDedicatedTime = (minutes) => {
+        if (minutes < 60) return `${minutes} min`;
+        const hrs = Math.floor(minutes / 60);
+        const mins = minutes % 60;
+        return mins > 0 ? `${hrs}h ${mins}m` : `${hrs}h`;
+    };
 
     return (
         <div className="space-y-6 text-slate-800 dark:text-slate-100">
@@ -148,6 +175,36 @@ export default function AppointmentsSection() {
                         </div>
                     </div>
                 </div>
+
+                {/* --- KPI CARDS --- */}
+                {!loading && appointments.length > 0 && (
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
+                        <KPICard
+                            label="Tiempo Dedicado"
+                            value={formatDedicatedTime(kpis.totalMinutes)}
+                            icon={Timer}
+                            color="text-emerald-500"
+                            bg="bg-emerald-500/10"
+                            border="border-emerald-500/20"
+                        />
+                        <KPICard
+                            label="Inasistencias"
+                            value={kpis.absences}
+                            icon={UserX}
+                            color="text-rose-500"
+                            bg="bg-rose-500/10"
+                            border="border-rose-500/20"
+                        />
+                        <KPICard
+                            label="Llegadas Tarde"
+                            value={kpis.lateArrivals}
+                            icon={ClockAlert}
+                            color="text-amber-500"
+                            bg="bg-amber-500/10"
+                            border="border-amber-500/20"
+                        />
+                    </div>
+                )}
 
                 {/* --- LIST --- */}
                 <div className="space-y-4">
@@ -450,6 +507,20 @@ function InfoItem({ icon: Icon, label, value, highlighted }) {
                 <p className={`text-sm ${highlighted ? 'font-bold text-slate-800 dark:text-slate-100' : 'text-slate-700 dark:text-slate-300'}`}>
                     {value}
                 </p>
+            </div>
+        </div>
+    );
+}
+
+function KPICard({ label, value, icon: Icon, color, bg, border }) {
+    return (
+        <div className={`flex items-center gap-3 p-3 rounded-xl bg-white dark:bg-slate-800/50 border ${border} shadow-sm`}>
+            <div className={`w-10 h-10 flex items-center justify-center rounded-lg ${bg}`}>
+                <Icon size={20} className={color} />
+            </div>
+            <div>
+                <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400 leading-tight uppercase tracking-wider">{label}</p>
+                <p className={`text-xl font-bold leading-tight mt-0.5 ${color}`}>{value}</p>
             </div>
         </div>
     );
