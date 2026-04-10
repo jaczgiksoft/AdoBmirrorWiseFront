@@ -3,9 +3,11 @@ import {
     UserCheck,
     Clock3,
     Activity,
-    CheckCircle2
+    CheckCircle2,
+    XCircle,
+    CalendarClock,
+    Timer, Eye
 } from "lucide-react";
-
 export default function CalendarEventCard({ event }) {
     const { extendedProps } = event;
     const { patient, employee, clinic_area, primaryServiceColor } = extendedProps;
@@ -16,8 +18,8 @@ export default function CalendarEventCard({ event }) {
         (new Date(event.end) - new Date(event.start)) / 60000;
 
     const isMicro = durationMinutes <= 5;
-    const isTiny = durationMinutes <= 16;
-    const isCompact = durationMinutes > 16 && durationMinutes < 30;
+    const isTiny = durationMinutes > 5 && durationMinutes <= 10;
+    const isCompact = durationMinutes > 10 && durationMinutes < 30;
     const isFull = durationMinutes >= 30;
 
     const status = extendedProps.status;
@@ -35,41 +37,56 @@ export default function CalendarEventCard({ event }) {
     const statusColor = statusColorMap[status] || "#64748B";
 
     // 🧭 FLOW
-    const statusFlow = [
-        "checkin",
-        "en_espera",
-        "en_tratamiento",
-        "finalizada"
-    ];
+    let statusFlow;
 
-    const normalizedStatus =
-        status === "pendiente" ? "checkin" : status;
+    if (status === "cancelada") {
+        statusFlow = ["cancelada"];
+    } else {
+        const baseFlow = [
+            "en_espera",
+            "en_tratamiento",
+            "finalizada"
+        ];
 
-    const safeIndex = statusFlow.indexOf(normalizedStatus);
-    const currentStatusIndex = safeIndex === -1 ? 0 : safeIndex;
+        if (status === "pendiente" || status === "confirmada") {
+            statusFlow = [status, ...baseFlow];
+        } else {
+            statusFlow = baseFlow;
+        }
+    }
+
+    const currentStatusIndex = statusFlow.indexOf(status);
 
     // 🧠 CONFIG
     const statusConfig = {
-        checkin: {
-            label: "Check-in",
-            icon: UserCheck
+        pendiente: {
+            label: "Pendiente",
+            icon: CalendarClock // 🗓 cita futura
+        },
+        confirmada: {
+            label: "Confirmada",
+            icon: UserCheck // 👤 confirmación
+        },
+        cancelada: {
+            label: "Cancelada",
+            icon: XCircle // ❌ cancelado
         },
         en_espera: {
             label: "Espera",
-            icon: Clock3
+            icon: Timer // ⏳ esperando turno
         },
         en_tratamiento: {
             label: "Tratamiento",
-            icon: Activity
+            icon: Activity // ❤️ en proceso
         },
         finalizada: {
             label: "Finalizada",
-            icon: CheckCircle2
+            icon: CheckCircle2 // ✅ completado
         }
     };
 
     // ⚡ Active (para compact mode)
-    const activeConfig = statusConfig[normalizedStatus] || statusConfig["checkin"];
+    const activeConfig = statusConfig[status] || statusConfig["pendiente"];
     const ActiveIcon = activeConfig.icon;
 
     if (isMicro) {
@@ -142,13 +159,20 @@ export default function CalendarEventCard({ event }) {
                 {!isTiny && (
                     <div className="flex flex-col items-end gap-1">
 
-                        {/* Hora */}
-                        <span className="text-[10px] bg-black/20 px-2 py-0.5 rounded text-white/90">
-                            {new Date(event.start).toLocaleTimeString([], {
-                                hour: "2-digit",
-                                minute: "2-digit"
-                            })}
-                        </span>
+                        {/* 🕒 Hora + 👁 */}
+                        <div className="flex items-center gap-1">
+                            <span className="text-[10px] bg-black/20 px-2 py-0.5 rounded text-white/90">
+                                {new Date(event.start).toLocaleTimeString([], {
+                                    hour: "2-digit",
+                                    minute: "2-digit"
+                                })}
+                            </span>
+
+                            {/* 👁 Indicador de notas */}
+                            <div className="flex items-center bg-black/20 px-1.5 py-0.5 rounded">
+                                <Eye size={14} className="text-yellow-300 drop-shadow-[0_0_4px_rgba(253,224,71,0.8)]" />
+                            </div>
+                        </div>
 
                         {/* Estado SOLO en COMPACT */}
                         {isCompact && (
@@ -163,6 +187,7 @@ export default function CalendarEventCard({ event }) {
                                 {activeConfig.label}
                             </span>
                         )}
+
                     </div>
                 )}
             </div>
@@ -189,7 +214,7 @@ export default function CalendarEventCard({ event }) {
 
                 {/* 🟢 FULL MODE */}
                 {isFull && (
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-6">
 
                         {statusFlow.map((s, index) => {
                             const config = statusConfig[s];
@@ -199,8 +224,9 @@ export default function CalendarEventCard({ event }) {
                             const isCompleted = index < currentStatusIndex;
 
                             return (
-                                <div key={s} className="flex flex-col items-center relative">
+                                <div key={s} className="relative flex flex-col items-center group">
 
+                                    {/* 🔵 CIRCLE */}
                                     <div className="relative flex items-center justify-center">
 
                                         {isActive && status !== "finalizada" && (
@@ -219,43 +245,58 @@ export default function CalendarEventCard({ event }) {
 
                                         <div
                                             className={`
-                                                w-7 h-7 rounded-full flex items-center justify-center
-                                                transition-all duration-300
-                                                ${isActive
+                    w-7 h-7 rounded-full flex items-center justify-center
+                    transition-all duration-300
+                    ${isActive
                                                     ? "text-white calendar-active-glow"
                                                     : isCompleted
                                                         ? "bg-white/90 text-black"
                                                         : "bg-white/20 text-white/60"}
-                                            `}
+                `}
                                             style={isActive ? { backgroundColor: accentColor } : {}}
                                         >
                                             <Icon size={14} />
                                         </div>
                                     </div>
 
-                                    <span
-                                        className={`
-                                            mt-1 text-[9px] text-center
-                                            ${isActive
-                                                ? "text-white font-semibold"
-                                                : "text-white/60"}
-                                        `}
-                                    >
-                                        {config.label}
-                                    </span>
+                                    {/* 🟢 LABEL ACTIVO */}
+                                    {isActive && (
+                                        <span className="absolute -bottom-5 text-[9px] font-semibold text-white whitespace-nowrap">
+                                            {config.label}
+                                        </span>
+                                    )}
 
+                                    {/* 💬 TOOLTIP (hover en TODO el step) */}
+                                    {!isActive && (
+                                        <div
+                                            className="
+                    absolute -top-7 left-1/2 -translate-x-1/2
+                    px-2 py-1 rounded-md text-[10px]
+                    bg-black/80 text-white whitespace-nowrap
+                    opacity-0 group-hover:opacity-100
+                    transition-all duration-200
+                    scale-95 group-hover:scale-100
+                    pointer-events-none
+                "
+                                        >
+                                            {config.label}
+                                        </div>
+                                    )}
+
+                                    {/* ➖ LINE */}
                                     {index < statusFlow.length - 1 && (
-                                        <div className="absolute top-3 left-full flex items-center">
+                                        <div className="absolute top-1/2 -translate-y-1/2 left-full flex items-center">
                                             <div
                                                 className={`
-                                                    calendar-line w-6
-                                                    ${isCompleted
-                                                        ? "bg-white/80"
+                        calendar-line ${isCompact ? "w-3" : "w-6"}
+                        ${isCompleted
+                                                        ? "bg-white"
                                                         : "bg-white/20"}
-                                                `}
+                    `}
                                             />
                                         </div>
                                     )}
+
                                 </div>
                             );
                         })}

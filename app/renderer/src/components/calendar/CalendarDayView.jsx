@@ -52,9 +52,15 @@ export default function CalendarDayView({ events, onEventClick, calendarRef, res
                 datesSet={datesSet}
                 slotMinTime="08:00:00"
                 slotMaxTime="19:00:00"
+                slotLabelFormat={{
+                    hour: 'numeric',
+                    minute: '2-digit',
+                    hour12: false
+                }}
                 allDaySlot={false}
                 height="100%"
                 slotDuration="00:10:00"
+                slotLabelInterval="00:10:00"
                 nowIndicator={true}
                 locale="es"
                 schedulerLicenseKey="CC-Attribution-NonCommercial-NoDerivatives" // Standard open source license for non-commercial/dev 
