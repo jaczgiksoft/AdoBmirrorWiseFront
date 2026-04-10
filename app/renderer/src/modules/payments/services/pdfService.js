@@ -34,7 +34,7 @@ export async function generatePaymentPDF(payment, user) {
     doc.addImage(img, "PNG", 14, 5, 16, 16);
 
     doc.setTextColor(255);
-    doc.setFontSize(11);
+    doc.setFontSize(18); // 👈 antes 11
     doc.setFont(undefined, "bold");
     doc.text(user?.tenant?.name || "BWISE Dental", 34, 12);
 
@@ -52,30 +52,26 @@ export async function generatePaymentPDF(payment, user) {
     // ───────────────── STATUS BADGE PRO ─────────────────
     let statusColor = [120, 120, 120];
     let statusBg = [230, 230, 230];
-    let statusIcon = "●"; // fallback
 
     if (payment.status === "paid") {
         statusColor = [16, 185, 129];
         statusBg = [220, 252, 231];
-        statusIcon = "✔";
     }
 
     if (payment.status === "partial") {
         statusColor = [245, 158, 11];
         statusBg = [254, 243, 199];
-        statusIcon = "▲";
     }
 
     if (payment.status === "pending") {
         statusColor = [239, 68, 68];
         statusBg = [254, 226, 226];
-        statusIcon = "✖";
     }
 
     const badgeWidth = 100;
     const badgeHeight = 13;
     const badgeX = 14;
-    const badgeY = 32;
+    const badgeY = 30;
 
     // Fondo
     doc.setFillColor(...statusBg);
@@ -90,17 +86,10 @@ export async function generatePaymentPDF(payment, user) {
     doc.setFontSize(10);
     doc.setFont(undefined, "bold");
 
-    // Icono
-    doc.text(
-        statusIcon,
-        badgeX + 10,
-        badgeY + 8
-    );
-
     // Texto
     doc.text(
         payment.status.toUpperCase(),
-        badgeX + 20,
+        badgeX + 10, // 👈 antes 20
         badgeY + 8
     );
 

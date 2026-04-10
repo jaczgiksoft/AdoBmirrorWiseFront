@@ -9,6 +9,7 @@ import { API_BASE } from "@/utils/apiBase";
 import PatientEvaluationModal from "./PatientEvaluationModal";
 import AppointmentCheckoutModal from "./AppointmentCheckoutModal";
 import ChargeBreakdown from "./checkout/ChargeBreakdown";
+import { getStatusConfig } from "@/utils/statusConfig";
 
 export default function AppointmentDetailModal({ appointment, open, onClose, onEdit }) {
     // 1. Hooks (MUST be top level and unconditional)
@@ -46,18 +47,6 @@ export default function AppointmentDetailModal({ appointment, open, onClose, onE
     if (!open || !appointment) return null;
 
     // 3. Logic & Helpers (Post-check)
-    const getStatusConfig = (status) => {
-        switch (status) {
-            case 'pendiente': return { color: 'text-amber-600', bg: 'bg-amber-100', border: 'border-amber-200', icon: Clock, label: 'Pendiente' };
-            case 'confirmada': return { color: 'text-emerald-600', bg: 'bg-emerald-100', border: 'border-emerald-200', icon: CheckCircle, label: 'Confirmada' };
-            case 'en_espera': return { color: 'text-orange-600', bg: 'bg-orange-100', border: 'border-orange-200', icon: User, label: 'En Sala de Espera' };
-            case 'en_tratamiento': return { color: 'text-blue-600', bg: 'bg-blue-100', border: 'border-blue-200', icon: Activity, label: 'En Tratamiento' };
-            case 'finalizada': return { color: 'text-slate-600', bg: 'bg-slate-100', border: 'border-slate-200', icon: CheckCircle, label: 'Finalizada' };
-            case 'cancelada': return { color: 'text-red-600', bg: 'bg-red-100', border: 'border-red-200', icon: AlertCircle, label: 'Cancelada' };
-            default: return { color: 'text-slate-600', bg: 'bg-slate-100', border: 'border-slate-200', icon: Clock, label: status };
-        }
-    };
-
     const statusConfig = getStatusConfig(appointment.status);
     const StatusIcon = statusConfig.icon;
 
@@ -67,6 +56,21 @@ export default function AppointmentDetailModal({ appointment, open, onClose, onE
         if (!appointment.patient) return "Sin Paciente";
         return `${appointment.patient.first_name} ${appointment.patient.last_name}`;
     };
+
+    const debugMode = true;
+
+    const patientNotes =
+        appointment.patient?.notes ??
+        (debugMode && {
+            content: "Paciente con alta sensibilidad dental. Usar anestesia.",
+            type: "alert"
+        });
+    const patientNoteContent =
+        typeof patientNotes === "string"
+            ? patientNotes
+            : patientNotes?.content;
+    const hasPatientNotes = !!patientNotes;
+
     const getDoctorName = () => {
         if (!appointment.employee) return "Sin Doctor";
         return `Dr. ${appointment.employee.first_name} ${appointment.employee.last_name}`;
@@ -139,8 +143,16 @@ export default function AppointmentDetailModal({ appointment, open, onClose, onE
                             initial={{ opacity: 0, scale: 0.95 }}
                             animate={{ opacity: 1, scale: 1 }}
                             exit={{ opacity: 0, scale: 0.95 }}
-                            className="bg-white dark:bg-secondary w-full max-w-6xl rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden flex flex-col h-[85vh]"
+                            className="relative bg-white dark:bg-secondary w-full max-w-6xl rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden flex flex-col h-[85vh]"
                         >
+                            {/* 🟢 STATUS STRIP */}
+                            <div
+                                className="absolute left-0 top-0 bottom-0 w-1.5 z-30"
+                                style={{
+                                    backgroundColor: statusConfig.stripe,
+                                    boxShadow: `0 0 8px ${statusConfig.stripe}`
+                                }}
+                            />
                             {/* Header */}
                             <div className="flex items-center justify-between p-6 border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 shrink-0">
                                 <div className="flex items-center gap-4">
@@ -179,7 +191,7 @@ export default function AppointmentDetailModal({ appointment, open, onClose, onE
                             <div className="flex-1 flex overflow-hidden">
 
                                 {/* Left Column: Patient Info (30%) - ALWAYS VISIBLE */}
-                                <div className="w-[30%] bg-slate-50 dark:bg-slate-800/30 border-r border-slate-100 dark:border-slate-800 p-6 overflow-y-auto shrink-0 z-10">
+                                <div className="w-[30%] bg-slate-50 dark:bg-slate-800/30 border-r border-slate-100 dark:border-slate-800 px-6 py-4 overflow-y-auto shrink-0 z-10">
                                     <div className="text-center mb-8">
                                         <div className="w-28 h-28 mx-auto bg-white dark:bg-slate-700 rounded-full flex items-center justify-center text-slate-400 mb-4 shadow-sm border border-slate-100 dark:border-slate-600 overflow-hidden relative group">
                                             {appointment.patient?.photo_url ? (
@@ -203,28 +215,49 @@ export default function AppointmentDetailModal({ appointment, open, onClose, onE
                                         </div>
                                     </div>
 
-                                    <div className="space-y-4">
-                                        <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex items-start gap-3">
+                                    <div className="space-y-3">
+                                        <div className="bg-white dark:bg-slate-800 p-3 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex items-start gap-3">
                                             <div className="mt-0.5 text-slate-400"><Mail size={16} /></div>
                                             <div className="overflow-hidden">
                                                 <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-0.5">Email</div>
                                                 <div className="text-slate-700 dark:text-slate-300 truncate text-sm" title={appointment.patient?.email}>{appointment.patient?.email || "No registrado"}</div>
                                             </div>
                                         </div>
-                                        <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex items-start gap-3">
+                                        <div className="bg-white dark:bg-slate-800 p-3 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex items-start gap-3">
                                             <div className="mt-0.5 text-slate-400"><Phone size={16} /></div>
                                             <div>
                                                 <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-0.5">Teléfono</div>
                                                 <div className="text-slate-700 dark:text-slate-300 text-sm">{appointment.patient?.phone_number || "No registrado"}</div>
                                             </div>
                                         </div>
-                                        <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex items-start gap-3">
+                                        <div className="bg-white dark:bg-slate-800 p-3 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex items-start gap-3">
                                             <div className="mt-0.5 text-slate-400"><MapPin size={16} /></div>
                                             <div>
                                                 <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-0.5">Dirección</div>
                                                 <div className="text-slate-700 dark:text-slate-300 text-sm leading-relaxed translate-y-[-1px]">{getPatientAddress()}</div>
                                             </div>
                                         </div>
+                                        {hasPatientNotes && (
+                                            <div className="sticky top-0 z-20 bg-slate-50 dark:bg-slate-800/30 pb-4">
+
+                                                <div className="bg-red-50 dark:bg-red-900/10 p-4 rounded-xl border border-red-100 dark:border-red-900/20 shadow-sm">
+
+                                                    <div className="flex items-center gap-2 mb-2">
+                                                        <div className="w-2 h-2 bg-red-400 rounded-full animate-pulse"></div>
+                                                        <span className="text-xs font-bold text-red-500 uppercase tracking-wider">
+                                                            Nota del paciente
+                                                        </span>
+                                                    </div>
+
+                                                    <p className="text-sm text-slate-700 dark:text-red-100/90 leading-relaxed max-h-32 overflow-y-auto pr-2">
+                                                        {patientNoteContent}
+                                                    </p>
+
+                                                </div>
+
+                                            </div>
+                                        )}
+
                                     </div>
                                 </div>
 
@@ -527,7 +560,7 @@ export default function AppointmentDetailModal({ appointment, open, onClose, onE
                             </div>
 
                             {/* Footer Actions */}
-                            <div className="p-6 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-secondary flex justify-between items-center shrink-0 z-30 relative shadow-[0_-5px_20px_rgba(0,0,0,0.02)]">
+                            <div className="p-6 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-secondary flex justify-between items-center shrink-0 z-20 relative shadow-[0_-5px_20px_rgba(0,0,0,0.02)]">
                                 <div>
                                     <div className="text-xs text-slate-400 uppercase tracking-wider mb-1">Monto Total Estimado</div>
                                     <div className="text-3xl font-bold text-emerald-600 dark:text-emerald-400">$ {(parseFloat(appointment.total_amount) || 0).toFixed(2)}</div>
@@ -666,18 +699,6 @@ function StatusStepper({ appointment }) {
     const { status, checkin_at, treatment_started_at, treatment_finished_at, paid_at } = appointment;
 
     // Status Config
-    const getStatusConfig = (status) => {
-        switch (status) {
-            case 'pendiente': return { color: 'text-amber-600', bg: 'bg-amber-100', border: 'border-amber-200', activeClass: 'bg-amber-500 border-amber-500 text-white', icon: Clock, label: 'Pendiente' };
-            case 'confirmada': return { color: 'text-emerald-600', bg: 'bg-emerald-100', border: 'border-emerald-200', activeClass: 'bg-emerald-500 border-emerald-500 text-white', icon: CheckCircle, label: 'Confirmada' };
-            case 'en_espera': return { color: 'text-orange-600', bg: 'bg-orange-100', border: 'border-orange-200', activeClass: 'bg-orange-500 border-orange-500 text-white', icon: User, label: 'En Sala' };
-            case 'en_tratamiento': return { color: 'text-blue-600', bg: 'bg-blue-100', border: 'border-blue-200', activeClass: 'bg-blue-500 border-blue-500 text-white', icon: Activity, label: 'Tratamiento' };
-            case 'finalizada': return { color: 'text-slate-600', bg: 'bg-slate-100', border: 'border-slate-200', activeClass: 'bg-slate-500 border-slate-500 text-white', icon: CheckCircle, label: 'Finalizada' };
-            case 'cancelada': return { color: 'text-red-600', bg: 'bg-red-100', border: 'border-red-200', activeClass: 'bg-red-500 border-red-500 text-white', icon: AlertCircle, label: 'Cancelada' };
-            default: return { color: 'text-slate-600', bg: 'bg-slate-100', border: 'border-slate-200', activeClass: 'bg-slate-500 border-slate-500 text-white', icon: Clock, label: status };
-        }
-    };
-
     const statusConfig = getStatusConfig(status);
 
     // Journey Steps Definition
@@ -745,33 +766,21 @@ function StatusStepper({ appointment }) {
                     let showRipple = false;
 
                     // Styling Strategy & Active Node Detection
-                    if (node.state === 'status_active') {
-                        // Status Node (Semantic Colors)
-                        // It uses its own config colors but mimics the shape
-                        nodeClass = `${node.config.activeClass} shadow-md`;
-                        textClass = "text-slate-800 dark:text-slate-200 font-bold";
-                        isCompleted = true; // Visually treated as "done/active" point of origin
-
-                        // Ripple if next step is pending (meaning this is the latest active point)
-                        if (timelineNodes[idx + 1] && timelineNodes[idx + 1].state === 'pending' && status !== 'cancelada') {
-                            showRipple = true;
-                        }
-
-                    } else if (node.state === 'completed') {
-                        // Completed Journey Step -> Primary Color
+                    if (node.state === 'completed') {
                         nodeClass = "bg-primary border-primary text-white";
                         textClass = "text-primary font-medium";
                         isCompleted = true;
+
                     } else if (node.state === 'active') {
-                        // Active Journey Step -> Primary with Highlight
                         nodeClass = "bg-white dark:bg-slate-800 border-primary text-primary shadow-md shadow-primary/20";
                         textClass = "text-primary font-bold";
                         showRipple = true;
+
                     } else if (node.state === 'disabled') {
                         nodeClass = "bg-slate-50 dark:bg-slate-900 border-slate-200 text-slate-300";
                         textClass = "text-slate-300 dark:text-slate-600";
+
                     } else {
-                        // Pending
                         nodeClass = "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-600 text-slate-300 dark:text-slate-600";
                         textClass = "text-slate-400 dark:text-slate-600";
                     }
