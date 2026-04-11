@@ -812,6 +812,8 @@ function Tooth({ id, type, hasBracket, isBroken, repairCount = 0, isSelectedBrac
                             e.stopPropagation();
                             onNoteClick(id);
                         }}
+                        onPointerDown={(e) => e.stopPropagation()}
+                        onPointerUp={(e) => e.stopPropagation()}
                         className={`
                             absolute right-[-4px] z-50 p-1 rounded-full bg-white dark:bg-slate-800 shadow-sm border border-slate-200 dark:border-slate-700
                             transition-all duration-200 transform hover:scale-110
@@ -2371,14 +2373,14 @@ export default function OdontogramSection() {
         try {
             const dataToSave = {
                 patientId: parseInt(patientId),
-                toothStates: historyState.present.toothStates,
-                brackets: historyState.present.brackets,
-                bracketWires: historyState.present.bracketWires,
-                tads: historyState.present.tads,
-                tadWires: historyState.present.tadWires,
-                surfaceStates: historyState.present.surfaceStates,
-                periodontalData: historyState.present.periodontalData,
-                toothNotes: historyState.present.toothNotes,
+                toothStates,
+                brackets,
+                bracketWires,
+                tads,
+                tadWires,
+                surfaceStates,
+                periodontalData,
+                toothNotes,
             };
 
             await odontogramService.saveOdontogram(dataToSave);
@@ -2399,7 +2401,7 @@ export default function OdontogramSection() {
         } finally {
             setIsLoading(false);
         }
-    }, [patientId, historyState.present, addToast]);
+    }, [patientId, toothStates, brackets, bracketWires, tads, tadWires, surfaceStates, periodontalData, toothNotes, addToast]);
 
     // Limpiar el badge "¡Guardado!" después de 2.5 segundos
     useEffect(() => {
@@ -4052,7 +4054,7 @@ export default function OdontogramSection() {
                                 baseToothWidths={baseToothWidths}
                                 isUpper={true}
                                 hoveredPreviewType={hoveredPreviewType}
-                                toothNotes={historyState.present.toothNotes}
+                                toothNotes={toothNotes}
                                 onNoteClick={(id) => setActiveNoteTooth(id)}
                             />
 
@@ -4117,7 +4119,7 @@ export default function OdontogramSection() {
                                 baseToothWidths={baseToothWidths}
                                 isUpper={false}
                                 hoveredPreviewType={hoveredPreviewType}
-                                toothNotes={historyState.present.toothNotes}
+                                toothNotes={toothNotes}
                                 onNoteClick={(id) => setActiveNoteTooth(id)}
                             />
                         </div>
