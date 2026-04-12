@@ -45,14 +45,14 @@ const ExtractionOrderWizard = ({ isOpen, onClose, onSave, mode = 'create', initi
                                 if (typeof status === 'string') {
                                     try { status = JSON.parse(status); } catch (e) { status = {}; }
                                 }
-                                
+
                                 let caras = detail.caras || {};
                                 if (typeof caras === 'string') {
                                     try { caras = JSON.parse(caras); } catch (e) { caras = {}; }
                                 }
 
                                 const isExtraction = status.toothState === 'missing' || status.toothState === 'extraction';
-                                
+
                                 // Mapear a la estructura que usa este wizard
                                 initialTeethStatus[detail.tooth_id] = {
                                     north: caras.north || null,

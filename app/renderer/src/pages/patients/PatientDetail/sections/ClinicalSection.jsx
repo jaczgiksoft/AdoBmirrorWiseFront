@@ -14,6 +14,7 @@ import {
     Pencil,
 } from "lucide-react";
 import { updatePatient } from "@/services/patient.service";
+import { getRecordByPatientId, upsertRecord } from "@/services/patientClinical.service";
 import { useToastStore } from "@/store/useToastStore";
 import { ConfirmDialog } from "@/components/feedback";
 
@@ -23,29 +24,41 @@ export default function ClinicalSection() {
 
     const [isEditing, setIsEditing] = useState(false);
     const [formData, setFormData] = useState(null);
-    const [loading, setLoading] = useState(false);
-    const [localClinicalData, setLocalClinicalData] = useState({});
+    const [loading, setLoading] = useState(true);
+    const [isSaving, setIsSaving] = useState(false);
+    const [clinicalData, setClinicalData] = useState({});
     const [confirmCancel, setConfirmCancel] = useState(false);
 
-    const STORAGE_KEY = `clinical_data_${profile?.id}`;
-
-    // Cargar datos locales al montar o cambiar paciente
+    // Cargar datos desde la API al montar o cambiar paciente
     useEffect(() => {
-        if (!profile?.id) return;
-        try {
-            const saved = localStorage.getItem(STORAGE_KEY);
-            if (saved) {
-                setLocalClinicalData(JSON.parse(saved));
-            } else {
-                setLocalClinicalData({});
+        const loadClinicalData = async () => {
+            if (!profile?.id) return;
+            setLoading(true);
+            try {
+                const record = await getRecordByPatientId(profile.id);
+                if (record && record.clinical_data) {
+                    setClinicalData(record.clinical_data);
+                } else {
+                    // Si no hay datos en DB, limpiamos el estado
+                    setClinicalData({});
+                }
+            } catch (err) {
+                console.error("Error al cargar historia clínica desde la API:", err);
+                addToast({
+                    title: "Error de carga",
+                    description: "No se pudo obtener la historia clínica del servidor.",
+                    type: "error"
+                });
+            } finally {
+                setLoading(false);
             }
-        } catch (err) {
-            console.error("Error al cargar historia clínica local:", err);
-        }
-    }, [profile?.id, STORAGE_KEY]);
+        };
+
+        loadClinicalData();
+    }, [profile?.id, addToast]);
 
     const handleEdit = () => {
-        setFormData({ ...profile, ...localClinicalData });
+        setFormData({ ...profile, ...clinicalData });
         setIsEditing(true);
     };
 
@@ -59,35 +72,37 @@ export default function ClinicalSection() {
     };
 
     const handleSave = async () => {
-        setLoading(true);
+        if (isSaving) return;
+        setIsSaving(true);
         try {
-            // Persistencia Local Temporal (Simulando API)
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(formData));
-            setLocalClinicalData(formData);
+            const dataToSave = { ...formData };
+            // Limpiamos campos que no pertenecen a la historia clínica si es necesario
+            // Por ahora enviamos todo el formData consolidado
 
-            // Intento de guardado en API (Si falla, lo local ya quedó guardado)
-            try {
-                await updatePatient(profile.id, formData);
-                await refreshProfile();
-            } catch (apiErr) {
-                console.warn("[ClinicalSection] API de guardado falló, procediendo con datos locales:", apiErr);
-            }
+            await upsertRecord({
+                patientId: profile.id,
+                clinicalData: dataToSave
+            });
+
+            setClinicalData(dataToSave);
 
             addToast({
-                title: "Cambios guardados",
-                description: "La historia clínica se ha actualizado localmente y se sincronizará con el servidor.",
+                title: "Historia clínica actualizada",
+                description: "Los cambios se han guardado correctamente en la base de datos.",
                 type: "success"
             });
+            
+            await refreshProfile();
             setIsEditing(false);
         } catch (error) {
             console.error("Error al guardar:", error);
             addToast({
                 title: "Error al guardar",
-                description: "No se pudieron guardar los cambios en la historia clínica.",
+                description: "No se pudieron guardar los cambios en el servidor.",
                 type: "error"
             });
         } finally {
-            setLoading(false);
+            setIsSaving(false);
         }
     };
 
@@ -100,7 +115,7 @@ export default function ClinicalSection() {
     const handleToggleAllMedical = () => {
         const allSelected = medicalFields.every(field => data[field]);
         const newState = !allSelected;
-        
+
         setFormData(prev => {
             const next = { ...prev };
             medicalFields.forEach(field => {
@@ -123,7 +138,7 @@ export default function ClinicalSection() {
         </span>
     );
 
-    const data = isEditing ? formData : { ...profile, ...localClinicalData };
+    const data = isEditing ? formData : { ...profile, ...clinicalData };
 
     return (
         <div className="space-y-10 text-slate-800 dark:text-slate-200">
@@ -177,7 +192,7 @@ export default function ClinicalSection() {
                             </button>
                             <button
                                 onClick={handleSave}
-                                disabled={loading}
+                                disabled={isSaving}
                                 className="
                                     flex items-center gap-2
                                     px-4 py-2
@@ -191,7 +206,7 @@ export default function ClinicalSection() {
                                 "
                             >
                                 <Save size={16} />
-                                {loading ? "Guardando..." : "Guardar cambios"}
+                                {isSaving ? "Guardando..." : "Guardar cambios"}
                             </button>
                         </>
                     )}
@@ -286,11 +301,11 @@ export default function ClinicalSection() {
             {/* =========================================================
                 2. CONDICIONES MÉDICAS (CHECKLIST TIPO SUMMARY)
             ========================================================= */}
-            <Section 
-                icon={HeartPulse} 
+            <Section
+                icon={HeartPulse}
                 title="Condiciones Médicas"
                 action={isEditing && (
-                    <button 
+                    <button
                         onClick={handleToggleAllMedical}
                         className="
                             px-2 py-0.5 rounded-lg

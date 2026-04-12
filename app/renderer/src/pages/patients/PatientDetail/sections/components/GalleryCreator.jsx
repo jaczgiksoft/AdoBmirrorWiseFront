@@ -11,7 +11,9 @@ import {
     ChevronDown,
     Save
 } from 'lucide-react';
+import { useParams } from 'react-router-dom';
 import CropperModal from './CropperModal';
+import patientGalleryService from '@/services/patientGallery.service';
 
 const MANDATORY_KEYS = [
     { key: 'facial_front', label: 'Facial Front' },
@@ -25,10 +27,14 @@ const MANDATORY_KEYS = [
 ];
 
 export default function GalleryCreator({ onClose, onSave }) {
+    const { id: patientId } = useParams();
+
     // --- STATE ---
     const [name, setName] = useState('');
-    const [photos, setPhotos] = useState({}); // { key: string (url) }
-    const [xrays, setXrays] = useState([]); // Array of { id, file: string (url) }
+    const [photos, setPhotos] = useState({}); // { key: { blob, url } }
+    const [xrays, setXrays] = useState([]); // Array of { id, blob, url }
+    const [isSaving, setIsSaving] = useState(false);
+
 
     // --- CROPPER STATE ---
     const [cropperOpen, setCropperOpen] = useState(false);
@@ -38,7 +44,7 @@ export default function GalleryCreator({ onClose, onSave }) {
     // --- COMPUTED ---
     const filledCount = MANDATORY_KEYS.reduce((acc, { key }) => acc + (photos[key] ? 1 : 0), 0);
     const isComplete = filledCount === MANDATORY_KEYS.length;
-    const canSave = name.trim().length > 0 && isComplete;
+    const canSave = name.trim().length > 0 && isComplete && !isSaving;
 
     const currentStep = useMemo(() => {
         if (!name) return 1;
@@ -74,9 +80,9 @@ export default function GalleryCreator({ onClose, onSave }) {
         const croppedUrl = URL.createObjectURL(blob);
 
         if (activeSlot.type === 'photo') {
-            setPhotos(prev => ({ ...prev, [activeSlot.key]: croppedUrl }));
+            setPhotos(prev => ({ ...prev, [activeSlot.key]: { blob, url: croppedUrl } }));
         } else if (activeSlot.type === 'xray') {
-            setXrays(prev => [...prev, { id: activeSlot.id, file: croppedUrl }]);
+            setXrays(prev => [...prev, { id: activeSlot.id, blob, url: croppedUrl }]);
         }
 
         closeCropper();
@@ -100,16 +106,39 @@ export default function GalleryCreator({ onClose, onSave }) {
         setXrays(prev => prev.filter(x => x.id !== id));
     };
 
-    const handleSave = () => {
+    const handleSave = async () => {
         if (!canSave) return;
 
-        // Construct the collection object (mock)
-        const newCollection = {
-            name,
-            photos: { ...photos, x_rays: xrays.map(x => x.file) }
-        };
+        try {
+            setIsSaving(true);
+            const formData = new FormData();
+            formData.append('patient_id', patientId);
+            formData.append('name', name);
+            formData.append('description', `Galería: ${name}`);
 
-        onSave(newCollection);
+            // Añadir fotos obligatorias
+            MANDATORY_KEYS.forEach(({ key }) => {
+                if (photos[key]?.blob) {
+                    // Usamos el 'key' como nombre del archivo para identificarlo en el backend
+                    formData.append('photos', photos[key].blob, `${key}.jpg`);
+                }
+            });
+
+            // Añadir radiografías
+            xrays.forEach((x, index) => {
+                if (x.blob) {
+                    formData.append('photos', x.blob, `xray_${index + 1}.jpg`);
+                }
+            });
+
+            await patientGalleryService.createGallery(formData);
+            onSave(); // Notificar al padre para cerrar y recargar
+        } catch (error) {
+            console.error('Error al guardar galería:', error);
+            alert('Error al guardar la galería. Por favor intente de nuevo.');
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     return (
@@ -195,7 +224,7 @@ export default function GalleryCreator({ onClose, onSave }) {
                     `}
                 >
                     <Save size={16} className={canSave ? "text-white" : ""} />
-                    Guardar Colección
+                    {isSaving ? "Guardando..." : "Guardar Colección"}
                 </button>
             </div>
 
@@ -228,7 +257,7 @@ export default function GalleryCreator({ onClose, onSave }) {
                                 <DropzoneCard
                                     key={key}
                                     label={label}
-                                    image={photos[key]}
+                                    image={photos[key]?.url}
                                     onUpload={(file) => handlePhotoUpload(key, file)}
                                     onRemove={() => handleRemovePhoto(key)}
                                     required
@@ -255,7 +284,7 @@ export default function GalleryCreator({ onClose, onSave }) {
                                 <DropzoneCard
                                     key={xray.id}
                                     label="Radiografía"
-                                    image={xray.file}
+                                    image={xray.url}
                                     onRemove={() => handleRemoveXray(xray.id)}
                                 />
                             ))}

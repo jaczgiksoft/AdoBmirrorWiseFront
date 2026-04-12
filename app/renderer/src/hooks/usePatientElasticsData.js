@@ -1,42 +1,77 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useToastStore } from "../store/useToastStore";
+import * as patientElasticService from "../services/patientElastic.service";
 
 export function usePatientElasticsData(patientId) {
     const { addToast } = useToastStore();
     const [instructions, setInstructions] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState(null);
 
-    const STORAGE_KEY = `elastics_instructions_${patientId}`;
-
-    // Cargar datos iniciales
-    useEffect(() => {
+    // Cargar datos iniciales desde el servidor
+    const loadInstructions = useCallback(async () => {
         if (!patientId) return;
+        setIsLoading(true);
+        setError(null);
         try {
-            const raw = localStorage.getItem(STORAGE_KEY);
-            if (raw) {
-                setInstructions(JSON.parse(raw));
+            const response = await patientElasticService.getElasticsByPatientId(patientId);
+            if (response.success) {
+                // Mapear de base de datos a formato de UI si es necesario
+                setInstructions(response.data.map(inst => ({
+                    ...inst,
+                    startDate: inst.start_date,
+                    endDate: inst.end_date,
+                    odontogramData: typeof inst.odontogram_data === 'string' 
+                        ? JSON.parse(inst.odontogram_data) 
+                        : inst.odontogram_data
+                })));
             }
-        } catch (error) {
-            console.error("Error al cargar instrucciones de elásticos:", error);
+        } catch (err) {
+            console.error("Error al cargar instrucciones de elásticos:", err);
+            setError(err);
+            addToast({
+                title: "Error",
+                message: "No se pudieron cargar las instrucciones de elásticos.",
+                type: "error"
+            });
         } finally {
             setIsLoading(false);
         }
-    }, [patientId]);
+    }, [patientId, addToast]);
+
+    useEffect(() => {
+        loadInstructions();
+    }, [loadInstructions]);
 
     const saveInstruction = async (newInstruction) => {
         try {
-            const updatedInstructions = [...instructions, { ...newInstruction, id: Date.now() }];
-            setInstructions(updatedInstructions);
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedInstructions));
+            // Mapear de formato de UI a base de datos
+            const dataToSave = {
+                patient_id: patientId,
+                start_date: newInstruction.startDate,
+                end_date: newInstruction.endDate || null,
+                hours: newInstruction.hours,
+                notes: newInstruction.notes,
+                upper_elastic: newInstruction.typeId, // Usamos typeId como placeholder para upper_elastic
+                lower_elastic: newInstruction.type,   // Usamos type (label) como placeholder para lower_elastic
+                odontogram_data: newInstruction.odontogramData
+            };
+
+            const response = await patientElasticService.createElastic(dataToSave);
             
-            addToast({
-                title: "Éxito",
-                message: "Instrucción de elásticos guardada correctamente.",
-                type: "success"
-            });
-            return true;
-        } catch (error) {
-            console.error("Error al guardar instrucción:", error);
+            if (response.success) {
+                await loadInstructions(); // Recargar para tener los datos actualizados con IDs reales
+                
+                addToast({
+                    title: "Éxito",
+                    message: "Instrucción de elásticos guardada correctamente.",
+                    type: "success"
+                });
+                return true;
+            }
+            return false;
+        } catch (err) {
+            console.error("Error al guardar instrucción:", err);
             addToast({
                 title: "Error",
                 message: "No se pudo guardar la instrucción.",
@@ -48,20 +83,25 @@ export function usePatientElasticsData(patientId) {
 
     const deleteInstruction = async (id) => {
         try {
-            const updatedInstructions = instructions.filter(i => i.id !== id);
-            setInstructions(updatedInstructions);
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedInstructions));
-            addToast({
-                title: "Éxito",
-                message: "Instrucción eliminada.",
-                type: "success"
-            });
-        } catch (error) {
+            const response = await patientElasticService.deleteElastic(id);
+            if (response.success) {
+                setInstructions(prev => prev.filter(i => i.id !== id));
+                addToast({
+                    title: "Éxito",
+                    message: "Instrucción eliminada.",
+                    type: "success"
+                });
+                return true;
+            }
+            return false;
+        } catch (err) {
+            console.error("Error al eliminar instrucción:", err);
             addToast({
                 title: "Error",
                 message: "No se pudo eliminar la instrucción.",
                 type: "error"
             });
+            return false;
         }
     };
 
@@ -69,6 +109,8 @@ export function usePatientElasticsData(patientId) {
         instructions,
         saveInstruction,
         deleteInstruction,
-        isLoading
+        isLoading,
+        error,
+        refresh: loadInstructions
     };
 }

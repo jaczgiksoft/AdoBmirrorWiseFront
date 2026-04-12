@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { useToastStore } from '../../../../store/useToastStore';
 import api from '../../../../services/api';
+import * as extractionOrderService from '../../../../services/extractionOrder.service';
 import ExtractionOrderWizard from '../../../../components/ExtractionOrders/ExtractionOrderWizard';
 import { ConfirmDialog } from '@/components/feedback';
 
@@ -45,7 +46,7 @@ export default function ExtractionOrdersSection() {
     const handleDeleteConfirm = async () => {
         if (!orderToDelete) return;
         try {
-            await api.delete(`/patient-extractions/${orderToDelete.id}`);
+            await extractionOrderService.deleteOrder(orderToDelete.id);
             addToast({
                 type: 'success',
                 title: 'Orden Eliminada',
@@ -70,22 +71,16 @@ export default function ExtractionOrdersSection() {
     const fetchOrders = async () => {
         try {
             setIsLoading(true);
-            const response = await api.get(`/patient-extractions/patient/${patientId}`);
+            const data = await extractionOrderService.getOrdersByPatient(patientId);
 
-            // Normalize API data to UI shape
-            // Note: We might want to classify them here for the list view if we wanted to
-            // But for now we just show them all.
-            const normalizedOrders = response.data.map(order => ({
+            const normalizedOrders = data.map(order => ({
                 id: order.id,
-                date: order.date,
-                destination: order.destination || 'Destinatario Externo',
+                date: order.order_date,
+                destination: order.clinical_reason || 'Sin motivo clínico especificado',
                 teethCount: order.teeth ? order.teeth.length : 0,
-                status: 'Pendiente', // Default status
+                status: order.status === 'pending' ? 'Pendiente' : 'Completada',
                 hasExtractions: order.teeth ? order.teeth.some(t => t.extraction) : false
             }));
-
-            // Sort by ID desc (newest first)
-            normalizedOrders.sort((a, b) => b.id - a.id);
 
             setOrders(normalizedOrders);
         } catch (error) {
@@ -124,8 +119,7 @@ export default function ExtractionOrdersSection() {
 
     const handleEditOrder = async (orderId) => {
         try {
-            const response = await api.get(`/patient-extractions/${orderId}`);
-            const fullOrder = response.data;
+            const fullOrder = await extractionOrderService.getOrderById(orderId);
 
             // Determine Clinical Mode from Data
             const hasExtractions = fullOrder.teeth && fullOrder.teeth.some(t => t.extraction === 1 || t.extraction === true);
@@ -141,10 +135,10 @@ export default function ExtractionOrdersSection() {
                     if (Array.isArray(t.areas)) {
                         processedAreas = t.areas;
                     } else if (typeof t.areas === 'string') {
-                        try { processedAreas = JSON.parse(t.areas); } catch(e) { processedAreas = []; }
+                        try { processedAreas = JSON.parse(t.areas); } catch (e) { processedAreas = []; }
                     }
 
-                    teethStatus[t.tooth_id || t.tooth] = {
+                    teethStatus[t.tooth_id] = {
                         extraction: t.extraction,
                         ...processedAreas.reduce((acc, area) => ({ ...acc, [area]: 'treatment' }), {})
                     };
@@ -162,11 +156,9 @@ export default function ExtractionOrdersSection() {
                 teethStatus,
                 files,
                 formData: {
-                    date: fullOrder.date,
-                    destination: fullOrder.destination,
-                    observations: fullOrder.observations,
-                    prophylaxis: fullOrder.prophylaxis,
-                    fluoride: fullOrder.fluoride
+                    date: fullOrder.order_date,
+                    observations: fullOrder.clinical_reason,
+                    notes: fullOrder.notes
                 }
             };
 
@@ -184,21 +176,22 @@ export default function ExtractionOrdersSection() {
         try {
             const { formData, teethStatus, files } = newOrderData;
 
-            // 1. Order Data
+            // 1. Order Data Mapping
             const orderPayload = {
-                destination: formData.destination,
-                date: formData.date,
-                observations: formData.observations,
+                patient_id: parseInt(patientId, 10),
+                clinical_reason: formData.observations, // Map observations to clinical_reason
+                notes: `Destinatario: ${formData.destination || 'N/A'}. Dr(a). ${formData.doctor || 'N/A'}`,
+                order_date: formData.date || new Date().toISOString().split('T')[0],
+                status: 'pending',
                 prophylaxis: formData.prophylaxis || false,
                 fluoride: formData.fluoride || false
             };
 
-            // 2. Teeth Data
+            // 2. Teeth Data Mapping
             const teethPayload = Object.entries(teethStatus)
                 .filter(([_, status]) => status !== null)
                 .map(([toothId, status]) => {
                     const isExtraction = status.extraction === true;
-                    // Strict constraint: If extraction, no areas.
                     let areas = [];
 
                     if (!isExtraction) {
@@ -212,32 +205,24 @@ export default function ExtractionOrdersSection() {
                     }
 
                     return {
-                        tooth: parseInt(toothId, 10),
+                        tooth_id: parseInt(toothId, 10),
                         extraction: isExtraction,
                         areas
                     };
                 })
-                .filter(item => item.extraction || item.areas.length > 0);
+                .filter(item => item.extraction || (item.areas && item.areas.length > 0));
 
-            // 3. Construct FormData
-            const apiPayload = new FormData();
-            apiPayload.append('patient_id', patientId);
-            apiPayload.append('order', JSON.stringify(orderPayload));
-            apiPayload.append('teeth', JSON.stringify(teethPayload));
+            const finalPayload = {
+                ...orderPayload,
+                teeth: teethPayload,
+                files: files // Service handles FormData
+            };
 
-            if (files && files.length > 0) {
-                files.forEach(fileWrapper => {
-                    if (fileWrapper.file) {
-                        apiPayload.append('radiographs', fileWrapper.file);
-                    }
-                });
-            }
-
-            // 4. API Call
+            // 3. API Call
             if (modalMode === 'edit' && editingId) {
-                await api.put(`/patient-extractions/${editingId}`, apiPayload);
+                await extractionOrderService.updateOrder(editingId, finalPayload);
             } else {
-                await api.post('/patient-extractions', apiPayload);
+                await extractionOrderService.createOrder(finalPayload);
             }
 
             addToast({
@@ -249,11 +234,11 @@ export default function ExtractionOrdersSection() {
             });
             setIsWizardOpen(false);
 
-            // 5. Refresh List
+            // 4. Refresh List
             fetchOrders();
 
         } catch (error) {
-            console.error('Error creating extraction order:', error);
+            console.error('Error saving extraction order:', error);
             const msg = error.response?.data?.message || 'Error al guardar la orden';
             addToast({
                 type: 'error',

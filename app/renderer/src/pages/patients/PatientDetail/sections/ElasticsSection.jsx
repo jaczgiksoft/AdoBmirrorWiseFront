@@ -188,7 +188,7 @@ export default function ElasticsSection() {
     const [hours, setHours] = useState('');
     const [notes, setNotes] = useState('');
 
-    const { instructions, saveInstruction, isLoading: isInstructionsLoading } = usePatientElasticsData(patientId);
+    const { instructions, saveInstruction, deleteInstruction, isLoading: isInstructionsLoading } = usePatientElasticsData(patientId);
 
     // Sequential Selection State
     // Segment-based State
@@ -198,6 +198,7 @@ export default function ElasticsSection() {
     const [tads, setTads] = useState({});
     const [brackets, setBrackets] = useState({}); // New state for brackets
     const [activeChain, setActiveChain] = useState({ segments: [], lastPoint: null, startPoint: null });
+    const [instructionToDelete, setInstructionToDelete] = useState(null);
 
     // Estado de dientes cargado desde el odontograma (para reflejar dientes inactivos)
     const [toothStates, setToothStates] = useState({});
@@ -245,7 +246,7 @@ export default function ElasticsSection() {
             if (odontogram.details && Array.isArray(odontogram.details)) {
                 odontogram.details.forEach(detail => {
                     const tid = detail.tooth_id;
-                    
+
                     let status = detail.status || {};
                     if (typeof status === 'string') {
                         try { status = JSON.parse(status); } catch (e) { status = {}; }
@@ -883,7 +884,12 @@ export default function ElasticsSection() {
 
                 {/* List of Instructions */}
                 <div className="mt-4 space-y-3">
-                    {instructions.length === 0 ? (
+                    {isInstructionsLoading ? (
+                        <div className="flex flex-col items-center justify-center py-12">
+                            <Loader2 className="w-8 h-8 text-primary animate-spin mb-3" />
+                            <p className="text-sm text-slate-500">Cargando historial...</p>
+                        </div>
+                    ) : instructions.length === 0 ? (
                         <div className="text-center py-8 border border-dashed border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50/50 dark:bg-slate-800/30">
                             <p className="text-sm text-slate-400 dark:text-slate-500 italic">
                                 No se han registrado instrucciones de elásticos aún.
@@ -935,6 +941,24 @@ export default function ElasticsSection() {
                                                 <span>{instruction.hours}</span>
                                             </div>
                                         </div>
+                                    </div>
+
+                                    {/* Right Actions */}
+                                    <div className="flex items-center gap-2">
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setInstructionToDelete(instruction.id);
+                                            }}
+                                            className="
+                                                p-2 rounded-lg
+                                                text-slate-400 hover:text-red-600
+                                                hover:bg-red-50 dark:hover:bg-red-900/20
+                                                transition-all opacity-0 group-hover:opacity-100
+                                            "
+                                        >
+                                            <Trash2 size={16} />
+                                        </button>
                                     </div>
                                 </div>
                             ))}
@@ -1474,6 +1498,20 @@ export default function ElasticsSection() {
                 confirmVariant="error"
                 onConfirm={executeClear}
                 onCancel={() => setShowConfirmClear(false)}
+            />
+
+            <ConfirmDialog
+                open={!!instructionToDelete}
+                title="¿Eliminar instrucción?"
+                message="Esta acción no se puede deshacer. La instrucción se eliminará permanentemente de la base de datos."
+                confirmLabel="Eliminar permanentemente"
+                cancelLabel="Cancelar"
+                confirmVariant="error"
+                onConfirm={async () => {
+                    await deleteInstruction(instructionToDelete);
+                    setInstructionToDelete(null);
+                }}
+                onCancel={() => setInstructionToDelete(null)}
             />
         </div>
     );

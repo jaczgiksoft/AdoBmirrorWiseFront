@@ -5,7 +5,7 @@ import { X, Upload, Image as ImageIcon, Trash2 } from "lucide-react";
 export default function CreateEditItemModal({ item, categories, unitTypes, onClose, onSave }) {
     const isEdit = !!item;
     const fileInputRef = useRef(null);
-    
+
     const [formData, setFormData] = useState({
         image: null,
         sku: "",
@@ -44,9 +44,9 @@ export default function CreateEditItemModal({ item, categories, unitTypes, onClo
 
     const handleChange = (e) => {
         const { name, value } = e.target;
-        setFormData(prev => ({ 
-            ...prev, 
-            [name]: ["quantity", "min_stock", "purchasePrice", "salePrice"].includes(name) ? Number(value) : value 
+        setFormData(prev => ({
+            ...prev,
+            [name]: ["quantity", "min_stock", "purchasePrice", "salePrice"].includes(name) ? Number(value) : value
         }));
     };
 
@@ -94,7 +94,7 @@ export default function CreateEditItemModal({ item, categories, unitTypes, onClo
                                     {formData.image ? (
                                         <>
                                             <img src={formData.image} alt="Preview" className="w-full h-full object-cover" />
-                                            <button 
+                                            <button
                                                 type="button"
                                                 onClick={handleRemoveImage}
                                                 className="absolute inset-0 bg-black/50 flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity"
@@ -109,19 +109,19 @@ export default function CreateEditItemModal({ item, categories, unitTypes, onClo
                                         </div>
                                     )}
                                 </div>
-                                <button 
+                                <button
                                     type="button"
                                     onClick={() => fileInputRef.current?.click()}
                                     className="text-xs font-bold text-cyan-600 dark:text-cyan-400 hover:underline flex items-center gap-1"
                                 >
                                     <Upload size={14} /> Subir Foto
                                 </button>
-                                <input 
-                                    type="file" 
-                                    accept="image/*" 
-                                    className="hidden" 
-                                    ref={fileInputRef} 
-                                    onChange={handleImageChange} 
+                                <input
+                                    type="file"
+                                    accept="image/*"
+                                    className="hidden"
+                                    ref={fileInputRef}
+                                    onChange={handleImageChange}
                                 />
                             </div>
 
@@ -129,33 +129,33 @@ export default function CreateEditItemModal({ item, categories, unitTypes, onClo
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
                                         <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Código/SKU <span className="text-red-500">*</span></label>
-                                        <input 
-                                            required 
-                                            name="sku" 
-                                            value={formData.sku} 
-                                            onChange={handleChange} 
+                                        <input
+                                            required
+                                            name="sku"
+                                            value={formData.sku}
+                                            onChange={handleChange}
                                             className="w-full px-4 py-2 bg-slate-50 dark:bg-secondary rounded-lg border border-slate-300 dark:border-slate-700 outline-none focus:ring-2 focus:ring-cyan-500 text-slate-900 dark:text-white"
                                         />
                                     </div>
                                     <div>
                                         <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Nombre <span className="text-red-500">*</span></label>
-                                        <input 
-                                            required 
-                                            name="name" 
-                                            value={formData.name} 
-                                            onChange={handleChange} 
+                                        <input
+                                            required
+                                            name="name"
+                                            value={formData.name}
+                                            onChange={handleChange}
                                             className="w-full px-4 py-2 bg-slate-50 dark:bg-secondary rounded-lg border border-slate-300 dark:border-slate-700 outline-none focus:ring-2 focus:ring-cyan-500 text-slate-900 dark:text-white"
                                         />
                                     </div>
                                 </div>
-                                
+
                                 <div>
                                     <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Descripción</label>
-                                    <textarea 
-                                        name="description" 
+                                    <textarea
+                                        name="description"
                                         rows={2}
-                                        value={formData.description} 
-                                        onChange={handleChange} 
+                                        value={formData.description}
+                                        onChange={handleChange}
                                         className="w-full px-4 py-2 bg-slate-50 dark:bg-secondary rounded-lg border border-slate-300 dark:border-slate-700 outline-none focus:ring-2 focus:ring-cyan-500 text-slate-900 dark:text-white"
                                     />
                                 </div>
@@ -165,10 +165,10 @@ export default function CreateEditItemModal({ item, categories, unitTypes, onClo
                         <div className="grid grid-cols-2 gap-4">
                             <div>
                                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Categoría</label>
-                                <select 
-                                    name="category" 
-                                    value={formData.category} 
-                                    onChange={handleChange} 
+                                <select
+                                    name="category"
+                                    value={formData.category}
+                                    onChange={handleChange}
                                     className="w-full px-4 py-2 bg-slate-50 dark:bg-secondary rounded-lg border border-slate-300 dark:border-slate-700 outline-none focus:ring-2 focus:ring-cyan-500 text-slate-900 dark:text-white"
                                 >
                                     {categories?.map(cat => <option key={cat} value={cat}>{cat}</option>)}
@@ -177,11 +177,11 @@ export default function CreateEditItemModal({ item, categories, unitTypes, onClo
                             {formData.category && (
                                 <div>
                                     <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Unidad de Medida <span className="text-red-500">*</span></label>
-                                    <select 
-                                        required 
-                                        name="unit" 
-                                        value={formData.unit} 
-                                        onChange={handleChange} 
+                                    <select
+                                        required
+                                        name="unit"
+                                        value={formData.unit}
+                                        onChange={handleChange}
                                         className="w-full px-4 py-2 bg-slate-50 dark:bg-secondary rounded-lg border border-slate-300 dark:border-slate-700 outline-none focus:ring-2 focus:ring-cyan-500 text-slate-900 dark:text-white"
                                     >
                                         {unitTypes?.map(unit => <option key={unit} value={unit}>{unit}</option>)}
@@ -195,12 +195,12 @@ export default function CreateEditItemModal({ item, categories, unitTypes, onClo
                                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Precio Compra</label>
                                 <div className="relative">
                                     <span className="absolute left-3 top-2 text-slate-500">$</span>
-                                    <input 
-                                        type="number" 
+                                    <input
+                                        type="number"
                                         step="0.01"
-                                        name="purchasePrice" 
-                                        value={formData.purchasePrice} 
-                                        onChange={handleChange} 
+                                        name="purchasePrice"
+                                        value={formData.purchasePrice}
+                                        onChange={handleChange}
                                         className="w-full pl-8 pr-4 py-2 bg-slate-50 dark:bg-secondary rounded-lg border border-slate-300 dark:border-slate-700 outline-none focus:ring-2 focus:ring-cyan-500 text-slate-900 dark:text-white"
                                     />
                                 </div>
@@ -209,12 +209,12 @@ export default function CreateEditItemModal({ item, categories, unitTypes, onClo
                                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Precio Venta</label>
                                 <div className="relative">
                                     <span className="absolute left-3 top-2 text-slate-500">$</span>
-                                    <input 
-                                        type="number" 
+                                    <input
+                                        type="number"
                                         step="0.01"
-                                        name="salePrice" 
-                                        value={formData.salePrice} 
-                                        onChange={handleChange} 
+                                        name="salePrice"
+                                        value={formData.salePrice}
+                                        onChange={handleChange}
                                         className="w-full pl-8 pr-4 py-2 bg-slate-50 dark:bg-secondary rounded-lg border border-slate-300 dark:border-slate-700 outline-none focus:ring-2 focus:ring-cyan-500 text-slate-900 dark:text-white"
                                     />
                                 </div>
@@ -225,20 +225,20 @@ export default function CreateEditItemModal({ item, categories, unitTypes, onClo
                             <div className="grid grid-cols-2 gap-4 bg-cyan-50 dark:bg-cyan-900/10 p-4 rounded-xl border border-cyan-100 dark:border-cyan-900/30">
                                 <div>
                                     <label className="block text-sm font-medium text-cyan-900 dark:text-cyan-100 mb-1">No. de Lote</label>
-                                    <input 
-                                        name="lotNumber" 
-                                        value={formData.lotNumber} 
-                                        onChange={handleChange} 
+                                    <input
+                                        name="lotNumber"
+                                        value={formData.lotNumber}
+                                        onChange={handleChange}
                                         className="w-full px-4 py-2 bg-white dark:bg-secondary rounded-lg border border-slate-300 dark:border-slate-700 outline-none focus:ring-2 focus:ring-cyan-500 text-slate-900 dark:text-white"
                                     />
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-cyan-900 dark:text-cyan-100 mb-1">Fecha de Caducidad</label>
-                                    <input 
+                                    <input
                                         type="date"
-                                        name="expiryDate" 
-                                        value={formData.expiryDate} 
-                                        onChange={handleChange} 
+                                        name="expiryDate"
+                                        value={formData.expiryDate}
+                                        onChange={handleChange}
                                         className="w-full px-4 py-2 bg-white dark:bg-secondary rounded-lg border border-slate-300 dark:border-slate-700 outline-none focus:ring-2 focus:ring-cyan-500 text-slate-900 dark:text-white"
                                     />
                                 </div>
@@ -248,24 +248,24 @@ export default function CreateEditItemModal({ item, categories, unitTypes, onClo
                         <div className="grid grid-cols-2 gap-4 pt-1">
                             <div>
                                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Existencia {isEdit && "Actual"}</label>
-                                <input 
-                                    type="number" 
-                                    required 
-                                    name="quantity" 
+                                <input
+                                    type="number"
+                                    required
+                                    name="quantity"
                                     disabled={isEdit}
                                     title={isEdit ? "Utiliza la opción Ajustar Stock para modificar la existencia" : ""}
-                                    value={formData.quantity} 
-                                    onChange={handleChange} 
+                                    value={formData.quantity}
+                                    onChange={handleChange}
                                     className={`w-full px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-700 outline-none focus:ring-2 focus:ring-cyan-500 text-slate-900 dark:text-white ${isEdit ? "bg-slate-200 dark:bg-slate-800 cursor-not-allowed" : "bg-slate-50 dark:bg-secondary"}`}
                                 />
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Stock Mínimo</label>
-                                <input 
-                                    type="number" 
-                                    name="min_stock" 
-                                    value={formData.min_stock} 
-                                    onChange={handleChange} 
+                                <input
+                                    type="number"
+                                    name="min_stock"
+                                    value={formData.min_stock}
+                                    onChange={handleChange}
                                     className="w-full px-4 py-2 bg-slate-50 dark:bg-secondary rounded-lg border border-slate-300 dark:border-slate-700 outline-none focus:ring-2 focus:ring-cyan-500 text-slate-900 dark:text-white"
                                 />
                             </div>
@@ -278,8 +278,8 @@ export default function CreateEditItemModal({ item, categories, unitTypes, onClo
                     <button type="button" onClick={onClose} className="px-5 py-2.5 rounded-lg font-medium text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-700 hover:bg-white dark:hover:bg-slate-800 transition">
                         Cancelar
                     </button>
-                    <button 
-                        type="submit" 
+                    <button
+                        type="submit"
                         form="item-form"
                         className="px-6 py-2.5 rounded-lg font-bold bg-cyan-600 hover:bg-cyan-700 text-white shadow-lg shadow-cyan-600/20 transition hover:shadow-cyan-600/40"
                     >

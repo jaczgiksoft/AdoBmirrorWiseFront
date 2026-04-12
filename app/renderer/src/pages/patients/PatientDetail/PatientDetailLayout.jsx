@@ -9,7 +9,9 @@ export const PatientLayoutContext = createContext({
     openViewer: () => { },
     closeViewer: () => { },
     openCreator: () => { },
-    closeCreator: () => { }
+    closeCreator: () => { },
+    refreshTrigger: 0,
+    triggerRefresh: () => { }
 });
 
 export default function PatientDetailLayout({ sidebar, children }) {
@@ -20,6 +22,12 @@ export default function PatientDetailLayout({ sidebar, children }) {
 
     // Creator State: boolean
     const [isCreatorOpen, setIsCreatorOpen] = useState(false);
+
+    // Refresh trigger for components
+    const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+    const triggerRefresh = () => setRefreshTrigger(prev => prev + 1);
+
 
     const openViewer = (collectionId, collections) => {
         setViewerState({ collectionId, collections });
@@ -37,15 +45,13 @@ export default function PatientDetailLayout({ sidebar, children }) {
         setIsCreatorOpen(false);
     };
 
-    const handleSaveCreator = (newCollection) => {
-        console.log("New Collection Created:", newCollection);
-        // In a real app, you would save this to the backend here
-        // and then refresh the list. For now, we just close.
+    const handleSaveCreator = () => {
         setIsCreatorOpen(false);
+        triggerRefresh();
     };
 
     return (
-        <PatientLayoutContext.Provider value={{ openViewer, closeViewer, openCreator, closeCreator }}>
+        <PatientLayoutContext.Provider value={{ openViewer, closeViewer, openCreator, closeCreator, refreshTrigger, triggerRefresh }}>
             <div className="flex relative bg-slate-100 dark:bg-dark h-full">
 
                 {/* SIDEBAR (FIJO) */}
