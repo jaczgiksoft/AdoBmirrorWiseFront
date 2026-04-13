@@ -5,43 +5,32 @@ import { X, ShieldCheck } from "lucide-react";
 import { useToastStore } from "@/store/useToastStore";
 import { useHotkeys } from "@/hooks/useHotkeys";
 import { ConfirmDialog } from "@/components/feedback";
-
-const MODULES = [
-    { id: "dashboard", label: "Dashboard" },
-    { id: "appointments", label: "Citas" },
-    { id: "patients", label: "Pacientes" },
-    { id: "employees", label: "Empleados" },
-    { id: "inventory", label: "Inventarios" },
-    { id: "services", label: "Servicios" },
-    { id: "clinic_areas", label: "Áreas Clínicas" },
-    { id: "cashRegisters", label: "Cajas" },
-    { id: "stores", label: "Tiendas" },
-    { id: "suppliers", label: "Proveedores" },
-    { id: "users", label: "Usuarios" },
-    { id: "settings", label: "Configuración" },
-];
+import * as roleService from "@/services/role.service";
 
 const ACTIONS = [
     { id: "read", label: "Leer" },
-    { id: "create", label: "Crear" },
-    { id: "update", label: "Editar" },
+    { id: "write", label: "Crear" },
+    { id: "edit", label: "Editar" },
     { id: "delete", label: "Eliminar" },
 ];
 
 export default function RoleForm({ open, onClose, onSaved, itemToEdit = null }) {
     const { addToast } = useToastStore();
 
-    const createInitialPermissions = () => {
+    const [availableModules, setAvailableModules] = useState([]);
+    const [loadingModules, setLoadingModules] = useState(false);
+
+    const createInitialPermissions = (modules = availableModules) => {
         const perms = {};
-        MODULES.forEach(m => {
-            perms[m.id] = { read: false, create: false, update: false, delete: false };
+        modules.forEach(m => {
+            perms[m.id] = { read: false, write: false, edit: false, delete: false };
         });
         return perms;
     };
 
     const initialForm = {
         name: "",
-        permissions: createInitialPermissions()
+        permissions: {}
     };
 
     const [form, setForm] = useState(initialForm);
@@ -53,28 +42,58 @@ export default function RoleForm({ open, onClose, onSaved, itemToEdit = null }) 
     const isEditing = !!itemToEdit;
 
     useEffect(() => {
-        if (open) {
-            if (itemToEdit) {
-                // Asegurarse de que todos los módulos existan en los permisos al editar
-                const mergedPermissions = createInitialPermissions();
-                if (itemToEdit.permissions) {
-                    Object.keys(itemToEdit.permissions).forEach(mId => {
-                        if (mergedPermissions[mId]) {
-                            mergedPermissions[mId] = { ...mergedPermissions[mId], ...itemToEdit.permissions[mId] };
-                        }
-                    });
-                }
+        const loadModules = async () => {
+            if (!open) return;
+            setLoadingModules(true);
+            try {
+                const modules = await roleService.getPermissions();
+                setAvailableModules(modules);
                 
-                setForm({
-                    ...initialForm,
-                    ...itemToEdit,
-                    permissions: mergedPermissions
+                if (itemToEdit) {
+                    // Fetch full role details to get complete permissions
+                    const fullRole = await roleService.getRoleById(itemToEdit.id);
+                    
+                    // Asegurarse de que todos los módulos existan en los permisos al editar
+                    const emptyPerms = {};
+                    modules.forEach(m => {
+                        emptyPerms[m.id] = { read: false, write: false, edit: false, delete: false };
+                    });
+
+                    const mergedPermissions = { ...emptyPerms };
+                    if (fullRole.permissions) {
+                        Object.keys(fullRole.permissions).forEach(mId => {
+                            if (mergedPermissions[mId]) {
+                                mergedPermissions[mId] = { ...mergedPermissions[mId], ...fullRole.permissions[mId] };
+                            }
+                        });
+                    }
+
+                    setForm({
+                        ...initialForm,
+                        ...fullRole,
+                        permissions: mergedPermissions
+                    });
+                } else {
+                    const freshPerms = {};
+                    modules.forEach(m => {
+                        freshPerms[m.id] = { read: false, write: false, edit: false, delete: false };
+                    });
+                    setForm({ ...initialForm, permissions: freshPerms });
+                }
+                setTimeout(() => firstRef.current?.focus(), 50);
+            } catch (err) {
+                console.error("❌ Error al cargar módulos:", err);
+                addToast({
+                    type: "error",
+                    title: "Error de carga",
+                    message: "No se pudieron cargar los módulos de permisos.",
                 });
-            } else {
-                setForm(initialForm);
+            } finally {
+                setLoadingModules(false);
             }
-            setTimeout(() => firstRef.current?.focus(), 50);
-        }
+        };
+
+        loadModules();
     }, [open, itemToEdit]);
 
     // 🎹 Hotkeys
@@ -141,8 +160,8 @@ export default function RoleForm({ open, onClose, onSaved, itemToEdit = null }) 
                 ...prev.permissions,
                 [moduleId]: {
                     read: checked,
-                    create: checked,
-                    update: checked,
+                    write: checked,
+                    edit: checked,
                     delete: checked
                 }
             }
@@ -160,7 +179,7 @@ export default function RoleForm({ open, onClose, onSaved, itemToEdit = null }) 
     const handleSubmit = async () => {
         if (saving) return;
         if (!validateForm()) {
-              addToast({
+            addToast({
                 type: "warning",
                 title: "Campos incompletos",
                 message: "Por favor completa los campos obligatorios.",
@@ -170,30 +189,38 @@ export default function RoleForm({ open, onClose, onSaved, itemToEdit = null }) 
 
         setSaving(true);
         try {
-            // Simulamos guardado (es puro demostrativo)
-            const payload = { 
-                ...form, 
-                id: isEditing ? itemToEdit.id : Date.now(),
-                updatedAt: new Date().toISOString()
+            // Transformar permisos para el backend (array de objetos)
+            const permissionsArray = Object.keys(form.permissions).map(module => ({
+                module,
+                ...form.permissions[module]
+            }));
+
+            const payload = {
+                name: form.name,
+                permissions: permissionsArray
             };
 
-            // Simular delay de red
-            await new Promise(resolve => setTimeout(resolve, 600));
+            let result;
+            if (isEditing) {
+                result = await roleService.updateRole(itemToEdit.id, payload);
+            } else {
+                result = await roleService.createRole(payload);
+            }
 
             addToast({
                 type: "success",
                 title: isEditing ? "Rol actualizado" : "Rol creado",
-                message: `"${payload.name}" se guardó correctamente (Simulado).`,
+                message: `"${form.name}" se guardó correctamente.`,
             });
 
-            onSaved(payload);
+            onSaved(result.role || result);
             handleExit();
         } catch (err) {
             console.error("❌ Error al guardar rol:", err);
             addToast({
                 type: "error",
                 title: "Error al guardar",
-                message: "Ocurrió un error inesperado al procesar la solicitud.",
+                message: err.message || "Ocurrió un error inesperado al procesar la solicitud.",
             });
         } finally {
             setSaving(false);
@@ -259,7 +286,7 @@ export default function RoleForm({ open, onClose, onSaved, itemToEdit = null }) 
                             <h3 className="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-4">
                                 Configuración de Permisos
                             </h3>
-                            
+
                             <div className="border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
                                 <table className="w-full text-sm text-left border-collapse">
                                     <thead className="bg-slate-50 dark:bg-dark/50">
@@ -273,41 +300,55 @@ export default function RoleForm({ open, onClose, onSaved, itemToEdit = null }) 
                                             <th className="px-3 py-3 font-medium text-center text-slate-600 dark:text-slate-300 border-b border-slate-200 dark:border-slate-700">Todos</th>
                                         </tr>
                                     </thead>
-                                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                                        {MODULES.map((module) => {
-                                            const modulePerms = form.permissions[module.id] || {};
-                                            const allChecked = ACTIONS.every(a => modulePerms[a.id]);
+                                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800 relative min-h-[100px]">
+                                        {loadingModules ? (
+                                            <tr>
+                                                <td colSpan={ACTIONS.length + 2} className="px-4 py-8 text-center text-slate-400">
+                                                    Cargando módulos...
+                                                </td>
+                                            </tr>
+                                        ) : availableModules.length === 0 ? (
+                                            <tr>
+                                                <td colSpan={ACTIONS.length + 2} className="px-4 py-8 text-center text-slate-400">
+                                                    No hay módulos disponibles.
+                                                </td>
+                                            </tr>
+                                        ) : (
+                                            availableModules.map((module) => {
+                                                const modulePerms = form.permissions[module.id] || {};
+                                                const allChecked = ACTIONS.every(a => modulePerms[a.id]);
 
-                                            return (
-                                                <tr key={module.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition">
-                                                    <td className="px-4 py-2.5 font-medium text-slate-700 dark:text-slate-200 whitespace-nowrap">
-                                                        {module.label}
-                                                    </td>
-                                                    {ACTIONS.map(action => (
-                                                        <td key={action.id} className="px-3 py-2.5 text-center">
+                                                return (
+                                                    <tr key={module.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition">
+                                                        <td className="px-4 py-2.5 font-medium text-slate-700 dark:text-slate-200 whitespace-nowrap">
+                                                            {module.label}
+                                                        </td>
+                                                        {ACTIONS.map(action => (
+                                                            <td key={action.id} className="px-3 py-2.5 text-center">
+                                                                <div className="flex justify-center">
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        checked={!!modulePerms[action.id]}
+                                                                        onChange={(e) => handlePermissionChange(module.id, action.id, e.target.checked)}
+                                                                        className="w-4 h-4 rounded border-slate-300 dark:border-slate-600 text-primary focus:ring-primary dark:bg-dark"
+                                                                    />
+                                                                </div>
+                                                            </td>
+                                                        ))}
+                                                        <td className="px-3 py-2.5 text-center">
                                                             <div className="flex justify-center">
                                                                 <input
                                                                     type="checkbox"
-                                                                    checked={!!modulePerms[action.id]}
-                                                                    onChange={(e) => handlePermissionChange(module.id, action.id, e.target.checked)}
-                                                                    className="w-4 h-4 rounded border-slate-300 dark:border-slate-600 text-primary focus:ring-primary dark:bg-dark"
+                                                                    checked={allChecked}
+                                                                    onChange={(e) => handleToggleAllModule(module.id, e.target.checked)}
+                                                                    className="w-4 h-4 rounded-full border-slate-300 dark:border-slate-600 text-primary focus:ring-primary dark:bg-dark bg-slate-100 dark:bg-slate-700 opacity-50 hover:opacity-100 transition"
                                                                 />
                                                             </div>
                                                         </td>
-                                                    ))}
-                                                    <td className="px-3 py-2.5 text-center">
-                                                        <div className="flex justify-center">
-                                                            <input
-                                                                type="checkbox"
-                                                                checked={allChecked}
-                                                                onChange={(e) => handleToggleAllModule(module.id, e.target.checked)}
-                                                                className="w-4 h-4 rounded-full border-slate-300 dark:border-slate-600 text-primary focus:ring-primary dark:bg-dark bg-slate-100 dark:bg-slate-700 opacity-50 hover:opacity-100 transition"
-                                                            />
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                            );
-                                        })}
+                                                    </tr>
+                                                );
+                                            })
+                                        )}
                                     </tbody>
                                 </table>
                             </div>

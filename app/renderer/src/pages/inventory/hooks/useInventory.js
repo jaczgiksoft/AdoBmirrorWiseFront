@@ -30,7 +30,10 @@ export function useInventory() {
                 ...item,
                 quantity: item.current_stock,
                 lastUpdate: item.updated_at,
-                purchasePrice: parseFloat(item.purchase_price) || 0
+                purchasePrice: parseFloat(item.purchase_price) || 0,
+                salePrice: parseFloat(item.sale_price) || 0,
+                lotNumber: item.lot_number || '',
+                expiryDate: item.expiry_date || ''
             })));
             
             setMovements(fetchedMovements.map(mov => ({
@@ -61,12 +64,26 @@ export function useInventory() {
     // Create a new item
     const addItem = async (newItem) => {
         try {
-            const apiData = {
-                ...newItem,
-                current_stock: newItem.quantity,
-                purchase_price: newItem.purchasePrice
-            };
-            await inventoryService.createItem(apiData);
+            const formData = new FormData();
+            
+            // Backend fields mapping
+            formData.append('name', newItem.name);
+            formData.append('sku', newItem.sku || '');
+            formData.append('description', newItem.description || '');
+            formData.append('category', newItem.category || '');
+            formData.append('unit', newItem.unit || '');
+            formData.append('min_stock', newItem.min_stock || 0);
+            formData.append('current_stock', newItem.quantity || 0);
+            formData.append('purchase_price', newItem.purchasePrice || 0);
+            formData.append('sale_price', newItem.salePrice || 0);
+            formData.append('lot_number', newItem.lotNumber || '');
+            formData.append('expiry_date', newItem.expiryDate || '');
+            
+            if (newItem.image instanceof File) {
+                formData.append('image', newItem.image);
+            }
+
+            await inventoryService.createItem(formData);
             addToast({ type: "success", title: "Éxito", message: "Artículo creado correctamente" });
             fetchData();
         } catch (error) {
@@ -78,12 +95,25 @@ export function useInventory() {
     // Update an existing item
     const updateItem = async (id, updatedData) => {
         try {
-            const apiData = {
-                ...updatedData,
-                current_stock: updatedData.quantity,
-                purchase_price: updatedData.purchasePrice
-            };
-            await inventoryService.updateItem(id, apiData);
+            const formData = new FormData();
+            
+            formData.append('name', updatedData.name);
+            formData.append('sku', updatedData.sku || '');
+            formData.append('description', updatedData.description || '');
+            formData.append('category', updatedData.category || '');
+            formData.append('unit', updatedData.unit || '');
+            formData.append('min_stock', updatedData.min_stock || 0);
+            formData.append('current_stock', updatedData.quantity || 0);
+            formData.append('purchase_price', updatedData.purchasePrice || 0);
+            formData.append('sale_price', updatedData.salePrice || 0);
+            formData.append('lot_number', updatedData.lotNumber || '');
+            formData.append('expiry_date', updatedData.expiryDate || '');
+            
+            if (updatedData.image instanceof File) {
+                formData.append('image', updatedData.image);
+            }
+
+            await inventoryService.updateItem(id, formData);
             addToast({ type: "success", title: "Éxito", message: "Artículo actualizado correctamente" });
             fetchData();
         } catch (error) {

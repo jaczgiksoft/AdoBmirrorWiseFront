@@ -13,6 +13,8 @@ import InventoryFilterDropdown from "./components/InventoryFilterDropdown";
 import InventorySummary from "./components/InventorySummary";
 import CreateEditProviderModal from "./components/CreateEditProviderModal";
 import Datepicker from "react-tailwindcss-datepicker";
+import { API_BASE } from "@/utils/apiBase";
+
 
 export default function InventoryPage() {
     const navigate = useNavigate();
@@ -116,7 +118,8 @@ export default function InventoryPage() {
             accessor: "image",
             render: (row) => (
                 <div className="w-10 h-10 rounded-lg overflow-hidden bg-slate-100 dark:bg-slate-800 flex items-center justify-center border border-slate-200 dark:border-slate-700">
-                    {row.image ? <img src={row.image} alt="" className="w-full h-full object-cover" /> : <ImageIcon size={18} className="text-slate-400" />}
+                    {row.image ? <img src={row.image.startsWith('http') ? row.image : `${API_BASE}/${row.image}`} alt="" className="w-full h-full object-cover" /> : <ImageIcon size={18} className="text-slate-400" />}
+
                 </div>
             )
         },

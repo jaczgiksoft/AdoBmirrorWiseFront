@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
-import { motion } from "framer-motion";
-import { X, UserCog } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { X, UserCog, CheckCircle2, Loader2 } from "lucide-react";
 import { useToastStore } from "@/store/useToastStore";
 import { useHotkeys } from "@/hooks/useHotkeys";
 import { ConfirmDialog } from "@/components/feedback";
+import { createPosition, updatePosition } from "@/services/position.service";
 
 export default function PositionForm({ open, onClose, onSaved, itemToEdit = null }) {
     const { addToast } = useToastStore();
@@ -13,6 +14,7 @@ export default function PositionForm({ open, onClose, onSaved, itemToEdit = null
         name: "",
         description: "",
         color: "#6366f1", // Default indigo
+        isAppointmentEligible: false,
     };
 
     const [form, setForm] = useState(initialForm);
@@ -29,6 +31,7 @@ export default function PositionForm({ open, onClose, onSaved, itemToEdit = null
                 setForm({
                     ...initialForm,
                     ...itemToEdit,
+                    isAppointmentEligible: !!itemToEdit.isAppointmentEligible
                 });
             } else {
                 setForm(initialForm);
@@ -54,29 +57,25 @@ export default function PositionForm({ open, onClose, onSaved, itemToEdit = null
                 return "prevent";
             },
             enter: (e) => {
-                if (!open || confirmCancel) return;
+                if (!open || confirmCancel || saving) return;
                 // Si estamos en un textarea, dejamos que Enter haga nueva línea
                 if (document.activeElement.tagName === "TEXTAREA") return;
 
                 e.preventDefault();
                 e.stopPropagation();
-                const isValid = validateForm();
-                if (isValid) handleSubmit();
-                else
-                    addToast({
-                        type: "warning",
-                        title: "Campos incompletos",
-                        message: "Por favor indica el nombre del puesto.",
-                    });
+                handleSubmit();
                 return "prevent";
             },
         },
-        [open, form, confirmCancel]
+        [open, form, confirmCancel, saving]
     );
 
     const handleChange = (e) => {
-        const { name, value } = e.target;
-        setForm((f) => ({ ...f, [name]: value }));
+        const { name, value, type, checked } = e.target;
+        setForm((f) => ({ 
+            ...f, 
+            [name]: type === 'checkbox' ? checked : value 
+        }));
 
         if (errors[name]) {
             setErrors((prev) => {
@@ -97,22 +96,31 @@ export default function PositionForm({ open, onClose, onSaved, itemToEdit = null
 
     const handleSubmit = async () => {
         if (saving) return;
+        
+        const isValid = validateForm();
+        if (!isValid) {
+            addToast({
+                type: "warning",
+                title: "Campos incompletos",
+                message: "Por favor indica el nombre del puesto.",
+            });
+            return;
+        }
+
         setSaving(true);
         try {
-            // Simular guardado
-            const payload = { 
-                ...form, 
-                id: isEditing ? itemToEdit.id : Date.now(),
-                updatedAt: new Date().toISOString()
-            };
+            let savedItem;
+            if (isEditing) {
+                savedItem = await updatePosition(itemToEdit.id, form);
+            } else {
+                savedItem = await createPosition(form);
+            }
 
-            await new Promise(resolve => setTimeout(resolve, 500));
-
-            onSaved(payload);
+            onSaved(savedItem);
             addToast({
                 type: "success",
                 title: isEditing ? "Puesto actualizado" : "Puesto creado",
-                message: `"${payload.name}" se guardó correctamente.`,
+                message: `"${savedItem.name}" se guardó correctamente.`,
             });
             handleExit();
         } catch (err) {
@@ -120,7 +128,7 @@ export default function PositionForm({ open, onClose, onSaved, itemToEdit = null
             addToast({
                 type: "error",
                 title: "Error al guardar",
-                message: "No se pudo procesar la solicitud.",
+                message: err.message || "No se pudo procesar la solicitud en el servidor.",
             });
         } finally {
             setSaving(false);
@@ -136,7 +144,7 @@ export default function PositionForm({ open, onClose, onSaved, itemToEdit = null
     if (!open) return null;
 
     return createPortal(
-        <>
+        <AnimatePresence>
             <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
                 <motion.div
                     initial={{ scale: 0.95, opacity: 0 }}
@@ -197,17 +205,39 @@ export default function PositionForm({ open, onClose, onSaved, itemToEdit = null
                         </div>
 
                         {/* Color */}
-                        <div>
-                            <label className="block text-sm font-medium mb-1.5 text-slate-700 dark:text-slate-300">Color Identificador</label>
-                            <div className="flex items-center gap-4">
+                        <div className="flex items-center justify-between gap-4">
+                            <div>
+                                <label className="block text-sm font-medium mb-1.5 text-slate-700 dark:text-slate-300">Color Identificador</label>
+                                <div className="flex items-center gap-3">
+                                    <input
+                                        type="color"
+                                        name="color"
+                                        value={form.color}
+                                        onChange={handleChange}
+                                        className="w-10 h-10 rounded-lg border-2 border-slate-200 dark:border-slate-700 cursor-pointer p-1 bg-white dark:bg-slate-800"
+                                    />
+                                    <span className="text-xs font-mono text-slate-500 uppercase">{form.color}</span>
+                                </div>
+                            </div>
+
+                            {/* Is Appointment Eligible */}
+                            <div className="flex items-center gap-3 bg-slate-50 dark:bg-slate-800/50 p-3 rounded-xl border border-slate-100 dark:border-slate-700 cursor-pointer select-none mt-4 flex-1"
+                                onClick={() => setForm(f => ({ ...f, isAppointmentEligible: !f.isAppointmentEligible }))}
+                            >
+                                <div className={`w-6 h-6 rounded-md border flex items-center justify-center transition-all ${form.isAppointmentEligible ? 'bg-primary border-primary text-white' : 'border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700'}`}>
+                                    {form.isAppointmentEligible && <CheckCircle2 size={16} />}
+                                </div>
+                                <div className="flex flex-col">
+                                    <span className="text-sm font-semibold text-slate-700 dark:text-slate-200 leading-tight">Agendable</span>
+                                    <span className="text-[10px] text-slate-500 dark:text-slate-400">¿Recibe citas médicas?</span>
+                                </div>
                                 <input
-                                    type="color"
-                                    name="color"
-                                    value={form.color}
+                                    type="checkbox"
+                                    name="isAppointmentEligible"
+                                    checked={form.isAppointmentEligible}
                                     onChange={handleChange}
-                                    className="w-12 h-12 rounded-lg border-2 border-slate-200 dark:border-slate-700 cursor-pointer p-1 bg-white dark:bg-slate-800"
+                                    className="hidden"
                                 />
-                                <span className="text-sm font-mono text-slate-500 uppercase">{form.color}</span>
                             </div>
                         </div>
                     </div>
@@ -225,8 +255,9 @@ export default function PositionForm({ open, onClose, onSaved, itemToEdit = null
                             type="button"
                             onClick={handleSubmit}
                             disabled={saving}
-                            className="px-6 py-2 rounded-lg bg-primary text-white hover:bg-sky-500 transition disabled:opacity-50 cursor-pointer font-semibold text-sm shadow-lg shadow-sky-500/20"
+                            className="px-6 py-2 rounded-lg bg-primary text-white hover:bg-sky-500 transition disabled:opacity-50 cursor-pointer font-semibold text-sm shadow-lg shadow-sky-500/20 flex items-center gap-2"
                         >
+                            {saving && <Loader2 size={16} className="animate-spin" />}
                             {saving ? "Guardando..." : isEditing ? "Actualizar" : "Guardar"}
                         </button>
                     </div>
@@ -247,7 +278,7 @@ export default function PositionForm({ open, onClose, onSaved, itemToEdit = null
                 cancelLabel="Seguir editando"
                 confirmVariant="warning"
             />
-        </>,
+        </AnimatePresence>,
         document.body
     );
 }

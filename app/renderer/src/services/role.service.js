@@ -15,6 +15,19 @@ export async function getRoles() {
 }
 
 /**
+ * Obtener todos los módulos disponibles (permisos)
+ */
+export async function getPermissions() {
+    try {
+        const res = await api.get("/permissions");
+        return res.data;
+    } catch (err) {
+        console.error("❌ Error al obtener módulos de permisos:", err);
+        throw err.response?.data || err;
+    }
+}
+
+/**
  * Obtener un rol específico
  */
 export async function getRoleById(id) {

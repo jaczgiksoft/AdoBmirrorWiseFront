@@ -1,10 +1,13 @@
 // app/renderer/src/modules/inventory/components/CreateEditItemModal.jsx
 import React, { useState, useEffect, useRef } from "react";
 import { X, Upload, Image as ImageIcon, Trash2 } from "lucide-react";
+import { API_BASE } from "@/utils/apiBase";
+import { DateInput } from "@/components/inputs";
 
 export default function CreateEditItemModal({ item, categories, unitTypes, onClose, onSave }) {
     const isEdit = !!item;
     const fileInputRef = useRef(null);
+    const [imagePreview, setImagePreview] = useState(null);
 
     const [formData, setFormData] = useState({
         image: null,
@@ -12,11 +15,11 @@ export default function CreateEditItemModal({ item, categories, unitTypes, onClo
         name: "",
         description: "",
         category: categories?.[0] || "Medicamentos",
-        quantity: 0,
+        quantity: "",
         unit: unitTypes?.[0] || "Pieza",
-        min_stock: 0,
-        purchasePrice: 0,
-        salePrice: 0,
+        min_stock: "",
+        purchasePrice: "",
+        salePrice: "",
         lotNumber: "",
         expiryDate: "",
         notes: ""
@@ -25,7 +28,7 @@ export default function CreateEditItemModal({ item, categories, unitTypes, onClo
     useEffect(() => {
         if (item) {
             setFormData({
-                image: item.image || null,
+                image: null, // Reset image to null, we'll use item.image for existing
                 sku: item.sku || "",
                 name: item.name,
                 description: item.description || "",
@@ -39,6 +42,16 @@ export default function CreateEditItemModal({ item, categories, unitTypes, onClo
                 expiryDate: item.expiryDate || "",
                 notes: item.notes || ""
             });
+
+            if (item.image) {
+                // If it's a full URL or base64 already
+                if (item.image.startsWith('http') || item.image.startsWith('data:')) {
+                    setImagePreview(item.image);
+                } else {
+                    // It's a relative path from the backend.
+                    setImagePreview(`${API_BASE}/${item.image}`);
+                }
+            }
         }
     }, [item]);
 
@@ -46,23 +59,23 @@ export default function CreateEditItemModal({ item, categories, unitTypes, onClo
         const { name, value } = e.target;
         setFormData(prev => ({
             ...prev,
-            [name]: ["quantity", "min_stock", "purchasePrice", "salePrice"].includes(name) ? Number(value) : value
+            [name]: ["quantity", "min_stock", "purchasePrice", "salePrice"].includes(name) 
+                ? (value === "" ? "" : Number(value)) 
+                : value
         }));
     };
 
     const handleImageChange = (e) => {
         const file = e.target.files[0];
         if (file) {
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                setFormData(prev => ({ ...prev, image: reader.result }));
-            };
-            reader.readAsDataURL(file);
+            setFormData(prev => ({ ...prev, image: file }));
+            setImagePreview(URL.createObjectURL(file));
         }
     };
 
     const handleRemoveImage = () => {
         setFormData(prev => ({ ...prev, image: null }));
+        setImagePreview(null);
         if (fileInputRef.current) {
             fileInputRef.current.value = "";
         }
@@ -91,9 +104,9 @@ export default function CreateEditItemModal({ item, categories, unitTypes, onClo
                         <div className="flex items-start gap-5">
                             <div className="shrink-0 flex flex-col items-center gap-2">
                                 <div className="w-24 h-24 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-700 overflow-hidden flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-800/50 relative group">
-                                    {formData.image ? (
+                                    {imagePreview ? (
                                         <>
-                                            <img src={formData.image} alt="Preview" className="w-full h-full object-cover" />
+                                            <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
                                             <button
                                                 type="button"
                                                 onClick={handleRemoveImage}
@@ -199,6 +212,7 @@ export default function CreateEditItemModal({ item, categories, unitTypes, onClo
                                         type="number"
                                         step="0.01"
                                         name="purchasePrice"
+                                        placeholder="0"
                                         value={formData.purchasePrice}
                                         onChange={handleChange}
                                         className="w-full pl-8 pr-4 py-2 bg-slate-50 dark:bg-secondary rounded-lg border border-slate-300 dark:border-slate-700 outline-none focus:ring-2 focus:ring-cyan-500 text-slate-900 dark:text-white"
@@ -213,6 +227,7 @@ export default function CreateEditItemModal({ item, categories, unitTypes, onClo
                                         type="number"
                                         step="0.01"
                                         name="salePrice"
+                                        placeholder="0"
                                         value={formData.salePrice}
                                         onChange={handleChange}
                                         className="w-full pl-8 pr-4 py-2 bg-slate-50 dark:bg-secondary rounded-lg border border-slate-300 dark:border-slate-700 outline-none focus:ring-2 focus:ring-cyan-500 text-slate-900 dark:text-white"
@@ -233,13 +248,11 @@ export default function CreateEditItemModal({ item, categories, unitTypes, onClo
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-cyan-900 dark:text-cyan-100 mb-1">Fecha de Caducidad</label>
-                                    <input
-                                        type="date"
-                                        name="expiryDate"
+                                    <DateInput
+                                        label="Fecha de Caducidad"
                                         value={formData.expiryDate}
-                                        onChange={handleChange}
-                                        className="w-full px-4 py-2 bg-white dark:bg-secondary rounded-lg border border-slate-300 dark:border-slate-700 outline-none focus:ring-2 focus:ring-cyan-500 text-slate-900 dark:text-white"
+                                        onChange={(val) => setFormData(p => ({ ...p, expiryDate: val }))}
+                                        popoverDirection="up"
                                     />
                                 </div>
                             </div>
@@ -252,6 +265,7 @@ export default function CreateEditItemModal({ item, categories, unitTypes, onClo
                                     type="number"
                                     required
                                     name="quantity"
+                                    placeholder="0"
                                     disabled={isEdit}
                                     title={isEdit ? "Utiliza la opción Ajustar Stock para modificar la existencia" : ""}
                                     value={formData.quantity}
@@ -264,6 +278,7 @@ export default function CreateEditItemModal({ item, categories, unitTypes, onClo
                                 <input
                                     type="number"
                                     name="min_stock"
+                                    placeholder="0"
                                     value={formData.min_stock}
                                     onChange={handleChange}
                                     className="w-full px-4 py-2 bg-slate-50 dark:bg-secondary rounded-lg border border-slate-300 dark:border-slate-700 outline-none focus:ring-2 focus:ring-cyan-500 text-slate-900 dark:text-white"
