@@ -1,4 +1,5 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
     Phone,
@@ -14,9 +15,22 @@ import {
 } from "lucide-react";
 
 export default function ConfirmationKiosk() {
+    const navigate = useNavigate();
     const [step, setStep] = useState(1); // 1: Keypad, 2: Selection, 3: Confirmation
     const [phoneNumber, setPhoneNumber] = useState("");
     const [selectedAppointments, setSelectedAppointments] = useState([]);
+    const [tenant, setTenant] = useState(null);
+
+    // 🔒 Validar sesión de Kiosko
+    useEffect(() => {
+        const storedTenant = localStorage.getItem("verifiedTenant");
+        if (!storedTenant) {
+            console.warn("⚠️ No hay código de cliente verificado. Redirigiendo a Login...");
+            navigate("/login");
+            return;
+        }
+        setTenant(JSON.parse(storedTenant));
+    }, [navigate]);
 
     // Demo Data
     const demoAppointments = useMemo(() => [

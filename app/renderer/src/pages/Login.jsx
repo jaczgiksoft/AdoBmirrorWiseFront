@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import api from "@/services/api";
 import { fetchCurrentUser } from "@/services/auth.service";
+import { verifyTenantCode } from "@/services/tenant.service";
 import { useAuthStore } from "@/store/useAuthStore";
 import { Loader2, LogIn, Eye, EyeOff, ScreenShare } from "lucide-react";
 import { useHotkeys } from "@/hooks/useHotkeys";
@@ -55,6 +56,33 @@ export default function LoginPage() {
         [isAuthenticated]
     );
 
+    // 📺 Abrir Kiosko con validación de Tenant
+    const handleOpenKiosk = async () => {
+        if (!tenant) {
+            setMessage("Falta el dato de código de cliente en login");
+            return;
+        }
+
+        if (loading) return;
+        setLoading(true);
+        setMessage("🔍 Verificando código de cliente...");
+
+        try {
+            const tenantData = await verifyTenantCode(tenant);
+            console.log("✅ Tenant verificado para Kiosko:", tenantData);
+            
+            // Guardar para uso en la ventana del Kiosko
+            localStorage.setItem("verifiedTenant", JSON.stringify(tenantData));
+            
+            setMessage("");
+            window.electronAPI.openKiosk();
+        } catch (err) {
+            setMessage(err || "❌ Error al verificar código de cliente");
+        } finally {
+            setLoading(false);
+        }
+    };
+
     // 🔐 Envío de credenciales
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -104,11 +132,16 @@ export default function LoginPage() {
                     {/* 📺 Kiosk Trigger Button */}
                     <button
                         type="button"
-                        onClick={() => window.electronAPI.openKiosk()}
-                        className="absolute top-4 right-4 p-2 rounded-lg text-slate-500 hover:text-sky-400 hover:bg-sky-500/10 hover:shadow-[0_0_15px_rgba(56,189,248,0.3)] transition-all duration-300 group"
+                        onClick={handleOpenKiosk}
+                        disabled={loading}
+                        className="absolute top-4 right-4 p-2 rounded-lg text-slate-500 hover:text-sky-400 hover:bg-sky-500/10 hover:shadow-[0_0_15px_rgba(56,189,248,0.3)] transition-all duration-300 group disabled:opacity-50"
                         title="Abrir Kiosko de Auto-confirmación"
                     >
-                        <ScreenShare size={20} className="group-hover:scale-110 transition-transform" />
+                        {loading ? (
+                            <Loader2 size={20} className="animate-spin" />
+                        ) : (
+                            <ScreenShare size={20} className="group-hover:scale-110 transition-transform" />
+                        )}
                     </button>
                     <div className="flex flex-col items-center mb-6">
                         <motion.img
