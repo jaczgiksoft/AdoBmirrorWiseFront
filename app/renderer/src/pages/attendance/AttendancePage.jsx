@@ -1,7 +1,7 @@
 // app/renderer/src/pages/attendance/AttendancePage.jsx
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Clock, PlusCircle } from "lucide-react";
+import { Clock, PlusCircle, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 import { PageHeader } from "@/components/layout";
@@ -18,69 +18,72 @@ export default function AttendancePage() {
     const {
         records,
         employees,
-        attendanceTypes,
-        latenessOptions,
+        isLoading,
         addRecord,
-        deleteRecord
+        deleteRecord,
+        fetchRecords
     } = useAttendance();
 
     // -- State --
     const [searchTerm, setSearchTerm] = useState("");
-    const [selectedType, setSelectedType] = useState("all");
-    const [selectedLateness, setSelectedLateness] = useState("all");
+    const [selectedStatus, setSelectedStatus] = useState("all");
     const [dateRange, setDateRange] = useState({ startDate: null, endDate: null });
 
     const [currentPage, setCurrentPage] = useState(1);
-    const [sortConfig, setSortConfig] = useState({ key: "dateTime", direction: "desc" });
+    const [sortConfig, setSortConfig] = useState({ key: "date", direction: "desc" });
     const ITEMS_PER_PAGE = 10;
 
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [recordToDelete, setRecordToDelete] = useState(null);
 
-    // Reset page when filters change
-    React.useEffect(() => {
-        setCurrentPage(1);
-    }, [searchTerm, selectedType, selectedLateness, dateRange]);
+    // Re-fetch records when date range changes (Server-side filtering potential)
+    useEffect(() => {
+        if (dateRange.startDate && dateRange.endDate) {
+            fetchRecords({
+                startDate: dateRange.startDate,
+                endDate: dateRange.endDate
+            });
+        } else {
+            fetchRecords();
+        }
+    }, [dateRange, fetchRecords]);
 
-    // -- Memoized Filtering --
+    // Reset page when filters change
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchTerm, selectedStatus, dateRange]);
+
+    // -- Memoized Filtering (Client-side for search and status) --
     const filteredRecords = useMemo(() => {
         const filtered = records.filter(rec => {
-            // 🔍 Search Filter
-            const matchesSearch = rec.employeeName.toLowerCase().includes(searchTerm.toLowerCase());
+            // 🔍 Search Filter (Employee Name)
+            const fullName = rec.employee ? `${rec.employee.first_name} ${rec.employee.last_name} ${rec.employee.second_last_name || ""}`.toLowerCase() : "";
+            const matchesSearch = fullName.includes(searchTerm.toLowerCase());
 
-            // 🏷️ Type Filter
-            const matchesType = selectedType === "all" || rec.type === selectedType;
+            // 🏷️ Status Filter
+            const matchesStatus = selectedStatus === "all" || rec.status === selectedStatus;
 
-            // ⏰ Lateness Filter
-            const matchesLateness = selectedLateness === "all" ||
-                (selectedLateness === "late" && rec.isLate) ||
-                (selectedLateness === "on_time" && !rec.isLate);
-
-            // 📅 Date Range Filter
-            let matchesDate = true;
-            if (dateRange.startDate && dateRange.endDate) {
-                const recDate = new Date(rec.dateTime);
-                const start = new Date(dateRange.startDate);
-                const end = new Date(dateRange.endDate);
-                end.setHours(23, 59, 59, 999);
-                matchesDate = recDate >= start && recDate <= end;
-            }
-
-            return matchesSearch && matchesType && matchesLateness && matchesDate;
+            return matchesSearch && matchesStatus;
         });
 
         // 📋 Sorting Logic
         if (!sortConfig.key) return filtered;
 
         return [...filtered].sort((a, b) => {
-            const aValue = a[sortConfig.key];
-            const bValue = b[sortConfig.key];
+            let aValue = a[sortConfig.key];
+            let bValue = b[sortConfig.key];
+
+            // Specific sorting for nested employee name
+            if (sortConfig.key === "employee") {
+                aValue = a.employee ? `${a.employee.first_name} ${a.employee.last_name}` : "";
+                bValue = b.employee ? `${b.employee.first_name} ${b.employee.last_name}` : "";
+            }
 
             if (aValue < bValue) return sortConfig.direction === "asc" ? -1 : 1;
             if (aValue > bValue) return sortConfig.direction === "asc" ? 1 : -1;
             return 0;
         });
-    }, [records, searchTerm, selectedType, selectedLateness, dateRange, sortConfig]);
+    }, [records, searchTerm, selectedStatus, sortConfig]);
 
     // -- Pagination Logic --
     const totalPages = Math.ceil(filteredRecords.length / ITEMS_PER_PAGE);
@@ -90,14 +93,14 @@ export default function AttendancePage() {
     }, [filteredRecords, currentPage]);
 
     // -- Handlers --
-    const handleSave = (data) => {
-        addRecord(data);
-        setIsModalOpen(false);
+    const handleSave = async (data) => {
+        const success = await addRecord(data);
+        if (success) setIsModalOpen(false);
     };
 
-    const handleDeleteConfirm = () => {
+    const handleDeleteConfirm = async () => {
         if (recordToDelete) {
-            deleteRecord(recordToDelete.id);
+            await deleteRecord(recordToDelete.id);
             setRecordToDelete(null);
         }
     };
@@ -124,14 +127,10 @@ export default function AttendancePage() {
                 <AttendanceFilters
                     searchTerm={searchTerm}
                     setSearchTerm={setSearchTerm}
-                    selectedType={selectedType}
-                    setSelectedType={setSelectedType}
-                    selectedLateness={selectedLateness}
-                    setSelectedLateness={setSelectedLateness}
+                    selectedStatus={selectedStatus}
+                    setSelectedStatus={setSelectedStatus}
                     dateRange={dateRange}
                     setDateRange={setDateRange}
-                    attendanceTypes={attendanceTypes}
-                    latenessOptions={latenessOptions}
                 />
 
                 <motion.button
@@ -146,15 +145,20 @@ export default function AttendancePage() {
                     "
                 >
                     <PlusCircle size={20} />
-                    <span>Registrar Entrada/Salida</span>
+                    <span>Registrar Asistencia</span>
                 </motion.button>
             </div>
 
             {/* Table Section */}
-            <div className="bg-white dark:bg-secondary rounded-3xl shadow-soft dark:shadow-none border border-slate-100 dark:border-slate-800 overflow-hidden transform transition-all">
+            <div className="bg-white dark:bg-secondary rounded-3xl shadow-soft dark:shadow-none border border-slate-100 dark:border-slate-800 overflow-hidden transform transition-all relative">
+                {isLoading && (
+                    <div className="absolute inset-0 z-10 bg-white/50 dark:bg-dark/50 backdrop-blur-[1px] flex items-center justify-center">
+                        <Loader2 className="w-8 h-8 text-primary animate-spin" />
+                    </div>
+                )}
                 <div className="p-1 px-4 py-3 bg-slate-50 dark:bg-dark/40 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
                     <h3 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest pl-2">
-                        Historial de Movimientos
+                        Historial de Movimientos (BD)
                     </h3>
                     <div className="flex items-center gap-2">
                         <span className="text-[10px] font-bold bg-primary/10 text-primary px-2 py-0.5 rounded-full">
@@ -162,7 +166,7 @@ export default function AttendancePage() {
                         </span>
                     </div>
                 </div>
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto min-h-[400px]">
                     <AttendanceTable
                         records={paginatedRecords}
                         onDelete={setRecordToDelete}
@@ -189,7 +193,6 @@ export default function AttendancePage() {
                         onClose={() => setIsModalOpen(false)}
                         onSave={handleSave}
                         employees={employees}
-                        attendanceTypes={attendanceTypes}
                     />
                 )}
             </AnimatePresence>
@@ -197,7 +200,7 @@ export default function AttendancePage() {
             <ConfirmDialog
                 open={!!recordToDelete}
                 title="Eliminar Registro"
-                message={`¿Estás seguro de que deseas eliminar el registro de ${recordToDelete?.employeeName}? Esta acción no se puede deshacer.`}
+                message={`¿Estás seguro de que deseas eliminar el registro de ${recordToDelete?.employee ? `${recordToDelete.employee.first_name} ${recordToDelete.employee.last_name}` : ""}? Esta acción no se puede deshacer.`}
                 onConfirm={handleDeleteConfirm}
                 onCancel={() => setRecordToDelete(null)}
                 confirmLabel="Eliminar"

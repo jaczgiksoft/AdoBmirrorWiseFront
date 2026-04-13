@@ -1,20 +1,23 @@
 // app/renderer/src/pages/attendance/components/AttendanceFilters.jsx
 import React from "react";
-import { Search, Filter, Calendar } from "lucide-react";
+import { Search, Filter } from "lucide-react";
 import Datepicker from "react-tailwindcss-datepicker";
 
 export default function AttendanceFilters({
     searchTerm,
     setSearchTerm,
-    selectedType,
-    setSelectedType,
-    selectedLateness,
-    setSelectedLateness,
+    selectedStatus,
+    setSelectedStatus,
     dateRange,
-    setDateRange,
-    attendanceTypes,
-    latenessOptions
+    setDateRange
 }) {
+    const statusOptions = [
+        { value: "all", label: "Cualquier estado" },
+        { value: "present", label: "Puntual" },
+        { value: "late", label: "Retardo" },
+        { value: "absent", label: "Falta" }
+    ];
+
     return (
         <div className="flex flex-col lg:flex-row items-center gap-4 bg-white dark:bg-secondary p-5 rounded-2xl shadow-soft border border-slate-100 dark:border-slate-800 transition-all duration-300">
             {/* 🔍 Search Input */}
@@ -33,36 +36,21 @@ export default function AttendanceFilters({
                 />
             </div>
 
-            {/* 🏷️ Type Select */}
-            <div className="grid grid-cols-2 sm:flex items-center gap-2 w-full lg:w-auto">
+            {/* 🏷️ Status Select */}
+            <div className="flex items-center gap-2 w-full lg:w-auto">
                 <div className="hidden sm:flex p-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500">
                     <Filter size={18} />
                 </div>
                 <select
-                    value={selectedType}
-                    onChange={(e) => setSelectedType(e.target.value)}
+                    value={selectedStatus}
+                    onChange={(e) => setSelectedStatus(e.target.value)}
                     className="
-                        flex-1 sm:w-44 px-4 py-3 bg-slate-50 dark:bg-dark border border-slate-100 dark:border-slate-700 
+                        flex-1 sm:w-48 px-4 py-3 bg-slate-50 dark:bg-dark border border-slate-100 dark:border-slate-700 
                         rounded-xl outline-none focus:ring-2 focus:ring-primary/40 text-sm font-medium 
                         text-slate-700 dark:text-white cursor-pointer transition-all
                     "
                 >
-                    <option value="all">Todos los movimientos</option>
-                    {attendanceTypes.map(t => (
-                        <option key={t} value={t}>{t}</option>
-                    ))}
-                </select>
-
-                <select
-                    value={selectedLateness}
-                    onChange={(e) => setSelectedLateness(e.target.value)}
-                    className="
-                        flex-1 sm:w-40 px-4 py-3 bg-slate-50 dark:bg-dark border border-slate-100 dark:border-slate-700 
-                        rounded-xl outline-none focus:ring-2 focus:ring-primary/40 text-sm font-medium 
-                        text-slate-700 dark:text-white cursor-pointer transition-all
-                    "
-                >
-                    {latenessOptions.map(opt => (
+                    {statusOptions.map(opt => (
                         <option key={opt.value} value={opt.value}>{opt.label}</option>
                     ))}
                 </select>
@@ -82,7 +70,7 @@ export default function AttendanceFilters({
                         rounded-xl text-sm font-medium text-slate-700 dark:text-white outline-none 
                         focus:ring-2 focus:ring-primary/40 transition-all cursor-pointer group-hover:bg-slate-50
                     "
-                    placeholder="Rango de fechas..."
+                    placeholder="Filtrar por rango de fechas..."
                 />
             </div>
         </div>

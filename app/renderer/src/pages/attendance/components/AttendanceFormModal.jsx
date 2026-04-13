@@ -1,12 +1,13 @@
 // app/renderer/src/pages/attendance/components/AttendanceFormModal.jsx
 import React, { useState } from "react";
-import { X, Clock, User, CheckCircle2, AlertTriangle } from "lucide-react";
+import { X, Clock, User, CheckCircle2, AlertTriangle, Calendar } from "lucide-react";
 import AutocompleteInput from "@/components/inputs/AutocompleteInput";
 
-export default function AttendanceFormModal({ open, onClose, onSave, employees, attendanceTypes }) {
+export default function AttendanceFormModal({ open, onClose, onSave, employees }) {
     const [selectedEmployee, setSelectedEmployee] = useState(null);
-    const [type, setType] = useState(attendanceTypes[0]);
-    const [isLate, setIsLate] = useState(false);
+    const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+    const [checkIn, setCheckIn] = useState(new Date().toLocaleTimeString('en-GB', { hour12: false }));
+    const [status, setStatus] = useState("present");
     const [notes, setNotes] = useState("");
 
     if (!open) return null;
@@ -16,10 +17,10 @@ export default function AttendanceFormModal({ open, onClose, onSave, employees, 
         if (!selectedEmployee) return;
 
         onSave({
-            employeeId: selectedEmployee.id,
-            employeeName: `${selectedEmployee.first_name} ${selectedEmployee.last_name} ${selectedEmployee.second_last_name || ""}`.trim(),
-            type,
-            isLate,
+            employee_id: selectedEmployee.id,
+            date,
+            check_in: checkIn,
+            status,
             notes
         });
         reset();
@@ -27,8 +28,9 @@ export default function AttendanceFormModal({ open, onClose, onSave, employees, 
 
     const reset = () => {
         setSelectedEmployee(null);
-        setType(attendanceTypes[0]);
-        setIsLate(false);
+        setDate(new Date().toISOString().split('T')[0]);
+        setCheckIn(new Date().toLocaleTimeString('en-GB', { hour12: false }));
+        setStatus("present");
         setNotes("");
     };
 
@@ -37,6 +39,12 @@ export default function AttendanceFormModal({ open, onClose, onSave, employees, 
         label: `${emp.first_name} ${emp.last_name} ${emp.second_last_name || ""}`.trim(),
         description: emp.position
     }));
+
+    const statusOptions = [
+        { value: "present", label: "Presente", icon: CheckCircle2, color: "bg-emerald-500" },
+        { value: "late", label: "Retardo", icon: AlertTriangle, color: "bg-amber-500" },
+        { value: "absent", label: "Falta", icon: AlertTriangle, color: "bg-rose-500" }
+    ];
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
@@ -73,56 +81,62 @@ export default function AttendanceFormModal({ open, onClose, onSave, employees, 
                         />
                     </div>
 
-                    {/* Type Select */}
-                    <div className="space-y-1.5">
-                        <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300">
-                            Movimiento <span className="text-red-500">*</span>
-                        </label>
-                        <div className="grid grid-cols-2 gap-2">
-                            {attendanceTypes.map(t => (
-                                <button
-                                    key={t}
-                                    type="button"
-                                    onClick={() => {
-                                        setType(t);
-                                        if (t !== "Entrada" && t !== "Entrada de comida") setIsLate(false);
-                                    }}
-                                    className={`
-                                        px-3 py-2.5 text-xs font-bold rounded-xl border transition-all text-center
-                                        ${type === t
-                                            ? "bg-primary border-primary text-white shadow-lg shadow-primary/20"
-                                            : "bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 text-slate-500 hover:border-primary/50 cursor-pointer"}
-                                    `}
-                                >
-                                    {t}
-                                </button>
-                            ))}
+                    <div className="grid grid-cols-2 gap-4">
+                        {/* Date */}
+                        <div className="space-y-1.5">
+                            <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-2">
+                                <Calendar size={14} /> Fecha
+                            </label>
+                            <input
+                                type="date"
+                                value={date}
+                                onChange={(e) => setDate(e.target.value)}
+                                className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-primary/50 text-sm"
+                            />
+                        </div>
+                        {/* Time */}
+                        <div className="space-y-1.5">
+                            <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-2">
+                                <Clock size={14} /> Hora
+                            </label>
+                            <input
+                                type="time"
+                                step="1"
+                                value={checkIn}
+                                onChange={(e) => setCheckIn(e.target.value)}
+                                className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-primary/50 text-sm"
+                            />
                         </div>
                     </div>
 
-                    {/* Lateness Toggle (Entrada & Entrada de comida) */}
-                    {(type === "Entrada" || type === "Entrada de comida") && (
-                        <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-700 animate-in fade-in slide-in-from-top-2 duration-300">
-                            <div className="flex items-center gap-3">
-                                <div className={`p-2 rounded-lg ${isLate ? 'bg-amber-500/10 text-amber-500' : 'bg-emerald-500/10 text-emerald-500'}`}>
-                                    {isLate ? <AlertTriangle size={18} /> : <CheckCircle2 size={18} />}
-                                </div>
-                                <div>
-                                    <p className="text-sm font-bold text-slate-800 dark:text-slate-100">¿Es retardo?</p>
-                                    <p className="text-[10px] text-slate-500">{isLate ? "Se marcará con retardo" : "Se marcará como puntual"}</p>
-                                </div>
-                            </div>
-                            <label className="relative inline-flex items-center cursor-pointer">
-                                <input
-                                    type="checkbox"
-                                    checked={isLate}
-                                    onChange={(e) => setIsLate(e.target.checked)}
-                                    className="sr-only peer"
-                                />
-                                <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none dark:bg-slate-700 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
-                            </label>
+                    {/* Status Select */}
+                    <div className="space-y-1.5">
+                        <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300">
+                            Estado <span className="text-red-500">*</span>
+                        </label>
+                        <div className="grid grid-cols-3 gap-2">
+                            {statusOptions.map(opt => {
+                                const Icon = opt.icon;
+                                const isActive = status === opt.value;
+                                return (
+                                    <button
+                                        key={opt.value}
+                                        type="button"
+                                        onClick={() => setStatus(opt.value)}
+                                        className={`
+                                            flex flex-col items-center justify-center gap-1.5 py-3 rounded-xl border transition-all
+                                            ${isActive
+                                                ? `${opt.color} border-transparent text-white shadow-lg`
+                                                : "bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 text-slate-500 hover:border-primary/50 cursor-pointer"}
+                                        `}
+                                    >
+                                        <Icon size={18} />
+                                        <span className="text-[10px] font-bold uppercase">{opt.label}</span>
+                                    </button>
+                                );
+                            })}
                         </div>
-                    )}
+                    </div>
 
                     {/* Notes */}
                     <div className="space-y-1.5">
@@ -133,7 +147,7 @@ export default function AttendanceFormModal({ open, onClose, onSave, employees, 
                             value={notes}
                             onChange={(e) => setNotes(e.target.value)}
                             placeholder="Ej. Tráfico, cita médica, etc."
-                            rows={3}
+                            rows={2}
                             className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-primary/50 text-sm text-slate-700 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-600 transition-all resize-none"
                         />
                     </div>
