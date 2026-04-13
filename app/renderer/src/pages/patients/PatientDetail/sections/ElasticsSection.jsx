@@ -8,6 +8,7 @@ import bracketGanchoImg from '@/assets/images/odontogram/bracket-gancho.svg';
 import tadImg from '@/assets/images/odontogram/tad.svg';
 
 import { getToothSrc, generateCombinedSvgDataUrl } from './components/toothSvgHelpers';
+import * as odontogramService from '@/services/odontogram.service';
 
 // 2. Constants & Helper Data - DYNAMIC LAYOUT CONFIG
 const TOOTH_CONFIG = {
@@ -187,7 +188,7 @@ export default function ElasticsSection() {
     const [hours, setHours] = useState('');
     const [notes, setNotes] = useState('');
 
-    const { instructions, saveInstruction, isLoading: isInstructionsLoading } = usePatientElasticsData(patientId);
+    const { instructions, saveInstruction, deleteInstruction, isLoading: isInstructionsLoading } = usePatientElasticsData(patientId);
 
     // Sequential Selection State
     // Segment-based State
@@ -197,6 +198,7 @@ export default function ElasticsSection() {
     const [tads, setTads] = useState({});
     const [brackets, setBrackets] = useState({}); // New state for brackets
     const [activeChain, setActiveChain] = useState({ segments: [], lastPoint: null, startPoint: null });
+    const [instructionToDelete, setInstructionToDelete] = useState(null);
 
     // Estado de dientes cargado desde el odontograma (para reflejar dientes inactivos)
     const [toothStates, setToothStates] = useState({});
@@ -219,26 +221,48 @@ export default function ElasticsSection() {
     // Cargar datos guardados desde el Odontograma (localStorage)
     // Se ejecuta al montar el componente y cada vez que cambia el patientId
     // ==========================================
-    const loadGlobalOdontogram = useCallback(() => {
+    // ==========================================
+    // Cargar datos guardados desde el Odontograma (Backend)
+    // Se ejecuta al montar el componente y cada vez que cambia el patientId
+    // ==========================================
+    const loadGlobalOdontogram = useCallback(async () => {
         if (!patientId) return;
-        const STORAGE_KEY = `odontogram_data_${patientId}`;
         try {
-            const raw = localStorage.getItem(STORAGE_KEY);
-            if (!raw) return;
+            const response = await odontogramService.getOdontogramByPatientId(patientId);
+            const odontogram = response.data;
 
-            const parsed = JSON.parse(raw);
+            if (!odontogram) return;
 
-            if (parsed.brackets && typeof parsed.brackets === 'object') {
-                setBrackets(parsed.brackets);
+            // Mapear datos globales
+            let global = odontogram.global_data || {};
+            if (typeof global === 'string') {
+                try { global = JSON.parse(global); } catch (e) { global = {}; }
             }
-            if (parsed.tads && typeof parsed.tads === 'object') {
-                setTads(parsed.tads);
+
+            // Mapear detalles por diente
+            const newToothStates = {};
+            const newBrackets = {};
+
+            if (odontogram.details && Array.isArray(odontogram.details)) {
+                odontogram.details.forEach(detail => {
+                    const tid = detail.tooth_id;
+
+                    let status = detail.status || {};
+                    if (typeof status === 'string') {
+                        try { status = JSON.parse(status); } catch (e) { status = {}; }
+                    }
+
+                    if (status.toothState) newToothStates[tid] = status.toothState;
+                    if (status.brackets) newBrackets[tid] = status.brackets;
+                });
             }
-            if (parsed.toothStates && typeof parsed.toothStates === 'object') {
-                setToothStates(parsed.toothStates);
-            }
+
+            if (Object.keys(newBrackets).length > 0) setBrackets(newBrackets);
+            if (global.tads && typeof global.tads === 'object') setTads(global.tads);
+            if (Object.keys(newToothStates).length > 0) setToothStates(newToothStates);
+
         } catch (err) {
-            console.error('[ElasticsSection] Error al cargar datos del odontograma desde localStorage:', err);
+            console.error('[ElasticsSection] Error al cargar datos del odontograma desde backend:', err);
         }
     }, [patientId]);
 
@@ -860,7 +884,12 @@ export default function ElasticsSection() {
 
                 {/* List of Instructions */}
                 <div className="mt-4 space-y-3">
-                    {instructions.length === 0 ? (
+                    {isInstructionsLoading ? (
+                        <div className="flex flex-col items-center justify-center py-12">
+                            <Loader2 className="w-8 h-8 text-primary animate-spin mb-3" />
+                            <p className="text-sm text-slate-500">Cargando historial...</p>
+                        </div>
+                    ) : instructions.length === 0 ? (
                         <div className="text-center py-8 border border-dashed border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50/50 dark:bg-slate-800/30">
                             <p className="text-sm text-slate-400 dark:text-slate-500 italic">
                                 No se han registrado instrucciones de elásticos aún.
@@ -912,6 +941,24 @@ export default function ElasticsSection() {
                                                 <span>{instruction.hours}</span>
                                             </div>
                                         </div>
+                                    </div>
+
+                                    {/* Right Actions */}
+                                    <div className="flex items-center gap-2">
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setInstructionToDelete(instruction.id);
+                                            }}
+                                            className="
+                                                p-2 rounded-lg
+                                                text-slate-400 hover:text-red-600
+                                                hover:bg-red-50 dark:hover:bg-red-900/20
+                                                transition-all opacity-0 group-hover:opacity-100
+                                            "
+                                        >
+                                            <Trash2 size={16} />
+                                        </button>
                                     </div>
                                 </div>
                             ))}
@@ -1451,6 +1498,20 @@ export default function ElasticsSection() {
                 confirmVariant="error"
                 onConfirm={executeClear}
                 onCancel={() => setShowConfirmClear(false)}
+            />
+
+            <ConfirmDialog
+                open={!!instructionToDelete}
+                title="¿Eliminar instrucción?"
+                message="Esta acción no se puede deshacer. La instrucción se eliminará permanentemente de la base de datos."
+                confirmLabel="Eliminar permanentemente"
+                cancelLabel="Cancelar"
+                confirmVariant="error"
+                onConfirm={async () => {
+                    await deleteInstruction(instructionToDelete);
+                    setInstructionToDelete(null);
+                }}
+                onCancel={() => setInstructionToDelete(null)}
             />
         </div>
     );

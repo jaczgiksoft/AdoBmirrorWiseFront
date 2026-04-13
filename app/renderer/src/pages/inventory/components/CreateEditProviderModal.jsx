@@ -4,11 +4,11 @@ import { X } from "lucide-react";
 
 export default function CreateEditProviderModal({ provider, onClose, onSave }) {
     const isEdit = !!provider;
-    
+
     const [formData, setFormData] = useState({
         name: "",
         email: "",
-        contactName: "",
+        contact_name: "",
         rfc: "",
         phone: "",
         notes: ""
@@ -19,7 +19,7 @@ export default function CreateEditProviderModal({ provider, onClose, onSave }) {
             setFormData({
                 name: provider.name || "",
                 email: provider.email || "",
-                contactName: provider.contactName || "",
+                contact_name: provider.contactName || provider.contact_name || "",
                 rfc: provider.rfc || "",
                 phone: provider.phone || "",
                 notes: provider.notes || ""
@@ -29,9 +29,9 @@ export default function CreateEditProviderModal({ provider, onClose, onSave }) {
 
     const handleChange = (e) => {
         const { name, value } = e.target;
-        setFormData(prev => ({ 
-            ...prev, 
-            [name]: value 
+        setFormData(prev => ({
+            ...prev,
+            [name]: value
         }));
     };
 
@@ -56,11 +56,11 @@ export default function CreateEditProviderModal({ provider, onClose, onSave }) {
                     <form id="provider-form" onSubmit={handleSubmit} className="space-y-4">
                         <div>
                             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Nombre del Proveedor <span className="text-red-500">*</span></label>
-                            <input 
-                                required 
-                                name="name" 
-                                value={formData.name} 
-                                onChange={handleChange} 
+                            <input
+                                required
+                                name="name"
+                                value={formData.name}
+                                onChange={handleChange}
                                 className="w-full px-4 py-2 bg-slate-50 dark:bg-secondary rounded-lg border border-slate-300 dark:border-slate-700 outline-none focus:ring-2 focus:ring-cyan-500 text-slate-900 dark:text-white"
                             />
                         </div>
@@ -68,19 +68,19 @@ export default function CreateEditProviderModal({ provider, onClose, onSave }) {
                         <div className="grid grid-cols-2 gap-4">
                             <div>
                                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Nombre del Contacto</label>
-                                <input 
-                                    name="contactName" 
-                                    value={formData.contactName} 
-                                    onChange={handleChange} 
+                                <input
+                                    name="contact_name"
+                                    value={formData.contact_name}
+                                    onChange={handleChange}
                                     className="w-full px-4 py-2 bg-slate-50 dark:bg-secondary rounded-lg border border-slate-300 dark:border-slate-700 outline-none focus:ring-2 focus:ring-cyan-500 text-slate-900 dark:text-white"
                                 />
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">RFC</label>
-                                <input 
-                                    name="rfc" 
-                                    value={formData.rfc} 
-                                    onChange={handleChange} 
+                                <input
+                                    name="rfc"
+                                    value={formData.rfc}
+                                    onChange={handleChange}
                                     className="w-full px-4 py-2 bg-slate-50 dark:bg-secondary rounded-lg border border-slate-300 dark:border-slate-700 outline-none focus:ring-2 focus:ring-cyan-500 text-slate-900 dark:text-white"
                                 />
                             </div>
@@ -89,32 +89,32 @@ export default function CreateEditProviderModal({ provider, onClose, onSave }) {
                         <div className="grid grid-cols-2 gap-4">
                             <div>
                                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Correo Electrónico</label>
-                                <input 
+                                <input
                                     type="email"
-                                    name="email" 
-                                    value={formData.email} 
-                                    onChange={handleChange} 
+                                    name="email"
+                                    value={formData.email}
+                                    onChange={handleChange}
                                     className="w-full px-4 py-2 bg-slate-50 dark:bg-secondary rounded-lg border border-slate-300 dark:border-slate-700 outline-none focus:ring-2 focus:ring-cyan-500 text-slate-900 dark:text-white"
                                 />
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Teléfono</label>
-                                <input 
-                                    name="phone" 
-                                    value={formData.phone} 
-                                    onChange={handleChange} 
+                                <input
+                                    name="phone"
+                                    value={formData.phone}
+                                    onChange={handleChange}
                                     className="w-full px-4 py-2 bg-slate-50 dark:bg-secondary rounded-lg border border-slate-300 dark:border-slate-700 outline-none focus:ring-2 focus:ring-cyan-500 text-slate-900 dark:text-white"
                                 />
                             </div>
                         </div>
-                        
+
                         <div>
                             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Notas</label>
-                            <textarea 
-                                name="notes" 
+                            <textarea
+                                name="notes"
                                 rows={2}
-                                value={formData.notes} 
-                                onChange={handleChange} 
+                                value={formData.notes}
+                                onChange={handleChange}
                                 className="w-full px-4 py-2 bg-slate-50 dark:bg-secondary rounded-lg border border-slate-300 dark:border-slate-700 outline-none focus:ring-2 focus:ring-cyan-500 text-slate-900 dark:text-white"
                             />
                         </div>
@@ -125,8 +125,8 @@ export default function CreateEditProviderModal({ provider, onClose, onSave }) {
                     <button type="button" onClick={onClose} className="px-5 py-2.5 rounded-lg font-medium text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-700 hover:bg-white dark:hover:bg-slate-800 transition">
                         Cancelar
                     </button>
-                    <button 
-                        type="submit" 
+                    <button
+                        type="submit"
                         form="provider-form"
                         className="px-6 py-2.5 rounded-lg font-bold bg-cyan-600 hover:bg-cyan-700 text-white shadow-lg shadow-cyan-600/20 transition hover:shadow-cyan-600/40"
                     >

@@ -1,5 +1,8 @@
-import React, { useState, useMemo, useContext } from 'react';
+import React, { useState, useMemo, useContext, useEffect } from 'react';
+import { useParams } from 'react-router-dom';
 import { PatientLayoutContext } from '../PatientDetailLayout';
+import patientGalleryService from '@/services/patientGallery.service';
+import { API_BASE } from '@/utils/apiBase';
 import {
     Folder,
     CheckCircle2,
@@ -13,55 +16,69 @@ import {
 import GalleryViewer from './components/GalleryViewer';
 
 export default function GallerySection() {
-    const { openViewer, openCreator } = useContext(PatientLayoutContext);
+    const { openViewer, openCreator, refreshTrigger } = useContext(PatientLayoutContext);
+    const { id: patientId } = useParams();
 
-    // --- MOCK DATA ---
-    const [collections] = useState([
-        {
-            id: 1,
-            name: "Start of Treatment",
-            createdAt: "2025-01-10T14:22:00Z",
-            updatedAt: "2025-01-10T14:22:00Z",
-            photos: {
-                facial_front: "https://picsum.photos/400/800?random=11",
-                facial_smiling: "https://picsum.photos/400/800?random=12",
-                facial_profile: "https://picsum.photos/400/800?random=13",
-                occlusal_upper: "https://picsum.photos/400/800?random=14",
-                occlusal_lower: "https://picsum.photos/400/800?random=15",
-                intraoral_left: "https://picsum.photos/400/800?random=16",
-                intraoral_center: "https://picsum.photos/400/800?random=17",
-                intraoral_right: "https://picsum.photos/400/800?random=18",
-                x_rays: [
-                    "https://placehold.co/400x400@3x.png",
-                    "https://placehold.co/400x400@3x.png",
-                    "https://picsum.photos/400?random=23",
-                    "https://picsum.photos/400?random=24",
-                    "https://picsum.photos/400?random=25",
-                ]
-            }
-        },
-        {
-            id: 2,
-            name: "Final Results",
-            createdAt: "2025-02-01T09:10:00Z",
-            updatedAt: "2025-02-05T11:30:00Z",
-            photos: {
-                facial_front: "https://picsum.photos/400/800?random=31",
-                facial_smiling: "https://picsum.photos/400/800?random=32",
-                facial_profile: "https://picsum.photos/400/800?random=33",
-                occlusal_upper: "https://picsum.photos/400/800?random=34",
-                occlusal_lower: "https://picsum.photos/400/800?random=35",
-                intraoral_left: "https://picsum.photos/400/800?random=36",
-                intraoral_center: "https://picsum.photos/400/800?random=37",
-                intraoral_right: "https://picsum.photos/400/800?random=38",
-                x_rays: [] // optional
-            }
-        }
-    ]);
+    // --- STATE ---
+    const [collections, setCollections] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+
 
     // --- STATE ---
     const [searchQuery, setSearchQuery] = useState('');
     const [sortBy, setSortBy] = useState('created_desc'); // created_desc, created_asc, updated_desc, updated_asc
+
+    // --- DATA FETCHING ---
+    const loadGallery = async () => {
+        try {
+            setLoading(true);
+            const data = await patientGalleryService.getFolders(patientId);
+
+            // Mapeamos los datos del backend al formato que espera el componente
+            const mappedCollections = data.map(folder => {
+                const photoMap = {};
+                const x_rays = [];
+
+                folder.images.forEach(img => {
+                    const fullUrl = `${API_BASE}/${img.file_path}`;
+                    // Intentamos recuperar la llave original basada en el file_name (que guardamos como slot_name)
+                    // Si el nombre contiene una de las llaves obligatorias
+                    const slotKey = MANDATORY_KEYS.find(k => img.file_name.includes(k));
+
+                    if (slotKey) {
+                        photoMap[slotKey] = fullUrl;
+                    } else {
+                        x_rays.push(fullUrl);
+                    }
+                });
+
+                return {
+                    id: folder.id,
+                    name: folder.name,
+                    createdAt: folder.createdAt,
+                    updatedAt: folder.updatedAt,
+                    photos: { ...photoMap, x_rays }
+                };
+            });
+
+
+
+            setCollections(mappedCollections);
+        } catch (err) {
+            console.error('Error cargando galería:', err);
+            setError('No se pudo cargar la galería fotográfica.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        if (patientId) {
+            loadGallery();
+        }
+    }, [patientId, refreshTrigger]);
+
 
     // --- HELPERS ---
     const MANDATORY_KEYS = [
@@ -155,12 +172,17 @@ export default function GallerySection() {
                 </div>
 
                 {/* --- GRID --- */}
-                {filteredCollections.length === 0 ? (
+                {loading ? (
+                    <div className="flex flex-col items-center justify-center py-20 animate-pulse">
+                        <Folder size={48} className="text-slate-200 dark:text-slate-700 mb-4" />
+                        <p className="text-slate-400 text-sm">Cargando colecciones...</p>
+                    </div>
+                ) : filteredCollections.length === 0 ? (
                     <div className="text-center py-12 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl">
                         <p className="text-slate-400">No se encontraron colecciones.</p>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-3 gap-4">
                         {filteredCollections.map(collection => {
                             const isComplete = checkCompleteness(collection.photos);
                             const totalImages = 8 + (collection.photos.x_rays?.length || 0);

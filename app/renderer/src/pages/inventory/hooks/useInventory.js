@@ -1,136 +1,191 @@
 import { useState, useEffect } from "react";
+import * as inventoryService from "../../../services/inventory.service";
 import { 
-    INITIAL_INVENTORY_DATA, 
     INVENTORY_CATEGORIES, 
     UNIT_TYPES, 
-    MOVEMENT_TYPES, 
-    INITIAL_MOVEMENTS_DATA,
-    INITIAL_PROVIDERS_DATA
+    MOVEMENT_TYPES 
 } from "../services/mockInventoryData";
-
-const STORAGE_KEY = "bwise_inventory_data";
-const MOVEMENTS_STORAGE_KEY = "bwise_inventory_movements";
-const PROVIDERS_STORAGE_KEY = "bwise_inventory_providers";
+import { useToastStore } from "@/store/useToastStore";
 
 export function useInventory() {
-    const [items, setItems] = useState(() => {
-        const saved = localStorage.getItem(STORAGE_KEY);
-        try {
-            return saved ? JSON.parse(saved) : INITIAL_INVENTORY_DATA;
-        } catch (e) {
-            console.error("Error parsing inventory storage:", e);
-            return INITIAL_INVENTORY_DATA;
-        }
-    });
+    const [items, setItems] = useState([]);
+    const [movements, setMovements] = useState([]);
+    const [providers, setProviders] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const { addToast } = useToastStore();
 
-    const [movements, setMovements] = useState(() => {
-        const saved = localStorage.getItem(MOVEMENTS_STORAGE_KEY);
-        try {
-            return saved ? JSON.parse(saved) : INITIAL_MOVEMENTS_DATA;
-        } catch (e) {
-            console.error("Error parsing movements storage:", e);
-            return INITIAL_MOVEMENTS_DATA;
-        }
-    });
-
-    const [providers, setProviders] = useState(() => {
-        const saved = localStorage.getItem(PROVIDERS_STORAGE_KEY);
-        try {
-            return saved ? JSON.parse(saved) : INITIAL_PROVIDERS_DATA;
-        } catch (e) {
-            console.error("Error parsing providers storage:", e);
-            return INITIAL_PROVIDERS_DATA;
-        }
-    });
-
-    // Categories available
     const categories = INVENTORY_CATEGORIES;
 
-    // Persist changes to localStorage
-    useEffect(() => {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
-    }, [items]);
+    const fetchData = async () => {
+        setLoading(true);
+        try {
+            const [fetchedItems, fetchedMovements, fetchedProviders] = await Promise.all([
+                inventoryService.getItems(),
+                inventoryService.getMovements(),
+                inventoryService.getProviders()
+            ]);
+            
+            // Map API structure to Component structure to prevent huge refactoring
+            setItems(fetchedItems.map(item => ({
+                ...item,
+                quantity: item.current_stock,
+                lastUpdate: item.updated_at,
+                purchasePrice: parseFloat(item.purchase_price) || 0,
+                salePrice: parseFloat(item.sale_price) || 0,
+                lotNumber: item.lot_number || '',
+                expiryDate: item.expiry_date || ''
+            })));
+            
+            setMovements(fetchedMovements.map(mov => ({
+                ...mov,
+                itemName: mov.item?.name,
+                itemSku: mov.item?.sku,
+                providerName: mov.provider?.name,
+                unitPrice: parseFloat(mov.unit_price) || 0
+            })));
+
+            setProviders(fetchedProviders.map(prov => ({
+                ...prov,
+                contactName: prov.contact_name
+            })));
+
+        } catch (error) {
+            console.error("Error fetching inventory data:", error);
+            addToast({ type: "error", title: "Error", message: "Error al cargar los datos de inventario." });
+        } finally {
+            setLoading(false);
+        }
+    };
 
     useEffect(() => {
-        localStorage.setItem(MOVEMENTS_STORAGE_KEY, JSON.stringify(movements));
-    }, [movements]);
-
-    useEffect(() => {
-        localStorage.setItem(PROVIDERS_STORAGE_KEY, JSON.stringify(providers));
-    }, [providers]);
+        fetchData();
+    }, []);
 
     // Create a new item
-    const addItem = (newItem) => {
-        const id = Math.max(0, ...items.map(i => i.id)) + 1;
-        setItems(prev => [...prev, { ...newItem, id, status: "active", lastUpdate: new Date().toISOString() }]);
+    const addItem = async (newItem) => {
+        try {
+            const formData = new FormData();
+            
+            // Backend fields mapping
+            formData.append('name', newItem.name);
+            formData.append('sku', newItem.sku || '');
+            formData.append('description', newItem.description || '');
+            formData.append('category', newItem.category || '');
+            formData.append('unit', newItem.unit || '');
+            formData.append('min_stock', newItem.min_stock || 0);
+            formData.append('current_stock', newItem.quantity || 0);
+            formData.append('purchase_price', newItem.purchasePrice || 0);
+            formData.append('sale_price', newItem.salePrice || 0);
+            formData.append('lot_number', newItem.lotNumber || '');
+            formData.append('expiry_date', newItem.expiryDate || '');
+            
+            if (newItem.image instanceof File) {
+                formData.append('image', newItem.image);
+            }
+
+            await inventoryService.createItem(formData);
+            addToast({ type: "success", title: "Éxito", message: "Artículo creado correctamente" });
+            fetchData();
+        } catch (error) {
+            console.error(error);
+            addToast({ type: "error", title: "Error", message: error.response?.data?.message || "Error al crear artículo" });
+        }
     };
 
     // Update an existing item
-    const updateItem = (id, updatedData) => {
-        setItems(prev => prev.map(item => 
-            item.id === id ? { ...item, ...updatedData, lastUpdate: new Date().toISOString() } : item
-        ));
+    const updateItem = async (id, updatedData) => {
+        try {
+            const formData = new FormData();
+            
+            formData.append('name', updatedData.name);
+            formData.append('sku', updatedData.sku || '');
+            formData.append('description', updatedData.description || '');
+            formData.append('category', updatedData.category || '');
+            formData.append('unit', updatedData.unit || '');
+            formData.append('min_stock', updatedData.min_stock || 0);
+            formData.append('current_stock', updatedData.quantity || 0);
+            formData.append('purchase_price', updatedData.purchasePrice || 0);
+            formData.append('sale_price', updatedData.salePrice || 0);
+            formData.append('lot_number', updatedData.lotNumber || '');
+            formData.append('expiry_date', updatedData.expiryDate || '');
+            
+            if (updatedData.image instanceof File) {
+                formData.append('image', updatedData.image);
+            }
+
+            await inventoryService.updateItem(id, formData);
+            addToast({ type: "success", title: "Éxito", message: "Artículo actualizado correctamente" });
+            fetchData();
+        } catch (error) {
+            console.error(error);
+            addToast({ type: "error", title: "Error", message: error.response?.data?.message || "Error al actualizar artículo" });
+        }
     };
 
-    // Explicit function to modify only stock
-    const adjustStock = (id, amount, reason, reference, providerId, unitCost) => {
-        const now = new Date().toISOString();
-        
-        // Find provider name
-        const selectedProvider = providers.find(p => String(p.id) === String(providerId));
-        
-        setItems(prev => prev.map(item => {
-            if (item.id === id) {
-                // Register movement
-                const newMovement = {
-                    id: Math.random().toString(36).substr(2, 9),
-                    itemId: item.id,
-                    itemName: item.name,
-                    itemSku: item.sku,
-                    itemImage: item.image,
-                    type: reason, // Tipo de movimiento (Entrada, Salida, etc.)
-                    quantity: amount,
-                    unitPrice: unitCost !== undefined ? unitCost : (item.purchasePrice || 0),
-                    reference: reference || "",
-                    providerId: providerId || null,
-                    providerName: selectedProvider ? selectedProvider.name : null,
-                    date: now
-                };
-                
-                setMovements(prevMoves => [newMovement, ...prevMoves]);
-                
-                return { 
-                    ...item, 
-                    quantity: item.quantity + Number(amount),
-                    lastUpdate: now,
-                    // If it's an entry and we have a new cost, update the current purchasePrice
-                    ...(reason === "Entrada" && unitCost !== undefined && { purchasePrice: unitCost }),
-                    ...(reason === "Entrada" && providerId && { providerId })
-                };
-            }
-            return item;
-        }));
+    // Explicit function to modify stock
+    const adjustStock = async (id, amount, reason, reference, providerId, unitCost) => {
+        try {
+            const movementData = {
+                item_id: id,
+                type: reason, // "Entrada", "Salida", "Ajuste", etc.
+                quantity: amount,
+                reference: reference || "",
+                provider_id: providerId || null,
+                unit_price: unitCost !== undefined ? unitCost : null
+            };
+            await inventoryService.createMovement(movementData);
+            addToast({ type: "success", title: "Éxito", message: "Stock ajustado correctamente" });
+            fetchData(); // Refresh everything to get new stock and new movement log
+        } catch (error) {
+            console.error(error);
+            addToast({ type: "error", title: "Error", message: error.response?.data?.message || "Error al ajustar stock" });
+        }
     };
 
     // Delete item
-    const deleteItem = (id) => {
-        setItems(prev => prev.filter(item => item.id !== id));
+    const deleteItem = async (id) => {
+        try {
+            await inventoryService.deleteItem(id);
+            addToast({ type: "success", title: "Éxito", message: "Artículo eliminado" });
+            fetchData();
+        } catch (error) {
+            console.error(error);
+            addToast({ type: "error", title: "Error", message: error.response?.data?.message || "Error al eliminar artículo" });
+        }
     };
 
     // --- Providers Actions ---
-    const addProvider = (newProvider) => {
-        const id = Math.max(0, ...providers.map(p => p.id)) + 1;
-        setProviders(prev => [...prev, { ...newProvider, id }]);
+    const addProvider = async (newProvider) => {
+        try {
+            await inventoryService.createProvider(newProvider);
+            addToast({ type: "success", title: "Éxito", message: "Proveedor creado" });
+            fetchData();
+        } catch (error) {
+            console.error(error);
+            addToast({ type: "error", title: "Error", message: error.response?.data?.message || "Error al crear proveedor" });
+        }
     };
 
-    const updateProvider = (id, updatedData) => {
-        setProviders(prev => prev.map(provider => 
-            provider.id === id ? { ...provider, ...updatedData } : provider
-        ));
+    const updateProvider = async (id, updatedData) => {
+        try {
+            await inventoryService.updateProvider(id, updatedData);
+            addToast({ type: "success", title: "Éxito", message: "Proveedor actualizado" });
+            fetchData();
+        } catch (error) {
+            console.error(error);
+            addToast({ type: "error", title: "Error", message: error.response?.data?.message || "Error al actualizar proveedor" });
+        }
     };
 
-    const deleteProvider = (id) => {
-        setProviders(prev => prev.filter(provider => provider.id !== id));
+    const deleteProvider = async (id) => {
+        try {
+            await inventoryService.deleteProvider(id);
+            addToast({ type: "success", title: "Éxito", message: "Proveedor eliminado" });
+            fetchData();
+        } catch (error) {
+            console.error(error);
+            addToast({ type: "error", title: "Error", message: error.response?.data?.message || "Error al eliminar proveedor" });
+        }
     };
 
     return {
@@ -139,6 +194,7 @@ export function useInventory() {
         categories,
         unitTypes: UNIT_TYPES,
         movementTypes: MOVEMENT_TYPES,
+        loading,
         addItem,
         updateItem,
         adjustStock,
@@ -146,6 +202,7 @@ export function useInventory() {
         providers,
         addProvider,
         updateProvider,
-        deleteProvider
+        deleteProvider,
+        refresh: fetchData
     };
 }

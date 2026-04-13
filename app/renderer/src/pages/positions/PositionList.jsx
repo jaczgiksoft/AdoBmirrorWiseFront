@@ -1,26 +1,18 @@
-import { useRef, useEffect, useState } from "react";
+import { useRef, useEffect, useState, useCallback } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { useHotkeys } from "@/hooks/useHotkeys";
 import { useToastStore } from "@/store/useToastStore";
 import { ConfirmDialog } from "@/components/feedback";
 import PositionForm from "./PositionForm";
-import { PlusCircle, Search, UserCog, Edit2, Trash2, ChevronLeft } from "lucide-react";
+import { PlusCircle, Search, UserCog, Edit2, Trash2, ChevronLeft, Loader2 } from "lucide-react";
 import { Pagination } from "@/components/ui";
-
-const STORAGE_KEY = "bwise_positions_mock_data";
-
-const DEFAULT_POSITIONS = [
-    { id: 1, name: "Odontólogo General", description: "Atención primaria, diagnósticos y tratamientos básicos.", color: "#6366f1" },
-    { id: 2, name: "Asistente Dental", description: "Apoyo en clínica, esterilización y preparación de gabinete.", color: "#3b82f6" },
-    { id: 3, name: "Recepcionista", description: "Gestión de agenda, atención al paciente y cobros.", color: "#10b981" },
-    { id: 4, name: "Especialista Ortodoncia", description: "Tratamientos especializados de alineación dental.", color: "#8b5cf6" },
-    { id: 5, name: "Administrador", description: "Gestión de recursos, personal y finanzas de la clínica.", color: "#f59e0b" }
-];
+import { getPositions, deletePosition } from "@/services/position.service";
 
 export default function PositionList() {
     const navigate = useNavigate();
     const [items, setItems] = useState([]);
+    const [loading, setLoading] = useState(true);
     const [selectedIndex, setSelectedIndex] = useState(0);
     const [searchTerm, setSearchTerm] = useState("");
     const [page, setPage] = useState(1);
@@ -35,22 +27,33 @@ export default function PositionList() {
     const searchRef = useRef(null);
     const { addToast } = useToastStore();
 
-    // 🔹 Cargar datos desde localStorage
-    useEffect(() => {
-        const stored = localStorage.getItem(STORAGE_KEY);
-        if (stored) {
-            setItems(JSON.parse(stored));
-        } else {
-            setItems(DEFAULT_POSITIONS);
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_POSITIONS));
+    // 🔹 Cargar datos desde la API
+    const fetchPositions = useCallback(async () => {
+        setLoading(true);
+        try {
+            const data = await getPositions();
+            setItems(data || []);
+        } catch (err) {
+            console.error("❌ Error al cargar puestos:", err);
+            addToast({
+                type: "error",
+                title: "Error de conexión",
+                message: "No se pudieron obtener los puestos de trabajo.",
+            });
+        } finally {
+            setLoading(false);
         }
+    }, [addToast]);
+
+    useEffect(() => {
+        fetchPositions();
         document.title = "Puestos de Trabajo | BWISE Dental";
-    }, []);
+    }, [fetchPositions]);
 
     // 🔹 Filtrado y Paginación
     const filteredItems = items.filter(pos =>
         pos.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        pos.description.toLowerCase().includes(searchTerm.toLowerCase())
+        (pos.description && pos.description.toLowerCase().includes(searchTerm.toLowerCase()))
     );
 
     const totalPages = Math.ceil(filteredItems.length / limit) || 1;
@@ -117,32 +120,34 @@ export default function PositionList() {
         setConfirmOpen(true);
     };
 
-    const handleConfirmDelete = () => {
+    const handleConfirmDelete = async () => {
         if (!itemToDelete) return;
-        const newItems = items.filter(i => i.id !== itemToDelete.id);
-        setItems(newItems);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(newItems));
 
-        setConfirmOpen(false);
-        setItemToDelete(null);
+        try {
+            await deletePosition(itemToDelete.id);
+            setItems(prev => prev.filter(i => i.id !== itemToDelete.id));
 
-        addToast({
-            type: "success",
-            title: "Puesto eliminado",
-            message: `El puesto "${itemToDelete.name}" fue eliminado correctamente.`,
-        });
+            setConfirmOpen(false);
+            setItemToDelete(null);
+
+            addToast({
+                type: "success",
+                title: "Puesto eliminado",
+                message: `El puesto "${itemToDelete.name}" fue eliminado correctamente.`,
+            });
+        } catch (err) {
+            console.error("❌ Error al eliminar puesto:", err);
+            addToast({
+                type: "error",
+                title: "Error al eliminar",
+                message: err.message || "No se pudo eliminar el puesto.",
+            });
+        }
     };
 
     const handleFormSaved = (savedItem) => {
-        let newItems;
-        if (itemToEdit) {
-            newItems = items.map(i => i.id === savedItem.id ? savedItem : i);
-        } else {
-            newItems = [...items, savedItem];
-        }
-
-        setItems(newItems);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(newItems));
+        // Refrescamos la lista completa para asegurar consistencia con el backend
+        fetchPositions();
         setShowForm(false);
     };
 
@@ -199,7 +204,12 @@ export default function PositionList() {
                 </div>
 
                 {/* 📋 Tabla (Lista de Tarjetas) */}
-                {paginatedItems.length === 0 ? (
+                {loading ? (
+                    <div className="flex flex-col items-center justify-center py-20 bg-white dark:bg-secondary/30 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                        <Loader2 className="animate-spin text-primary mb-4" size={40} />
+                        <p className="text-slate-500 dark:text-slate-400 font-medium">Cargando puestos de trabajo...</p>
+                    </div>
+                ) : paginatedItems.length === 0 ? (
                     <div className="text-center py-20 bg-white dark:bg-secondary/30 rounded-2xl border border-dashed border-slate-300 dark:border-slate-700">
                         <UserCog className="mx-auto text-slate-300 dark:text-slate-600 mb-4" size={56} />
                         <p className="text-slate-500 dark:text-slate-400 font-medium">No se encontraron puestos de trabajo.</p>

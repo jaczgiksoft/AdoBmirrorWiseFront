@@ -11,6 +11,8 @@ import SingleTooth from '@/components/ExtractionOrders/SingleTooth';
 import ConfirmDialog from '@/components/feedback/ConfirmDialog';
 import { Menu, MenuItem, SubMenu } from '@spaceymonk/react-radial-menu';
 import VoiceSettingsModal from './VoiceSettingsModal';
+import * as odontogramService from '@/services/odontogram.service';
+import { useToastStore } from '@/store/useToastStore';
 
 // ==========================================
 // 1. Asset Loading & Helpers
@@ -810,6 +812,8 @@ function Tooth({ id, type, hasBracket, isBroken, repairCount = 0, isSelectedBrac
                             e.stopPropagation();
                             onNoteClick(id);
                         }}
+                        onPointerDown={(e) => e.stopPropagation()}
+                        onPointerUp={(e) => e.stopPropagation()}
                         className={`
                             absolute right-[-4px] z-50 p-1 rounded-full bg-white dark:bg-slate-800 shadow-sm border border-slate-200 dark:border-slate-700
                             transition-all duration-200 transform hover:scale-110
@@ -1819,7 +1823,8 @@ function ActionPanel({
     isPeriodontalMode, setPeriodontalMode,
     onApplyAll, selectedToothType, setSelectedToothType, onReset,
     onOpenVoiceSettings, hasVoiceSupport,
-    onSaveToElastics, savedToElastics
+    onSaveToElastics, savedToElastics,
+    isLoading
 }) {
     const [hoveredAction, setHoveredAction] = useState(null);
 
@@ -1886,15 +1891,23 @@ function ActionPanel({
                 <div className="relative">
                     <button
                         type="button"
+                        disabled={isLoading}
                         onClick={onSaveToElastics}
                         onMouseEnter={() => setHoveredAction('save')}
                         onMouseLeave={() => setHoveredAction(null)}
                         className="btn btn-sm md:btn-md bg-white dark:bg-slate-700 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-700 shadow-sm transition-colors whitespace-nowrap flex items-center gap-2"
                     >
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
-                        </svg>
-                        Guardar Odontograma
+                        {isLoading ? (
+                            <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                            </svg>
+                        ) : (
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                            </svg>
+                        )}
+                        {isLoading ? 'Guardando...' : 'Guardar Odontograma'}
                     </button>
                     {/* Feedback de guardado exitoso */}
                     {savedToElastics && (
@@ -1967,6 +1980,8 @@ function ActionPanel({
 export default function OdontogramSection() {
     // Obtener ID del paciente actual para aislar los datos en localStorage
     const { id: patientId } = useParams();
+    const { addToast } = useToastStore();
+    const [isLoading, setIsLoading] = useState(false);
 
     // Initial State: All teeth are 'original'
     const [toothStates, setToothStates] = useState(buildInitialToothStates);
@@ -2169,67 +2184,111 @@ export default function OdontogramSection() {
     const isInitialLoad = useRef(true);
 
     // ==========================================
-    // Carga inicial del estado persistido (localStorage)
+    // Carga inicial del estado persistido (Backend)
     // ==========================================
     useEffect(() => {
-        if (!patientId) return;
-        const STORAGE_KEY = `odontogram_data_${patientId}`;
-        try {
-            const raw = localStorage.getItem(STORAGE_KEY);
-            if (!raw) {
-                isInitialLoad.current = false;
-                return;
-            }
+        const loadOdontogram = async () => {
+            if (!patientId) return;
+            setIsLoading(true);
+            try {
+                const response = await odontogramService.getOdontogramByPatientId(patientId);
+                const odontogram = response.data;
 
-            const parsed = JSON.parse(raw);
-            isUndoRedoAction.current = true; // Evitar que el historial guarde este paso inicial
-            isInitialLoad.current = true;
+                isUndoRedoAction.current = true;
+                isInitialLoad.current = true;
 
-            // Actualizar todos los estados clínicos
-            if (parsed.toothStates) setToothStates(parsed.toothStates);
+                if (!odontogram) {
+                    // Si no hay odontodrama guardado, inicializamos con los valores por defecto
+                    setToothStates(buildInitialToothStates());
+                    setBrackets({});
+                    setBracketWires({});
+                    setTads({});
+                    setTadWires({});
+                    setSurfaceStates({});
+                    setPeriodontalData({});
+                    setToothNotes({});
+                } else {
+                    // Mapear datos globales
+                    let global = odontogram.global_data || {};
+                    if (typeof global === 'string') {
+                        try { global = JSON.parse(global); } catch (e) { global = {}; }
+                    }
 
-            // Migración de brackets (boolean -> object)
-            let finalBrackets = parsed.brackets || {};
-            let migrationNeeded = false;
-            Object.keys(finalBrackets).forEach(id => {
-                if (typeof finalBrackets[id] === 'boolean') {
-                    finalBrackets[id] = { isBroken: false, repairCount: 0 };
-                    migrationNeeded = true;
+                    setBracketWires(global.bracketWires || {});
+                    setTads(global.tads || {});
+                    setTadWires(global.tadWires || {});
+
+                    // Mapear detalles por diente
+                    const newToothStates = buildInitialToothStates();
+                    const newBrackets = {};
+                    const newSurfaceStates = {};
+                    const newPeriodontalData = {};
+                    const newToothNotes = {};
+
+                    if (odontogram.details && Array.isArray(odontogram.details)) {
+                        odontogram.details.forEach(detail => {
+                            const tid = detail.tooth_id;
+                            
+                            let status = detail.status || {};
+                            if (typeof status === 'string') {
+                                try { status = JSON.parse(status); } catch (e) { status = {}; }
+                            }
+
+                            let caras = detail.caras || null;
+                            if (typeof caras === 'string') {
+                                try { caras = JSON.parse(caras); } catch (e) { caras = null; }
+                            }
+
+                            if (status.toothState) newToothStates[tid] = status.toothState;
+                            if (status.brackets) newBrackets[tid] = status.brackets;
+                            if (status.periodontalData) newPeriodontalData[tid] = status.periodontalData;
+                            if (status.toothNote) newToothNotes[tid] = status.toothNote;
+                            if (caras) newSurfaceStates[tid] = caras;
+                        });
+                    }
+
+                    setToothStates(newToothStates);
+                    setBrackets(newBrackets);
+                    setSurfaceStates(newSurfaceStates);
+                    setPeriodontalData(newPeriodontalData);
+                    setToothNotes(newToothNotes);
+
+                    // Sincronizar historial con los datos cargados
+                    setHistoryState({
+                        past: [],
+                        present: {
+                            toothStates: newToothStates,
+                            brackets: newBrackets,
+                            bracketWires: global.bracketWires || {},
+                            tads: global.tads || {},
+                            tadWires: global.tadWires || {},
+                            surfaceStates: newSurfaceStates,
+                            periodontalData: newPeriodontalData,
+                            toothNotes: newToothNotes
+                        },
+                        future: []
+                    });
                 }
-            });
-            setBrackets(finalBrackets);
 
-            if (parsed.bracketWires) setBracketWires(parsed.bracketWires);
-            if (parsed.tads) setTads(parsed.tads);
-            if (parsed.tadWires) setTadWires(parsed.tadWires);
-            if (parsed.surfaceStates) setSurfaceStates(parsed.surfaceStates);
-            if (parsed.periodontalData) setPeriodontalData(parsed.periodontalData);
-            if (parsed.toothNotes) setToothNotes(parsed.toothNotes);
+                setTimeout(() => {
 
-            // Sincronizar historial con los datos cargados
-            setHistoryState({
-                past: [],
-                present: {
-                    toothStates: parsed.toothStates || buildInitialToothStates(),
-                    brackets: finalBrackets,
-                    bracketWires: parsed.bracketWires || {},
-                    tads: parsed.tads || {},
-                    tadWires: parsed.tadWires || {},
-                    surfaceStates: parsed.surfaceStates || {},
-                    periodontalData: parsed.periodontalData || {},
-                    toothNotes: parsed.toothNotes || {}
-                },
-                future: []
-            });
+                    isInitialLoad.current = false;
+                }, 100);
 
-            setTimeout(() => {
+            } catch (err) {
+                console.error('[OdontogramSection] Error al cargar datos del backend:', err);
+                addToast({
+                    type: 'error',
+                    title: 'Error',
+                    message: 'No se pudo cargar el odontograma desde el servidor.'
+                });
                 isInitialLoad.current = false;
-            }, 100);
+            } finally {
+                setIsLoading(false);
+            }
+        };
 
-        } catch (err) {
-            console.error('[OdontogramSection] Error al cargar datos persistidos:', err);
-            isInitialLoad.current = false;
-        }
+        loadOdontogram();
     }, [patientId]);
 
     useEffect(() => {
@@ -2305,30 +2364,44 @@ export default function OdontogramSection() {
     }, [handleUndo, handleRedo]);
 
     // ==========================================
-    // Guardar diseño del odontograma en localStorage para la sección de Elásticos
-    // La clave incluye el patientId para evitar cruce de datos entre pacientes
+    // Guardado persistente (Backend)
     // ==========================================
-    const STORAGE_KEY = patientId ? `odontogram_data_${patientId}` : 'odontogram_data_unknown';
+    const handleSaveOdontogram = useCallback(async () => {
+        if (!patientId) return;
 
-    const handleSaveToElastics = useCallback(() => {
+        setIsLoading(true);
         try {
-            // Guardamos el estado COMPLETO del odontograma
             const dataToSave = {
-                toothStates: historyState.present.toothStates,
-                brackets: historyState.present.brackets,
-                bracketWires: historyState.present.bracketWires,
-                tads: historyState.present.tads,
-                tadWires: historyState.present.tadWires,
-                surfaceStates: historyState.present.surfaceStates,
-                periodontalData: historyState.present.periodontalData,
-                toothNotes: historyState.present.toothNotes,
+                patientId: parseInt(patientId),
+                toothStates,
+                brackets,
+                bracketWires,
+                tads,
+                tadWires,
+                surfaceStates,
+                periodontalData,
+                toothNotes,
             };
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
+
+            await odontogramService.saveOdontogram(dataToSave);
+
             setSavedToElastics(true);
+            addToast({
+                type: 'success',
+                title: 'Guardado',
+                message: 'Odontograma guardado correctamente.'
+            });
         } catch (err) {
-            console.error('[OdontogramSection] Error al guardar en localStorage:', err);
+            console.error('[OdontogramSection] Error al guardar en servidor:', err);
+            addToast({
+                type: 'error',
+                title: 'Error',
+                message: 'No se pudo guardar el odontograma en el servidor.'
+            });
+        } finally {
+            setIsLoading(false);
         }
-    }, [STORAGE_KEY, historyState.present]);
+    }, [patientId, toothStates, brackets, bracketWires, tads, tadWires, surfaceStates, periodontalData, toothNotes, addToast]);
 
     // Limpiar el badge "¡Guardado!" después de 2.5 segundos
     useEffect(() => {
@@ -3981,7 +4054,7 @@ export default function OdontogramSection() {
                                 baseToothWidths={baseToothWidths}
                                 isUpper={true}
                                 hoveredPreviewType={hoveredPreviewType}
-                                toothNotes={historyState.present.toothNotes}
+                                toothNotes={toothNotes}
                                 onNoteClick={(id) => setActiveNoteTooth(id)}
                             />
 
@@ -4046,7 +4119,7 @@ export default function OdontogramSection() {
                                 baseToothWidths={baseToothWidths}
                                 isUpper={false}
                                 hoveredPreviewType={hoveredPreviewType}
-                                toothNotes={historyState.present.toothNotes}
+                                toothNotes={toothNotes}
                                 onNoteClick={(id) => setActiveNoteTooth(id)}
                             />
                         </div>
@@ -4085,8 +4158,9 @@ export default function OdontogramSection() {
                 }}
                 onOpenVoiceSettings={() => setIsVoiceModalOpen(true)}
                 hasVoiceSupport={hasVoiceSupport}
-                onSaveToElastics={handleSaveToElastics}
+                onSaveToElastics={handleSaveOdontogram}
                 savedToElastics={savedToElastics}
+                isLoading={isLoading}
             />
 
             <ClinicalActionModal

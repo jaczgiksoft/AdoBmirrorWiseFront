@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 
 // Centralized helpers for SVG generation
 import { getToothSrc, generateCombinedSvgDataUrl } from '@/pages/patients/PatientDetail/sections/components/toothSvgHelpers';
+import * as odontogramService from '@/services/odontogram.service';
 
 // Assets for brackets and TADs
 import bracketImg from '@/assets/images/odontogram/bracket.svg';
@@ -125,19 +126,45 @@ export default function FrontalOdontogram({ teethStatus, onStatusChange }) {
     const [globalBrackets, setGlobalBrackets] = useState({});
     const [globalTads, setGlobalTads] = useState({});
 
-    const loadGlobalOdontogram = useCallback(() => {
+    const loadGlobalOdontogram = useCallback(async () => {
         if (!patientId) return;
-        const STORAGE_KEY = `odontogram_data_${patientId}`;
         try {
-            const raw = localStorage.getItem(STORAGE_KEY);
-            if (!raw) return;
+            const response = await odontogramService.getOdontogramByPatientId(patientId);
+            const odontogram = response.data;
+            if (!odontogram) return;
 
-            const parsed = JSON.parse(raw);
-            if (parsed.brackets) setGlobalBrackets(parsed.brackets);
-            if (parsed.tads) setGlobalTads(parsed.tads);
-            if (parsed.toothStates) setGlobalToothStates(parsed.toothStates);
+            // Mapear datos globales
+            let global = odontogram.global_data || {};
+            if (typeof global === 'string') {
+                try { global = JSON.parse(global); } catch (e) { global = {}; }
+            }
+
+            if (global.brackets) setGlobalBrackets(global.brackets);
+            if (global.tads) setGlobalTads(global.tads);
+
+            // Mapear detalles por diente
+            const newToothStates = {};
+            const newBrackets = {};
+
+            if (odontogram.details && Array.isArray(odontogram.details)) {
+                odontogram.details.forEach(detail => {
+                    const tid = detail.tooth_id;
+                    let status = detail.status || {};
+                    if (typeof status === 'string') {
+                        try { status = JSON.parse(status); } catch (e) { status = {}; }
+                    }
+
+                    if (status.toothState) newToothStates[tid] = status.toothState;
+                    if (status.brackets) newBrackets[tid] = status.brackets;
+                });
+            }
+
+            // Sincronizar brackets (priorizar los del master si existen)
+            setGlobalBrackets(prev => ({ ...prev, ...newBrackets }));
+            setGlobalToothStates(newToothStates);
+
         } catch (err) {
-            console.error('[FrontalOdontogram] Error loading global data:', err);
+            console.error('[FrontalOdontogram] Error loading global data from backend:', err);
         }
     }, [patientId]);
 

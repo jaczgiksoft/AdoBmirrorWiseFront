@@ -14,19 +14,19 @@ export async function getUsers() {
     }
 }
 
-/**
+/** 
  * Obtener usuarios paginados (DataTable)
  */
 export async function getUsersPaginated({
-                                            start = 0,
-                                            length = 20,
-                                            searchValue = "",
-                                            orderColumn = "first_name",
-                                            orderDir = "ASC",
-                                            statusFilter = "",
-                                            role = "",
-                                            store = "",
-                                        } = {}) {
+    start = 0,
+    length = 20,
+    searchValue = "",
+    orderColumn = "first_name",
+    orderDir = "ASC",
+    statusFilter = "",
+    role = "",
+    store = "",
+} = {}) {
     try {
         const res = await api.post("/users/datatable", {
             start,

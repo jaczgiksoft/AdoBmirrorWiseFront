@@ -25,7 +25,7 @@ export default function AdjustStockModal({ item, movementTypes = [], providers =
             setReason(filteredOptions[0] || "");
         }
     }, [parsedAmount, filteredOptions, reason]);
-    
+
     const handleSubmit = (e) => {
         e.preventDefault();
         if (parsedAmount !== 0) {
@@ -86,11 +86,11 @@ export default function AdjustStockModal({ item, movementTypes = [], providers =
                                 <button type="button" onClick={() => handleQuickAdd(5)} className="px-2 py-0.5 bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 rounded text-xs font-medium text-slate-700 dark:text-slate-300 transition">+5</button>
                             </div>
                         </div>
-                        <input 
-                            type="text" 
-                            required 
+                        <input
+                            type="text"
+                            required
                             autoFocus
-                            value={amount} 
+                            value={amount}
                             onChange={(e) => {
                                 const val = e.target.value;
                                 if (/^-?\d*$/.test(val)) { // Validates empty, negative sign alone, or full number
@@ -111,10 +111,10 @@ export default function AdjustStockModal({ item, movementTypes = [], providers =
 
                     <div>
                         <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Motivo <span className="text-red-500">*</span></label>
-                        <select 
+                        <select
                             required
-                            value={reason} 
-                            onChange={(e) => setReason(e.target.value)} 
+                            value={reason}
+                            onChange={(e) => setReason(e.target.value)}
                             className="w-full px-4 py-2 bg-slate-50 dark:bg-secondary rounded-lg border border-slate-300 dark:border-slate-700 outline-none focus:ring-2 focus:ring-cyan-500 text-slate-900 dark:text-white"
                         >
                             {filteredOptions.map(type => (
@@ -129,21 +129,21 @@ export default function AdjustStockModal({ item, movementTypes = [], providers =
                                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Costo Unitario <span className="text-red-500">*</span></label>
                                 <div className="relative">
                                     <span className="absolute left-3 top-2 text-slate-500">$</span>
-                                    <input 
-                                        type="number" 
+                                    <input
+                                        type="number"
                                         step="0.01"
                                         required
-                                        value={unitCost} 
-                                        onChange={(e) => setUnitCost(e.target.value)} 
+                                        value={unitCost}
+                                        onChange={(e) => setUnitCost(e.target.value)}
                                         className="w-full pl-8 pr-4 py-2 bg-slate-50 dark:bg-secondary rounded-lg border border-slate-300 dark:border-slate-700 outline-none focus:ring-2 focus:ring-cyan-500 text-slate-900 dark:text-white"
                                     />
                                 </div>
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Proveedor (Opcional)</label>
-                                <select 
-                                    value={providerId} 
-                                    onChange={(e) => setProviderId(e.target.value)} 
+                                <select
+                                    value={providerId}
+                                    onChange={(e) => setProviderId(e.target.value)}
                                     className="w-full px-4 py-2 bg-slate-50 dark:bg-secondary rounded-lg border border-slate-300 dark:border-slate-700 outline-none focus:ring-2 focus:ring-cyan-500 text-slate-900 dark:text-white"
                                 >
                                     <option value="">-- Sin proveedor --</option>
@@ -157,18 +157,18 @@ export default function AdjustStockModal({ item, movementTypes = [], providers =
 
                     <div>
                         <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Referencia (Opcional)</label>
-                        <input 
-                            type="text" 
+                        <input
+                            type="text"
                             placeholder="Ej. Factura F-102, Lote dañado..."
-                            value={reference} 
-                            onChange={(e) => setReference(e.target.value)} 
+                            value={reference}
+                            onChange={(e) => setReference(e.target.value)}
                             className="w-full px-4 py-2 bg-slate-50 dark:bg-secondary rounded-lg border border-slate-300 dark:border-slate-700 outline-none focus:ring-2 focus:ring-cyan-500 text-slate-900 dark:text-white"
                         />
                     </div>
 
                     <div className="pt-2">
-                        <button 
-                            type="submit" 
+                        <button
+                            type="submit"
                             disabled={!amount || amount === "+" || amount === "-" || parsedAmount === 0 || newStock < 0 || !reason}
                             className="w-full py-2.5 rounded-lg font-medium bg-indigo-600 hover:bg-indigo-700 text-white transition disabled:opacity-50 disabled:cursor-not-allowed"
                         >
