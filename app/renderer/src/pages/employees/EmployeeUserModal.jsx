@@ -63,14 +63,17 @@ export default function EmployeeUserModal({ open, onClose, employee, onSave }) {
             if (isEditing) {
                 // Load existing user account data (without password)
                 setForm({
-                    username: employee.user_account.username || "",
+                    username: employee.user?.username || "",
                     password: "",
                     confirm_password: "",
-                    status: employee.user_account.status || "active",
-                    role_id: employee.user_account.role_id || "",
+                    status: employee.user?.status || "active",
+                    role_id: employee.user?.role_id || employee.role_id || "",
                 });
             } else {
-                setForm(initialForm);
+                setForm({
+                    ...initialForm,
+                    role_id: employee?.role_id || "",
+                });
             }
             setTimeout(() => firstRef.current?.focus(), 100);
 
