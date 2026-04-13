@@ -3,17 +3,9 @@ import dayGridPlugin from "@fullcalendar/daygrid";
 import interactionPlugin from "@fullcalendar/interaction";
 import CalendarEventCard from "./CalendarEventCard";
 
-export default function CalendarMonthView({ events, onEventClick, calendarRef, customEventContent, datesSet }) {
+export default function CalendarMonthView({ events, onEventClick, calendarRef, customEventContent, datesSet, onDateClick, onMoreClick, onEventEdit }) {
     return (
         <div className="h-full calendar-month-wrapper">
-            <style>{`
-                .fc-daygrid-event { background: transparent !important; border: none !important; white-space: normal !important; align-items: start !important; }
-                .fc-event-main { width: 100%; overflow: hidden; }
-                .fc-daygrid-dot-event:hover { background: transparent !important; }
-                /* Custom scrollbar for day cell if too many events */
-                .fc-daygrid-day-frame { overflow-y: auto !important; } 
-                .fc-daygrid-day-events { margin-bottom: 0 !important; }
-            `}</style>
             <FullCalendar
                 ref={calendarRef}
                 plugins={[dayGridPlugin, interactionPlugin]}
@@ -21,11 +13,42 @@ export default function CalendarMonthView({ events, onEventClick, calendarRef, c
                 headerToolbar={false}
                 events={events}
                 eventContent={customEventContent ? customEventContent : (arg) => <CalendarEventCard event={arg.event} />}
-                eventClick={onEventClick}
+                dateClick={(info) => {
+                    onDateClick?.(info.dateStr);
+                }}
                 datesSet={datesSet}
                 height="100%"
                 locale="es"
-                dayMaxEvents={false} /* Show all events, let cell scroll */
+                dayMaxEvents={true}
+                moreLinkClick={(arg) => {
+                    onMoreClick?.(arg.date);
+                    return "none";
+                }}
+                eventClick={() => { }} // 👈 desactivamos el default
+
+                eventDidMount={(info) => {
+                    let clickTimeout = null;
+
+                    // CLICK NORMAL → VER DETALLE
+                    info.el.addEventListener("click", () => {
+                        if (clickTimeout) return;
+
+                        clickTimeout = setTimeout(() => {
+                            clickTimeout = null;
+                            onEventClick(info);
+                        }, 200);
+                    });
+
+                    // DOBLE CLICK → EDITAR
+                    info.el.addEventListener("dblclick", () => {
+                        if (clickTimeout) {
+                            clearTimeout(clickTimeout);
+                            clickTimeout = null;
+                        }
+
+                        onEventEdit?.(info);
+                    });
+                }}
             />
         </div>
     );

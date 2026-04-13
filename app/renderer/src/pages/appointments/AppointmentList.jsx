@@ -18,14 +18,15 @@ import {
     User,
     Stethoscope,
     List as ListIcon,
-    LayoutGrid
+    LayoutGrid,
+    X
 } from "lucide-react";
 import { Pagination } from "@/components/ui";
 import AppointmentDetailModal from "@/components/appointments/AppointmentDetailModal";
 
 export default function AppointmentList() {
     const navigate = useNavigate();
-    const [viewMode, setViewMode] = useState("list"); // 'list' | 'calendar'
+    const [viewMode, setViewMode] = useState("calendar"); // 'list' | 'calendar'
 
     // List Mode State
     const [appointments, setAppointments] = useState([]);
@@ -54,6 +55,12 @@ export default function AppointmentList() {
     const searchRef = useRef(null);
     const { addToast } = useToastStore();
     const limit = 10;
+
+    const [filters, setFilters] = useState({
+        doctor: [],
+        area: [],
+        status: []
+    });
 
     useEffect(() => {
         const delay = setTimeout(() => setDebouncedSearch(searchTerm), 400);
@@ -219,15 +226,105 @@ export default function AppointmentList() {
         const bgColor = event.backgroundColor || 'var(--fc-event-bg-default, #3788d8)';
         const textColor = getReadableTextColor(bgColor);
 
+        const start = new Date(event.start);
+        const end = new Date(event.end);
+
+        const durationMinutes = (end - start) / 60000;
+
+        const durationText =
+            durationMinutes >= 60
+                ? `${Math.floor(durationMinutes / 60)}h ${durationMinutes % 60}m`
+                : `${durationMinutes} min`;
+
         return (
-            <div
-                className="flex items-center gap-1.5 px-1.5 py-0.5 w-full h-full overflow-hidden text-xs rounded-sm shadow-sm"
-                style={{ backgroundColor: bgColor, borderColor: bgColor, color: textColor }}
-            >
-                <span className="font-semibold whitespace-nowrap">{event.startStr.split('T')[1].substring(0, 5)}</span>
-                <span className="truncate font-medium">{patientName}</span>
+            <div className="relative group w-full h-full">
+                {/* EVENTO */}
+                <div
+                    className="flex items-center gap-1.5 px-1.5 py-0.5 w-full h-full overflow-hidden text-xs rounded-sm shadow-sm"
+                    style={{ backgroundColor: bgColor, borderColor: bgColor, color: textColor }}
+                >
+                    <span className="font-semibold whitespace-nowrap">
+                        {event.startStr.split('T')[1].substring(0, 5)}
+                    </span>
+                    <span className="truncate font-medium">{patientName}</span>
+                </div>
+
+                {/* TOOLTIP */}
+                <div className="
+        pointer-events-none absolute z-50 left-1/2 -translate-x-1/2 bottom-full mb-2
+        opacity-0 group-hover:opacity-100 transition duration-200
+    ">
+                    <div className="
+            bg-white dark:bg-slate-800
+            text-slate-800 dark:text-slate-100
+            text-xs rounded-lg shadow-xl border border-slate-200 dark:border-slate-700
+            p-3 min-w-[180px]
+        ">
+                        <div className="font-semibold mb-1">{patientName}</div>
+
+                        <div className="text-slate-500 dark:text-slate-400">
+                            🕒 {event.startStr.split('T')[1].substring(0, 5)}
+                        </div>
+
+                        <div className="text-slate-500 dark:text-slate-400">
+                            ⏱ {durationText}
+                        </div>
+                    </div>
+                </div>
             </div>
         );
+    };
+
+    const doctors = [...new Map(
+        calendarAppointments
+            .filter(a => a.employee)
+            .map(a => [a.employee.id, a.employee])
+    ).values()];
+
+    const areas = [...new Map(
+        calendarAppointments
+            .filter(a => a.clinic_area)
+            .map(a => [a.clinic_area.id, a.clinic_area])
+    ).values()];
+
+    const filteredCalendarAppointments = calendarAppointments.filter((appt) => {
+        if (filters.doctor.length && !filters.doctor.includes(String(appt.employee?.id))) return false;
+        if (filters.area.length && !filters.area.includes(String(appt.clinic_area?.id))) return false;
+        if (filters.status.length && !filters.status.includes(appt.status)) return false;
+        return true;
+    });
+
+    const hasActiveFilters = Object.values(filters).some(arr => arr.length > 0);
+
+    const handleClearFilters = () => {
+        setFilters({ doctor: [], area: [], status: [] });
+    };
+
+    const removeFilter = (key, value) => {
+        setFilters(prev => ({
+            ...prev,
+            [key]: prev[key].filter(v => v !== value)
+        }));
+    };
+
+    const getDoctorName = (id) => {
+        const doc = doctors.find(d => String(d.id) === String(id));
+        return doc ? `Dr. ${doc.first_name} ${doc.last_name}` : 'Doctor';
+    };
+
+    const getAreaName = (id) => {
+        const area = areas.find(a => String(a.id) === String(id));
+        return area ? area.name || `Área` : 'Área';
+    };
+
+    const getStatusName = (status) => {
+        const statusMap = {
+            'confirmed': 'Confirmada',
+            'pending': 'Pendiente',
+            'cancelled': 'Cancelada',
+            'completed': 'Completada',
+        };
+        return statusMap[status?.toLowerCase()] || status;
     };
 
     return (
@@ -239,6 +336,8 @@ export default function AppointmentList() {
                     subtitle="Administra las citas de la clínica"
                     onBack={() => navigate("/dashboard")}
                 />
+
+
 
                 <div className="flex items-center gap-3">
                     {/* View Toggle */}
@@ -286,15 +385,202 @@ export default function AppointmentList() {
                 </div>
             </div>
 
+            {/* Filters Section (Only Calendar for now) */}
+            {viewMode === 'calendar' && (
+                <div className="w-full max-w-[110rem] mx-auto px-10 mb-5 shrink-0 transition-all duration-300">
+                    <div className="bg-white dark:bg-secondary p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col gap-3">
+                        <div className="flex items-center gap-4 flex-wrap">
+                            <div className="flex items-center gap-2.5">
+                                <Stethoscope size={18} className="text-slate-400" />
+                                <select
+                                    className="bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-sm rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary block p-2.5 outline-none min-w-[180px] transition-all cursor-pointer"
+                                    value={filters.doctor}
+                                    onChange={(e) => {
+                                        const value = e.target.value;
+                                        if (!value) return;
+
+                                        setFilters(prev => {
+                                            const exists = prev.doctor.includes(value);
+
+                                            return {
+                                                ...prev,
+                                                doctor: exists
+                                                    ? prev.doctor.filter(v => v !== value)
+                                                    : [...prev.doctor, value]
+                                            };
+                                        });
+                                    }}
+                                >
+                                    <option value="">Todos los Doctores</option>
+                                    {doctors.map(doc => (
+                                        <option key={doc.id} value={doc.id}>Dr. {doc.first_name} {doc.last_name}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div className="flex items-center gap-2.5">
+                                <LayoutGrid size={18} className="text-slate-400" />
+                                <select
+                                    className="bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-sm rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary block p-2.5 outline-none min-w-[180px] transition-all cursor-pointer"
+                                    value={filters.area}
+                                    onChange={(e) => {
+                                        const value = e.target.value;
+                                        if (!value) return;
+
+                                        setFilters(prev => {
+                                            const exists = prev.area.includes(value);
+
+                                            return {
+                                                ...prev,
+                                                area: exists
+                                                    ? prev.area.filter(v => v !== value)
+                                                    : [...prev.area, value]
+                                            };
+                                        });
+                                    }}
+                                >
+                                    <option value="">Todas las Áreas</option>
+                                    {areas.map(area => (
+                                        <option key={area.id} value={area.id}>{area.name || `Área ${area.id}`}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div className="flex items-center gap-2.5">
+                                <Calendar size={18} className="text-slate-400" />
+                                <select
+                                    className="bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-sm rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary block p-2.5 outline-none min-w-[180px] transition-all cursor-pointer"
+                                    value={filters.status}
+                                    onChange={(e) => {
+                                        const value = e.target.value;
+                                        if (!value) return;
+
+                                        setFilters(prev => {
+                                            const exists = prev.status.includes(value);
+
+                                            return {
+                                                ...prev,
+                                                status: exists
+                                                    ? prev.status.filter(v => v !== value)
+                                                    : [...prev.status, value]
+                                            };
+                                        });
+                                    }}
+                                >
+                                    <option value="">Todos los Estados</option>
+                                    <option value="confirmed">Confirmada</option>
+                                    <option value="pending">Pendiente</option>
+                                    <option value="cancelled">Cancelada</option>
+                                    <option value="completed">Completada</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        {/* Active Filters Chips */}
+                        {hasActiveFilters && (
+                            <div className="flex items-center gap-2 pt-3 border-t border-slate-100 dark:border-slate-800 flex-wrap animate-in fade-in duration-200">
+                                <span className="text-xs text-slate-500 dark:text-slate-400 font-medium mr-1">
+                                    Filtros activos:
+                                </span>
+
+                                {/* DOCTORES */}
+                                {filters.doctor.map(id => (
+                                    <div
+                                        key={id}
+                                        className="inline-flex items-center gap-1.5 bg-sky-50 dark:bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-200 dark:border-sky-500/20 px-3 py-1.5 rounded-full text-xs font-semibold shadow-sm"
+                                    >
+                                        {getDoctorName(id).replace('Dr. ', '')}
+                                        <button
+                                            onClick={() => removeFilter('doctor', id)}
+                                            className="hover:text-sky-800 dark:hover:text-sky-200 ml-1.5 transition-colors"
+                                        >
+                                            <X size={14} strokeWidth={2.5} />
+                                        </button>
+                                    </div>
+                                ))}
+
+                                {/* AREAS */}
+                                {filters.area.map(id => (
+                                    <div
+                                        key={id}
+                                        className="inline-flex items-center gap-1.5 bg-purple-50 dark:bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-200 dark:border-purple-500/20 px-3 py-1.5 rounded-full text-xs font-semibold shadow-sm"
+                                    >
+                                        {getAreaName(id)}
+                                        <button
+                                            onClick={() => removeFilter('area', id)}
+                                            className="hover:text-purple-800 dark:hover:text-purple-200 ml-1.5 transition-colors"
+                                        >
+                                            <X size={14} strokeWidth={2.5} />
+                                        </button>
+                                    </div>
+                                ))}
+
+                                {/* STATUS */}
+                                {filters.status.map(status => (
+                                    <div
+                                        key={status}
+                                        className="inline-flex items-center gap-1.5 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20 px-3 py-1.5 rounded-full text-xs font-semibold shadow-sm"
+                                    >
+                                        {getStatusName(status)}
+                                        <button
+                                            onClick={() => removeFilter('status', status)}
+                                            className="hover:text-emerald-800 dark:hover:text-emerald-200 ml-1.5 transition-colors"
+                                        >
+                                            <X size={14} strokeWidth={2.5} />
+                                        </button>
+                                    </div>
+                                ))}
+
+                                {/* CLEAR ALL */}
+                                <button
+                                    onClick={handleClearFilters}
+                                    className="text-xs text-slate-500 hover:text-red-500 dark:text-slate-400 dark:hover:text-red-400 ml-2 transition-colors font-semibold px-2 py-1 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-md"
+                                >
+                                    Limpiar todos
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+
             {/* Content Body */}
             <div className="flex-1 w-full max-w-[110rem] mx-auto px-10 pb-6 overflow-hidden flex flex-col">
                 {viewMode === 'calendar' ? (
-                    <div className="flex-1 overflow-hidden h-full">
+                    <div className="flex-1 overflow-hidden h-full relative">
                         <ClinicCalendar
-                            appointments={calendarAppointments}
+                            appointments={filteredCalendarAppointments}
                             onEditAppointment={handleViewDetail}
                             monthEventContent={renderMonthEvent}
+                            onDateClick={(date) => {
+                                setAppointmentToEdit({
+                                    date,
+                                    start_time: "09:00",
+                                    end_time: "09:30"
+                                });
+                                setShowForm(true);
+                            }}
+                            onEventEdit={(info) => {
+                                const appt = {
+                                    id: parseInt(info.event.id),
+                                    ...info.event.extendedProps,
+                                    start_time: info.event.startStr.split('T')[1]?.substring(0, 5),
+                                    end_time: info.event.endStr.split('T')[1]?.substring(0, 5),
+                                    date: info.event.startStr.split('T')[0]
+                                };
+
+                                setAppointmentToEdit(appt);
+                                setShowForm(true);
+                            }}
                         />
+                        {loading && (
+                            <div className="absolute inset-0 z-20 flex items-center justify-center bg-white/60 dark:bg-black/40 backdrop-blur-[2px]">
+                                <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white dark:bg-slate-800 shadow-md border border-slate-200 dark:border-slate-700 text-sm text-slate-600 dark:text-slate-300">
+                                    <div className="w-4 h-4 border-2 border-slate-300 border-t-primary rounded-full animate-spin"></div>
+                                    <span>Cargando citas...</span>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 ) : (
                     <div className="flex-1 overflow-y-auto p-1">

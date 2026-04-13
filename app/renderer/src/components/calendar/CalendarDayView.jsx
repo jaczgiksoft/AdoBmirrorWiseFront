@@ -3,7 +3,7 @@ import resourceTimeGridPlugin from '@fullcalendar/resource-timegrid';
 import interactionPlugin from "@fullcalendar/interaction";
 import CalendarEventCard from "./CalendarEventCard";
 
-export default function CalendarDayView({ events, onEventClick, calendarRef, resources, datesSet }) {
+export default function CalendarDayView({ events, onEventClick, calendarRef, resources, datesSet, onEventEdit }) {
 
     return (
         <div className="h-full calendar-day-wrapper">
@@ -48,7 +48,6 @@ export default function CalendarDayView({ events, onEventClick, calendarRef, res
                 events={events} // Events must map resourceId to show in cols
                 resources={resources} // Array of { id, title }
                 eventContent={(arg) => <CalendarEventCard event={arg.event} />}
-                eventClick={onEventClick}
                 datesSet={datesSet}
                 slotMinTime="08:00:00"
                 slotMaxTime="19:00:00"
@@ -64,6 +63,29 @@ export default function CalendarDayView({ events, onEventClick, calendarRef, res
                 nowIndicator={true}
                 locale="es"
                 schedulerLicenseKey="CC-Attribution-NonCommercial-NoDerivatives" // Standard open source license for non-commercial/dev 
+                eventClick={() => { }}
+
+                eventDidMount={(info) => {
+                    let clickTimeout = null;
+
+                    info.el.addEventListener("click", () => {
+                        if (clickTimeout) return;
+
+                        clickTimeout = setTimeout(() => {
+                            clickTimeout = null;
+                            onEventClick(info);
+                        }, 200);
+                    });
+
+                    info.el.addEventListener("dblclick", () => {
+                        if (clickTimeout) {
+                            clearTimeout(clickTimeout);
+                            clickTimeout = null;
+                        }
+
+                        onEventEdit?.(info);
+                    });
+                }}
             />
         </div>
     );

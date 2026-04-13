@@ -640,3 +640,38 @@ input[type="number"] {
 .calendar-active-glow {
     animation: subtlePulse 2.4s ease-in-out infinite;
 }
+
+/* 🌙 DARK MODE - More Events Popover */
+.dark .fc-popover {
+    background-color: #1e293b !important;
+    /* slate-800 */
+    border: 1px solid #334155 !important;
+    /* slate-700 */
+    color: #f1f5f9 !important;
+    /* slate-100 */
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+    z-index: 5;
+}
+
+.dark .fc-popover-header {
+    background-color: #0f172a !important;
+    /* slate-900 */
+    color: #e2e8f0 !important;
+    border-bottom: 1px solid #334155 !important;
+}
+
+.dark .fc-popover-body {
+    background-color: #1e293b !important;
+}
+
+.dark .fc-popover-close {
+    color: #94a3b8 !important;
+}
+
+.dark .fc-popover-close:hover {
+    color: #f1f5f9 !important;
+}
+
+.fc-daygrid-day {
+    overflow: visible !important;
+}

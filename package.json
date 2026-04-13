@@ -22,7 +22,6 @@
     "@fullcalendar/interaction": "^6.1.20",
     "@fullcalendar/react": "^6.1.20",
     "@fullcalendar/resource-timegrid": "^6.1.20",
-    "@fullcalendar/timegrid": "^6.1.20",
     "@spaceymonk/react-radial-menu": "^2.1.0",
     "axios": "1.12.2",
     "cors": "^2.8.5",
