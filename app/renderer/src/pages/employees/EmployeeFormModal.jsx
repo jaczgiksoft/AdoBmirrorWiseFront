@@ -1,10 +1,12 @@
 import { useState, useEffect, useRef } from "react";
 import { useToastStore } from "@/store/useToastStore";
-import { X, UploadCloud, Briefcase, Shield, CheckCircle2 } from "lucide-react";
+import { X, UploadCloud, Briefcase, Shield, CheckCircle2, Eye, EyeOff, User } from "lucide-react";
 import { Modal } from "@/components/ui";
 import { ConfirmDialog } from "@/components/feedback";
 import { getRoles } from "@/services/role.service";
 import { getPositions } from "@/services/position.service";
+import { createEmployee, updateEmployee } from "@/services/employee.service";
+import { createUser, updateUser } from "@/services/user.service";
 
 const initialForm = {
     first_name: "",
@@ -17,14 +19,19 @@ const initialForm = {
     is_appointment_eligible: false,
     status: "active",
     profile_image: null,
+    create_user_account: false,
+    username: "",
+    password: "",
 };
 
-export default function EmployeeFormModal({ open, onClose, employee, onSave }) {
+export default function EmployeeFormModal({ open, onClose, employee, onSuccess }) {
     const { addToast } = useToastStore();
     const [form, setForm] = useState(initialForm);
     const [errors, setErrors] = useState({});
     const [preview, setPreview] = useState(null);
     const [confirmCancel, setConfirmCancel] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
     
     const [rolesList, setRolesList] = useState([]);
     const [positionsList, setPositionsList] = useState([]);
@@ -48,12 +55,16 @@ export default function EmployeeFormModal({ open, onClose, employee, onSave }) {
                     is_appointment_eligible: !!employee.is_appointment_eligible,
                     status: employee.status || "active",
                     profile_image: employee.profile_image || null,
+                    create_user_account: !!employee.user,
+                    username: employee.user?.username || "",
+                    password: "",
                 });
                 setPreview(employee.profile_image);
             } else {
                 setForm(initialForm);
                 setPreview(null);
             }
+            setShowPassword(false);
             setTimeout(() => firstRef.current?.focus(), 100);
         }
     }, [open, employee]);
@@ -105,6 +116,9 @@ export default function EmployeeFormModal({ open, onClose, employee, onSave }) {
             is_appointment_eligible: !!employee.is_appointment_eligible,
             status: employee.status || "active",
             profile_image: employee.profile_image || null,
+            create_user_account: !!employee.user,
+            username: employee.user?.username || "",
+            password: "",
         };
         return JSON.stringify(currentData) !== JSON.stringify(originalData);
     };
@@ -164,12 +178,18 @@ export default function EmployeeFormModal({ open, onClose, employee, onSave }) {
         if (!form.positionIds || form.positionIds.length === 0) {
             newErrors.positionIds = "Debes seleccionar al menos un puesto";
         }
+        if (form.create_user_account) {
+            if (!form.username?.trim()) newErrors.username = "El nombre de usuario es obligatorio";
+            if (!employee?.user && !form.password?.trim()) {
+                newErrors.password = "La contraseña es obligatoria para nuevos usuarios";
+            }
+        }
 
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
 
-    const handleSave = () => {
+    const handleSave = async () => {
         if (!validateForm()) {
             addToast({
                 type: "warning",
@@ -179,8 +199,65 @@ export default function EmployeeFormModal({ open, onClose, employee, onSave }) {
             return;
         }
 
-        onSave(form);
-        handleExit();
+        setIsLoading(true);
+        try {
+            let employeeId = employee?.id;
+            const employeeData = {
+                first_name: form.first_name,
+                last_name: form.last_name,
+                second_last_name: form.second_last_name,
+                email: form.email,
+                phone: form.phone,
+                role_id: form.role_id,
+                positionIds: form.positionIds,
+                is_appointment_eligible: form.is_appointment_eligible,
+                status: form.status,
+                profile_image: form.profile_image
+            };
+
+            if (employeeId) {
+                await updateEmployee(employeeId, employeeData);
+            } else {
+                const newEmp = await createEmployee(employeeData);
+                employeeId = newEmp.id;
+            }
+
+            // User account logic
+            if (form.create_user_account) {
+                const userData = {
+                    username: form.username,
+                    role_id: form.role_id,
+                    status: form.status,
+                    employee_id: employeeId
+                };
+                if (form.password) {
+                    userData.password = form.password;
+                }
+
+                if (employee?.user) {
+                    await updateUser(employee.user.id, userData);
+                } else {
+                    await createUser(userData);
+                }
+            }
+
+            addToast({
+                type: "success",
+                title: employee ? "Empleado actualizado" : "Empleado creado",
+                message: `El empleado ${form.first_name} ${form.last_name} fue guardado correctamente.`,
+            });
+            onSuccess();
+            handleExit();
+        } catch (err) {
+            console.error("Error validando guardado:", err);
+            addToast({
+                type: "error",
+                title: "Error",
+                message: err.message || "Ocurrió un error al guardar.",
+            });
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     const handleAttemptClose = () => {
@@ -354,6 +431,73 @@ export default function EmployeeFormModal({ open, onClose, employee, onSave }) {
                         </div>
                     </div>
 
+                    {/* Divider */}
+                    <div className="border-t border-slate-200 dark:border-slate-800 -mx-5 px-5 my-2"></div>
+
+                    {/* Sección: Cuenta de Usuario */}
+                    <div>
+                        <div className="flex items-center gap-3 mb-4">
+                            <div className="p-2 bg-emerald-500/10 text-emerald-500 rounded-lg">
+                                <User size={18} />
+                            </div>
+                            <div>
+                                <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100">Cuenta de Usuario</h3>
+                                <p className="text-xs text-slate-500">Permitir que este empleado inicie sesión en el sistema.</p>
+                            </div>
+                            <div className="ml-auto">
+                                <label className="relative inline-flex items-center cursor-pointer">
+                                    <input 
+                                        type="checkbox" 
+                                        name="create_user_account" 
+                                        className="sr-only peer" 
+                                        checked={form.create_user_account}
+                                        onChange={handleChange}
+                                    />
+                                    <div className="w-11 h-6 bg-slate-200 dark:bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
+                                </label>
+                            </div>
+                        </div>
+
+                        {form.create_user_account && (
+                            <div className="grid grid-cols-2 gap-4 p-4 bg-emerald-50 dark:bg-emerald-500/5 rounded-xl border border-emerald-500/20">
+                                <div>
+                                    <label className="block text-[11px] font-bold text-emerald-700 dark:text-emerald-500 uppercase tracking-wider mb-1.5">Usuario <span className="text-rose-500">*</span></label>
+                                    <input
+                                        name="username"
+                                        placeholder="Nombre de usuario"
+                                        value={form.username}
+                                        onChange={handleChange}
+                                        autoComplete="off"
+                                        className={`w-full px-4 py-2 bg-white dark:bg-secondary rounded-lg border border-emerald-200 dark:border-emerald-500/30 outline-none focus:ring-2 focus:ring-emerald-500 text-slate-900 dark:text-white transition ${errors.username ? "border-rose-500 ring-1 ring-rose-500/50" : ""}`}
+                                    />
+                                    {errors.username && <span className="text-[10px] text-rose-500 block mt-1">{errors.username}</span>}
+                                </div>
+                                <div className="relative">
+                                    <label className="block text-[11px] font-bold text-emerald-700 dark:text-emerald-500 uppercase tracking-wider mb-1.5">
+                                        Contraseña {(!employee?.user) && <span className="text-rose-500">*</span>}
+                                    </label>
+                                    <input
+                                        type={showPassword ? "text" : "password"}
+                                        name="password"
+                                        placeholder={employee?.user ? "(Dejar en blanco si no cambia)" : "Contraseña..."}
+                                        value={form.password}
+                                        onChange={handleChange}
+                                        autoComplete="new-password"
+                                        className={`w-full pl-4 pr-10 py-2 bg-white dark:bg-secondary rounded-lg border border-emerald-200 dark:border-emerald-500/30 outline-none focus:ring-2 focus:ring-emerald-500 text-slate-900 dark:text-white transition ${errors.password ? "border-rose-500 ring-1 ring-rose-500/50" : ""}`}
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowPassword(!showPassword)}
+                                        className="absolute right-3 top-[28px] text-slate-400 hover:text-emerald-500 cursor-pointer"
+                                    >
+                                        {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                                    </button>
+                                    {errors.password && <span className="text-[10px] text-rose-500 block mt-1">{errors.password}</span>}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
                     {/* Botones de Acción */}
                     <div className="flex justify-end gap-3 mt-4 pt-5 border-t border-slate-200 dark:border-slate-800">
                         <button
@@ -366,9 +510,10 @@ export default function EmployeeFormModal({ open, onClose, employee, onSave }) {
                         <button
                             type="button"
                             onClick={handleSave}
-                            className="px-7 py-2.5 rounded-lg font-bold bg-primary hover:bg-sky-500 text-white shadow-lg shadow-primary/20 transition active:scale-95 flex items-center gap-2"
+                            disabled={isLoading}
+                            className="px-7 py-2.5 rounded-lg font-bold bg-primary hover:bg-sky-500 text-white shadow-lg shadow-primary/20 transition active:scale-95 flex items-center gap-2 cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed"
                         >
-                            {employee ? "Guardar cambios" : "Crear empleado"}
+                            {isLoading ? "Guardando..." : (employee ? "Guardar cambios" : "Crear empleado")}
                         </button>
                     </div>
                 </form>

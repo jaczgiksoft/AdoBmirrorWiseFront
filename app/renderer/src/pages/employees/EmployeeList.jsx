@@ -6,10 +6,8 @@ import { useToastStore } from "@/store/useToastStore";
 import { ConfirmDialog } from "@/components/feedback";
 import { Table, Pagination } from "@/components/ui";
 import { PageHeader } from "@/components/layout";
-import { getEmployees, deleteEmployee, createEmployee, updateEmployee } from "@/services/employee.service";
-import { createUser, updateUser } from "@/services/user.service";
+import { getEmployees, deleteEmployee } from "@/services/employee.service";
 import EmployeeFormModal from "./EmployeeFormModal";
-import EmployeeUserModal from "./EmployeeUserModal";
 import EmployeeFilterDropdown from "./components/EmployeeFilterDropdown";
 
 export default function EmployeeList() {
@@ -74,38 +72,6 @@ export default function EmployeeList() {
         setConfirmOpen(true);
     };
 
-    // --- User Account Modal ---
-    const [showUserModal, setShowUserModal] = useState(false);
-    const [selectedUserEmployee, setSelectedUserEmployee] = useState(null);
-
-    const handleUserClick = (employee) => {
-        setSelectedUserEmployee(employee);
-        setShowUserModal(true);
-    };
-
-    const handleSaveUserAccount = async (userAccount) => {
-        try {
-            if (selectedUserEmployee.user) {
-                await updateUser(selectedUserEmployee.user.id, userAccount);
-            } else {
-                await createUser({ 
-                    ...userAccount, 
-                    employee_id: selectedUserEmployee.id,
-                    // Si el usuario no ingresó nombre, podemos usar el email del empleado
-                    username: userAccount.username || selectedUserEmployee.email
-                });
-            }
-            fetchEmployees(); 
-            setShowUserModal(false);
-        } catch (err) {
-            addToast({
-                type: "error",
-                title: "Error",
-                message: err.message || "No se pudo vincular la cuenta de usuario.",
-            });
-        }
-    };
-
     const handleConfirmDelete = async () => {
         if (!employeeToDelete) return;
 
@@ -129,20 +95,9 @@ export default function EmployeeList() {
         }
     };
 
-    const handleSaveEmployee = async (employeeData) => {
-        try {
-            if (selectedEmployee) {
-                await updateEmployee(selectedEmployee.id, employeeData);
-            } else {
-                await createEmployee(employeeData);
-            }
-            fetchEmployees();
-            setShowForm(false);
-        } catch (err) {
-            // El modal ya muestra errores o lanza toast si es necesario, 
-            // pero aquí recargamos para asegurar consistencia
-            console.error("Error saving employee:", err);
-        }
+    const handleEmployeeSaved = () => {
+        fetchEmployees();
+        setShowForm(false);
     };
 
     // Filter logic
@@ -286,13 +241,12 @@ export default function EmployeeList() {
             accessor: "actions",
             render: (row) => (
                 <div className="flex items-center gap-3 text-slate-500 dark:text-slate-400">
-                    <button
-                        onClick={() => handleUserClick(row)}
-                        className={`transition-colors cursor-pointer ${row.user ? "text-emerald-500 hover:text-emerald-400" : "text-slate-500 hover:text-primary"}`}
-                        title={row.user ? "Ver / editar usuario" : "Crear usuario"}
+                    <div
+                        className={`transition-colors ${row.user ? "text-emerald-500" : "text-slate-300 dark:text-slate-700"}`}
+                        title={row.user ? "Cuenta de usuario activa" : "Sin cuenta de usuario"}
                     >
                         <User size={18} />
-                    </button>
+                    </div>
                     <button
                         onClick={() => handleEditClick(row)}
                         className="hover:text-primary transition-colors cursor-pointer"
@@ -386,15 +340,7 @@ export default function EmployeeList() {
                 open={showForm}
                 onClose={() => setShowForm(false)}
                 employee={selectedEmployee}
-                onSave={handleSaveEmployee}
-            />
-
-            {/* Modal de Usuario */}
-            <EmployeeUserModal
-                open={showUserModal}
-                onClose={() => setShowUserModal(false)}
-                employee={selectedUserEmployee}
-                onSave={handleSaveUserAccount}
+                onSuccess={handleEmployeeSaved}
             />
 
             {/* Modal de Confirmación de Eliminación */}
