@@ -1,7 +1,7 @@
 // app/renderer/src/pages/attendance/hooks/useAttendance.js
 import { useState, useEffect } from "react";
 import { INITIAL_ATTENDANCE_DATA, ATTENDANCE_TYPES, LATENESS_OPTIONS } from "../services/attendanceService";
-import { employeesStorage } from "@/utils/employeesStorage";
+import { getEmployees } from "@/services/employee.service";
 
 const STORAGE_KEY = "bwise_attendance_data";
 
@@ -16,7 +16,19 @@ export function useAttendance() {
         }
     });
 
-    const [employees, setEmployees] = useState(() => employeesStorage.get([]));
+    const [employees, setEmployees] = useState([]);
+
+    useEffect(() => {
+        const fetchEmployeesData = async () => {
+            try {
+                const data = await getEmployees();
+                setEmployees(data);
+            } catch (err) {
+                console.error("Error fetching employees for attendance:", err);
+            }
+        };
+        fetchEmployeesData();
+    }, []);
 
     // Persist changes to localStorage
     useEffect(() => {
