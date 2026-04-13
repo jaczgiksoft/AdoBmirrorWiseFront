@@ -1,15 +1,16 @@
 import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { 
-    Phone, 
-    Calendar, 
-    CheckCircle, 
-    X, 
-    Delete, 
-    User, 
-    Clock, 
+import {
+    Phone,
+    Calendar,
+    CheckCircle,
+    X,
+    Delete,
+    User,
+    Clock,
     ArrowRight,
-    Search
+    Search,
+    Trash2
 } from "lucide-react";
 
 export default function ConfirmationKiosk() {
@@ -34,6 +35,10 @@ export default function ConfirmationKiosk() {
         setPhoneNumber(prev => prev.slice(0, -1));
     };
 
+    const handleClear = () => {
+        setPhoneNumber("");
+    };
+
     const handleEnter = () => {
         if (phoneNumber.length >= 7) { // Simple validation for demo
             setStep(2);
@@ -41,7 +46,7 @@ export default function ConfirmationKiosk() {
     };
 
     const toggleSelection = (id) => {
-        setSelectedAppointments(prev => 
+        setSelectedAppointments(prev =>
             prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
         );
     };
@@ -89,12 +94,16 @@ export default function ConfirmationKiosk() {
                             {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(num => (
                                 <KeypadButton key={num} label={num} onClick={() => handleNumberClick(num.toString())} />
                             ))}
-                            <KeypadButton label="+" onClick={() => handleNumberClick("+")} />
+                            <KeypadButton
+                                label={<Trash2 size={24} className="text-red-400" />}
+                                onClick={handleClear}
+                                className="bg-red-500/10 hover:bg-red-500/20 border-red-500/20"
+                            />
                             <KeypadButton label="0" onClick={() => handleNumberClick("0")} />
-                            <KeypadButton 
-                                label={<Delete size={28} />} 
-                                onClick={handleDelete} 
-                                className="bg-slate-700/50 text-slate-400" 
+                            <KeypadButton
+                                label={<Delete size={28} />}
+                                onClick={handleDelete}
+                                className="bg-slate-700/50 text-slate-400"
                             />
                             <button
                                 onClick={handleEnter}
@@ -129,8 +138,8 @@ export default function ConfirmationKiosk() {
                                     onClick={() => toggleSelection(appt.id)}
                                     className={`
                                         p-6 rounded-3xl border-2 transition-all cursor-pointer flex items-center justify-between
-                                        ${selectedAppointments.includes(appt.id) 
-                                            ? 'bg-sky-500/20 border-sky-500 shadow-lg shadow-sky-500/10' 
+                                        ${selectedAppointments.includes(appt.id)
+                                            ? 'bg-sky-500/20 border-sky-500 shadow-lg shadow-sky-500/10'
                                             : 'bg-slate-900/50 border-white/5 hover:border-white/20'}
                                     `}
                                 >
