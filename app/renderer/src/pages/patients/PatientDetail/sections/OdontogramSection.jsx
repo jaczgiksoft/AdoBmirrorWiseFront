@@ -815,14 +815,14 @@ function Tooth({ id, type, hasBracket, isBroken, repairCount = 0, isSelectedBrac
                         onPointerDown={(e) => e.stopPropagation()}
                         onPointerUp={(e) => e.stopPropagation()}
                         className={`
-                            absolute right-[-4px] z-50 p-1 rounded-full bg-white dark:bg-slate-800 shadow-sm border border-slate-200 dark:border-slate-700
+                            absolute right-[-4px] z-60 p-1 rounded-full bg-white dark:bg-white shadow-sm border border-red-700
                             transition-all duration-200 transform hover:scale-110
                             ${isMaxillary ? 'bottom-0' : 'top-0'}
-                            ${hasNote ? 'opacity-100' : 'opacity-0 group-hover:opacity-50'}
+                            ${hasNote ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}
                         `}
                         title={hasNote ? "Ver/Editar nota" : "Agregar nota"}
                     >
-                        <svg className={`w-3 h-3 ${hasNote ? 'text-blue-500' : 'text-slate-400'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <svg className={`w-5 h-5 text-red-500 ${hasNote ? 'text-red-500' : 'text-slate-400'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                         </svg>
@@ -2228,7 +2228,7 @@ export default function OdontogramSection() {
                     if (odontogram.details && Array.isArray(odontogram.details)) {
                         odontogram.details.forEach(detail => {
                             const tid = detail.tooth_id;
-                            
+
                             let status = detail.status || {};
                             if (typeof status === 'string') {
                                 try { status = JSON.parse(status); } catch (e) { status = {}; }
