@@ -14,7 +14,7 @@ import {
     Trash2,
     Loader2
 } from "lucide-react";
-import { findKioskAppointments } from "../../services/appointment.service";
+import { findKioskAppointments, checkInAppointment } from "../../services/appointment.service";
 
 export default function ConfirmationKiosk() {
     const navigate = useNavigate();
@@ -81,9 +81,21 @@ export default function ConfirmationKiosk() {
         );
     };
 
-    const handleConfirmSelection = () => {
+    const handleConfirmSelection = async () => {
         if (selectedAppointments.length > 0) {
-            setStep(3);
+            setIsLoading(true);
+            setError(null);
+            try {
+                await Promise.all(
+                    selectedAppointments.map(id => checkInAppointment(id))
+                );
+                setStep(3);
+            } catch (err) {
+                console.error("Error confirmando citas:", err);
+                setError("Ocurrió un error al confirmar tus citas. Por favor intenta de nuevo.");
+            } finally {
+                setIsLoading(false);
+            }
         }
     };
 
@@ -223,10 +235,10 @@ export default function ConfirmationKiosk() {
                             </button>
                             <button
                                 onClick={handleConfirmSelection}
-                                disabled={selectedAppointments.length === 0}
-                                className="flex-[2] py-5 rounded-3xl bg-sky-500 text-white font-black hover:bg-sky-400 shadow-lg shadow-sky-500/20 transition-all disabled:opacity-50"
+                                disabled={selectedAppointments.length === 0 || isLoading}
+                                className="flex-[2] py-5 rounded-3xl bg-sky-500 text-white font-black hover:bg-sky-400 shadow-lg shadow-sky-500/20 transition-all disabled:opacity-50 flex items-center justify-center gap-3"
                             >
-                                CONFIRMAR LLEGADA
+                                {isLoading ? <Loader2 className="animate-spin" size={24} /> : "CONFIRMAR LLEGADA"}
                             </button>
                         </div>
                     </motion.div>

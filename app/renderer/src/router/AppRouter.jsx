@@ -119,10 +119,12 @@ export default function AppRouter() {
 
     // 🔌 Conecta el WebSocket al iniciar sesión
     useEffect(() => {
+        console.log("🔐 [AppRouter] Verificando autenticación para Socket.IO. isAuthenticated:", isAuthenticated);
         if (!isAuthenticated) return;
 
         const { socket } = useNotificationStore.getState();
         if (!socket || !socket.connected) {
+            console.log("🔌 [AppRouter] Iniciando conexión de socket...");
             fetchNotifications();
             connectSocket();
         }
@@ -131,7 +133,10 @@ export default function AppRouter() {
         const unsub = useAuthStore.subscribe(
             (state) => state.isAuthenticated,
             (auth) => {
-                if (!auth) disconnectSocket();
+                if (!auth) {
+                    console.log("🔌 [AppRouter] Cerrando sesión, desconectando socket...");
+                    disconnectSocket();
+                }
             }
         );
 

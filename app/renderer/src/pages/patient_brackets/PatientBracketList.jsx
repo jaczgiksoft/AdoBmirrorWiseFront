@@ -1,25 +1,19 @@
-import { useRef, useEffect, useState } from "react";
-import { motion } from "framer-motion";
+import { useRef, useEffect, useState, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { useHotkeys } from "@/hooks/useHotkeys";
 import { useToastStore } from "@/store/useToastStore";
 import { ConfirmDialog } from "@/components/feedback";
 import PatientBracketForm from "./PatientBracketForm";
-import { PlusCircle, Search, Edit2, Trash2, Box, ChevronLeft } from "lucide-react";
+import { PlusCircle, Search, Edit2, Trash2, Box, ChevronLeft, Loader2, RefreshCw, AlertCircle } from "lucide-react";
 import { Pagination } from "@/components/ui";
-
-const STORAGE_KEY = "bwise_patient_brackets_mock_data";
-
-const DEFAULT_BRACKETS = [
-    { id: 1, name: "Damon Q", description: "Sistema de autoligado pasivo metálico.", color: "#6366f1" },
-    { id: 2, name: "Gemini", description: "Brackets metálicos convencionales de bajo perfil.", color: "#3b82f6" },
-    { id: 3, name: "Insignia", description: "Ortodoncia digitalizada personalizada.", color: "#10b981" },
-    { id: 4, name: "Cerámicos", description: "Brackets estéticos policristalinos.", color: "#f59e0b" }
-];
+import bracketTypeService from "@/services/bracket_type.service";
 
 export default function PatientBracketList() {
     const navigate = useNavigate();
     const [items, setItems] = useState([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState(null);
     const [selectedIndex, setSelectedIndex] = useState(0);
     const [searchTerm, setSearchTerm] = useState("");
     const [page, setPage] = useState(1);
@@ -34,22 +28,35 @@ export default function PatientBracketList() {
     const searchRef = useRef(null);
     const { addToast } = useToastStore();
 
-    // 🔹 Cargar datos desde localStorage
-    useEffect(() => {
-        const stored = localStorage.getItem(STORAGE_KEY);
-        if (stored) {
-            setItems(JSON.parse(stored));
-        } else {
-            setItems(DEFAULT_BRACKETS);
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_BRACKETS));
+    // 🔹 Cargar datos desde API
+    const loadBrackets = useCallback(async (isRefreshing = false) => {
+        if (!isRefreshing) setIsLoading(true);
+        setError(null);
+        try {
+            const data = await bracketTypeService.getAll();
+            setItems(data);
+        } catch (err) {
+            console.error("❌ Error al cargar brackets:", err);
+            setError("No se pudieron cargar los tipos de brackets. Por favor, reintenta.");
+            addToast({
+                type: "error",
+                title: "Error de conexión",
+                message: "No se pudo obtener la información desde el servidor.",
+            });
+        } finally {
+            setIsLoading(false);
         }
+    }, [addToast]);
+
+    useEffect(() => {
+        loadBrackets();
         document.title = "Brackets de Pacientes | BWISE Dental";
-    }, []);
+    }, [loadBrackets]);
 
     // 🔹 Filtrado y Paginación
     const filteredItems = items.filter(bracket =>
         bracket.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        bracket.description.toLowerCase().includes(searchTerm.toLowerCase())
+        (bracket.description && bracket.description.toLowerCase().includes(searchTerm.toLowerCase()))
     );
 
     const totalPages = Math.ceil(filteredItems.length / limit) || 1;
@@ -63,17 +70,17 @@ export default function PatientBracketList() {
                 navigate("/settings", { state: { from: "/settings/patient-brackets" } });
             },
             arrowdown: (e) => {
-                if (confirmOpen || showForm) return "prevent";
+                if (confirmOpen || showForm || isLoading) return "prevent";
                 e.preventDefault();
                 setSelectedIndex((prev) => (prev + 1) % paginatedItems.length);
             },
             arrowup: (e) => {
-                if (confirmOpen || showForm) return "prevent";
+                if (confirmOpen || showForm || isLoading) return "prevent";
                 e.preventDefault();
                 setSelectedIndex((prev) => (prev - 1 + paginatedItems.length) % paginatedItems.length);
             },
             enter: (e) => {
-                if (confirmOpen || showForm) return "prevent";
+                if (confirmOpen || showForm || isLoading) return "prevent";
                 e.preventDefault();
                 const item = paginatedItems[selectedIndex];
                 if (item) handleEditClick(item);
@@ -84,7 +91,7 @@ export default function PatientBracketList() {
                 handleCreateClick();
             },
             delete: (e) => {
-                if (confirmOpen || showForm) return "prevent";
+                if (confirmOpen || showForm || isLoading) return "prevent";
                 e.preventDefault();
                 const item = paginatedItems[selectedIndex];
                 if (item) handleDeleteClick(item);
@@ -96,8 +103,12 @@ export default function PatientBracketList() {
                 searchRef.current?.select();
                 return "prevent";
             },
+            f5: (e) => {
+                e.preventDefault();
+                loadBrackets(true);
+            }
         },
-        [paginatedItems, selectedIndex, confirmOpen, showForm]
+        [paginatedItems, selectedIndex, confirmOpen, showForm, isLoading]
     );
 
     // 🛠 Handlers
@@ -116,33 +127,36 @@ export default function PatientBracketList() {
         setConfirmOpen(true);
     };
 
-    const handleConfirmDelete = () => {
+    const handleConfirmDelete = async () => {
         if (!itemToDelete) return;
-        const newItems = items.filter(i => i.id !== itemToDelete.id);
-        setItems(newItems);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(newItems));
 
-        setConfirmOpen(false);
-        setItemToDelete(null);
-
-        addToast({
-            type: "success",
-            title: "Bracket eliminado",
-            message: `"${itemToDelete.name}" fue eliminado correctamente.`,
-        });
+        try {
+            await bracketTypeService.delete(itemToDelete.id);
+            
+            addToast({
+                type: "success",
+                title: "Bracket eliminado",
+                message: `"${itemToDelete.name}" fue eliminado correctamente.`,
+            });
+            
+            // Recargar lista
+            loadBrackets(true);
+        } catch (err) {
+            console.error("❌ Error al eliminar bracket:", err);
+            addToast({
+                type: "error",
+                title: "Error al eliminar",
+                message: "No se pudo eliminar el bracket. Intenta de nuevo.",
+            });
+        } finally {
+            setConfirmOpen(false);
+            setItemToDelete(null);
+        }
     };
 
-    const handleFormSaved = (savedItem) => {
-        let newItems;
-        if (itemToEdit) {
-            newItems = items.map(i => i.id === savedItem.id ? savedItem : i);
-        } else {
-            newItems = [...items, savedItem];
-        }
-
-        setItems(newItems);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(newItems));
+    const handleFormSaved = () => {
         setShowForm(false);
+        loadBrackets(true);
     };
 
     return (
@@ -199,14 +213,48 @@ export default function PatientBracketList() {
                 </div>
 
                 {/* 📋 Tabla (Lista de Tarjetas) */}
-                {paginatedItems.length === 0 ? (
+                {isLoading && items.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-20 bg-white dark:bg-secondary/30 rounded-2xl border border-dashed border-slate-300 dark:border-slate-700">
+                        <Loader2 className="animate-spin text-primary mb-4" size={40} />
+                        <p className="text-slate-500 dark:text-slate-400 font-medium">Cargando catálogo de brackets...</p>
+                    </div>
+                ) : error ? (
+                    <div className="flex flex-col items-center justify-center py-20 bg-white dark:bg-secondary/30 rounded-2xl border border-dashed border-red-300 dark:border-red-900/30">
+                        <AlertCircle className="text-red-500 mb-4" size={48} />
+                        <p className="text-red-600 dark:text-red-400 font-bold">{error}</p>
+                        <button
+                            onClick={() => loadBrackets()}
+                            className="mt-6 flex items-center gap-2 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 px-4 py-2 rounded-lg transition text-sm font-semibold"
+                        >
+                            <RefreshCw size={16} />
+                            Reintentar Carga
+                        </button>
+                    </div>
+                ) : paginatedItems.length === 0 ? (
                     <div className="text-center py-20 bg-white dark:bg-secondary/30 rounded-2xl border border-dashed border-slate-300 dark:border-slate-700">
                         <Box className="mx-auto text-slate-300 dark:text-slate-600 mb-4" size={56} />
                         <p className="text-slate-500 dark:text-slate-400 font-medium">No se encontraron brackets registrados.</p>
                         <p className="text-xs text-slate-400 mt-1 italic">Agrega una nueva marca o tipo de bracket.</p>
                     </div>
                 ) : (
-                    <div className="flex flex-col gap-3">
+                    <div className="relative flex flex-col gap-3">
+                        {/* Overlay de recarga sutil */}
+                        <AnimatePresence>
+                            {isLoading && (
+                                <motion.div
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    exit={{ opacity: 0 }}
+                                    className="absolute inset-0 bg-white/40 dark:bg-dark/40 backdrop-blur-[1px] z-10 flex items-start justify-center pt-10 rounded-xl"
+                                >
+                                    <div className="bg-white dark:bg-secondary px-4 py-2 rounded-full shadow-lg border border-slate-200 dark:border-slate-700 flex items-center gap-2">
+                                        <Loader2 className="animate-spin text-primary" size={16} />
+                                        <span className="text-xs font-bold text-primary">Actualizando...</span>
+                                    </div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+
                         {paginatedItems.map((item, index) => {
                             const isSelected = index === selectedIndex;
 

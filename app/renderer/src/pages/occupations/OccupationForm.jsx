@@ -5,13 +5,14 @@ import { X, Briefcase } from "lucide-react";
 import { useToastStore } from "@/store/useToastStore";
 import { useHotkeys } from "@/hooks/useHotkeys";
 import { ConfirmDialog } from "@/components/feedback";
+import * as occupationService from "@/services/occupation.service";
 
 export default function OccupationForm({ open, onClose, onSaved, itemToEdit = null }) {
     const { addToast } = useToastStore();
 
     const initialForm = {
         name: "",
-        color: "#64748b", // Default slate
+        description: "",
     };
 
     const [form, setForm] = useState(initialForm);
@@ -26,8 +27,8 @@ export default function OccupationForm({ open, onClose, onSaved, itemToEdit = nu
         if (open) {
             if (itemToEdit) {
                 setForm({
-                    ...initialForm,
-                    ...itemToEdit,
+                    name: itemToEdit.name || "",
+                    description: itemToEdit.description || "",
                 });
             } else {
                 setForm(initialForm);
@@ -45,7 +46,7 @@ export default function OccupationForm({ open, onClose, onSaved, itemToEdit = nu
                 e.stopPropagation();
                 if (confirmCancel) return;
 
-                if (form.name) {
+                if (form.name || form.description) {
                     setConfirmCancel(true);
                 } else {
                     handleExit();
@@ -53,6 +54,9 @@ export default function OccupationForm({ open, onClose, onSaved, itemToEdit = nu
                 return "prevent";
             },
             enter: (e) => {
+                // Si el foco está en el textarea, dejamos que el Enter haga salto de línea normal
+                if (document.activeElement?.tagName === "TEXTAREA") return;
+                
                 if (!open || confirmCancel) return;
                 e.preventDefault();
                 e.stopPropagation();
@@ -93,30 +97,38 @@ export default function OccupationForm({ open, onClose, onSaved, itemToEdit = nu
 
     const handleSubmit = async () => {
         if (saving) return;
+        
+        const isValid = validateForm();
+        if (!isValid) return;
+
         setSaving(true);
         try {
-            // Simular guardado
-            const payload = { 
-                ...form, 
-                id: isEditing ? itemToEdit.id : Date.now(),
-                updatedAt: new Date().toISOString()
+            const payload = {
+                name: form.name.trim(),
+                description: form.description.trim(),
             };
 
-            await new Promise(resolve => setTimeout(resolve, 500));
+            let response;
+            if (isEditing) {
+                response = await occupationService.updateOccupation(itemToEdit.id, payload);
+            } else {
+                response = await occupationService.createOccupation(payload);
+            }
 
-            onSaved(payload);
             addToast({
                 type: "success",
                 title: isEditing ? "Ocupación actualizada" : "Ocupación registrada",
                 message: `"${payload.name}" se guardó correctamente.`,
             });
+            
+            onSaved(response.occupation || response);
             handleExit();
         } catch (err) {
             console.error("❌ Error al guardar ocupación:", err);
             addToast({
                 type: "error",
                 title: "Error al guardar",
-                message: "No se pudo procesar la solicitud.",
+                message: err.message || "No se pudo procesar la solicitud.",
             });
         } finally {
             setSaving(false);
@@ -144,9 +156,8 @@ export default function OccupationForm({ open, onClose, onSaved, itemToEdit = nu
                     {/* Encabezado */}
                     <div className="flex justify-between items-center p-6 border-b border-slate-100 dark:border-slate-700">
                         <div className="flex items-center gap-3">
-                            <div 
-                                className="w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-lg"
-                                style={{ backgroundColor: form.color }}
+                            <div
+                                className="w-10 h-10 rounded-xl flex items-center justify-center text-primary bg-primary/10 shadow-sm"
                             >
                                 <Briefcase size={22} />
                             </div>
@@ -155,7 +166,7 @@ export default function OccupationForm({ open, onClose, onSaved, itemToEdit = nu
                             </h2>
                         </div>
                         <button
-                            onClick={() => (form.name ? setConfirmCancel(true) : handleExit())}
+                            onClick={() => (form.name || form.description ? setConfirmCancel(true) : handleExit())}
                             className="text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white transition cursor-pointer"
                         >
                             <X size={20} />
@@ -164,10 +175,12 @@ export default function OccupationForm({ open, onClose, onSaved, itemToEdit = nu
 
                     {/* Formulario */}
                     <div className="p-6 flex flex-col gap-6">
-                        
+
                         {/* Nombre */}
                         <div>
-                            <label className="block text-sm font-medium mb-1.5 label-required text-slate-700 dark:text-slate-300">Nombre de la Ocupación</label>
+                            <label className="block text-sm font-medium mb-1.5 label-required text-slate-700 dark:text-slate-300 font-sans">
+                                Nombre de la Ocupación
+                            </label>
                             <input
                                 ref={firstRef}
                                 name="name"
@@ -176,30 +189,30 @@ export default function OccupationForm({ open, onClose, onSaved, itemToEdit = nu
                                 onChange={handleChange}
                                 className={`input w-full ${errors.name ? "border-error ring-1 ring-error/50" : ""}`}
                             />
-                            {errors.name && <span className="text-xs text-error mt-1">{errors.name}</span>}
+                            {errors.name && <span className="text-xs text-error mt-1 font-sans">{errors.name}</span>}
                         </div>
 
-                        {/* Color */}
+                        {/* Descripción */}
                         <div>
-                            <label className="block text-sm font-medium mb-1.5 text-slate-700 dark:text-slate-300">Color Distintivo</label>
-                            <div className="flex items-center gap-4">
-                                <input
-                                    type="color"
-                                    name="color"
-                                    value={form.color}
-                                    onChange={handleChange}
-                                    className="w-12 h-12 rounded-lg border-2 border-slate-200 dark:border-slate-700 cursor-pointer p-1 bg-white dark:bg-slate-800"
-                                />
-                                <span className="text-sm font-mono text-slate-500 uppercase">{form.color}</span>
-                            </div>
+                            <label className="block text-sm font-medium mb-1.5 text-slate-700 dark:text-slate-300 font-sans">
+                                Descripción (Opcional)
+                            </label>
+                            <textarea
+                                name="description"
+                                rows={3}
+                                placeholder="Añade una descripción breve..."
+                                value={form.description}
+                                onChange={handleChange}
+                                className="input w-full resize-none py-2"
+                            />
                         </div>
                     </div>
 
                     {/* Botones */}
-                    <div className="p-6 border-t border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-dark/20 flex justify-end gap-3">
+                    <div className="p-6 border-t border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-dark/20 flex justify-end gap-3 font-sans">
                         <button
                             type="button"
-                            onClick={() => (form.name ? setConfirmCancel(true) : handleExit())}
+                            onClick={() => (form.name || form.description ? setConfirmCancel(true) : handleExit())}
                             className="px-4 py-2 rounded-lg bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-600 transition cursor-pointer font-medium text-sm"
                         >
                             Cancelar
@@ -220,7 +233,7 @@ export default function OccupationForm({ open, onClose, onSaved, itemToEdit = nu
             <ConfirmDialog
                 open={confirmCancel}
                 title="Descartar cambios"
-                message="¿Deseas salir sin registrar esta ocupación?"
+                message="¿Deseas salir sin guardar esta ocupación?"
                 onConfirm={() => {
                     setConfirmCancel(false);
                     handleExit();

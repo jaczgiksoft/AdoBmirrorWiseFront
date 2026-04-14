@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { useHotkeys } from "@/hooks/useHotkeys";
 import { useToastStore } from "@/store/useToastStore";
+import { useNotificationStore } from "@/store/useNotificationStore";
 import { ConfirmDialog } from "@/components/feedback";
 import { getAppointmentsPaginated, deleteAppointment, getAppointments } from "@/services/appointment.service";
 import AppointmentForm from "./AppointmentForm";
@@ -54,6 +55,7 @@ export default function AppointmentList() {
 
     const searchRef = useRef(null);
     const { addToast } = useToastStore();
+    const socket = useNotificationStore(state => state.socket);
     const limit = 10;
 
     const [filters, setFilters] = useState({
@@ -182,19 +184,52 @@ export default function AppointmentList() {
     };
 
     const refreshAppointments = async () => {
-        // Refresh both list and calendar to ensure state synchronization
-        // This acts as the "Single Source of Truth" refresh request
-        const promises = [loadCalendarAppointments()]; // Always refresh calendar
+        const promises = [loadCalendarAppointments()];
         if (viewMode === 'list') {
-            promises.push(loadListAppointments()); // Refresh list if active
+            promises.push(loadListAppointments());
         } else {
-            // If in calendar mode, we should ideally invalidate list cache or just reload it silently
-            // For simplicity and robustness (Option B), we reload it too.
-            // Note: loadListAppointments uses 'page' state, so it keeps pagination.
             promises.push(loadListAppointments());
         }
         await Promise.all(promises);
     };
+
+    // WebSocket Listener
+    useEffect(() => {
+        console.log("🔌 [AppointmentList] Hook de socket disparado. Estado:", { 
+            existe: !!socket, 
+            conectado: socket?.connected, 
+            id: socket?.id 
+        });
+
+        if (!socket) {
+            console.log("⚠️ [AppointmentList] No hay instancia de socket en este momento.");
+            return;
+        }
+
+        const handleStatusUpdate = (data) => {
+            console.log("📡 [WebSocket] MENSAJE RECIBIDO CORRECTAMENTE:", data);
+            refreshAppointments();
+            if (data?.appointment?.status === 'en_espera') {
+                addToast({
+                    type: 'success',
+                    title: 'Check-In Kiosco',
+                    message: `El paciente ha llegado y está En Espera`
+                });
+            } else {
+                addToast({
+                    type: 'info',
+                    title: 'Cita Actualizada',
+                    message: `Una cita cambió a estado: ${data?.appointment?.status}`
+                });
+            }
+        };
+
+        socket.on('APPOINTMENT_STATUS_UPDATED', handleStatusUpdate);
+
+        return () => {
+            socket.off('APPOINTMENT_STATUS_UPDATED', handleStatusUpdate);
+        };
+    }, [socket, viewMode, page, debouncedSearch]);
 
     const handleSaved = async () => {
         // 1. Close modal first for snappiness
@@ -320,9 +355,15 @@ export default function AppointmentList() {
     const getStatusName = (status) => {
         const statusMap = {
             'confirmed': 'Confirmada',
+            'confirmada': 'Confirmada',
+            'pendiente': 'Pendiente',
             'pending': 'Pendiente',
             'cancelled': 'Cancelada',
+            'cancelada': 'Cancelada',
             'completed': 'Completada',
+            'en_espera': 'En Espera',
+            'en_tratamiento': 'En Tratamiento',
+            'finalizada': 'Finalizada',
         };
         return statusMap[status?.toLowerCase()] || status;
     };
@@ -394,7 +435,7 @@ export default function AppointmentList() {
                                 <Stethoscope size={18} className="text-slate-400" />
                                 <select
                                     className="bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-sm rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary block p-2.5 outline-none min-w-[180px] transition-all cursor-pointer"
-                                    value={filters.doctor}
+                                    value=""
                                     onChange={(e) => {
                                         const value = e.target.value;
                                         if (!value) return;
@@ -422,7 +463,7 @@ export default function AppointmentList() {
                                 <LayoutGrid size={18} className="text-slate-400" />
                                 <select
                                     className="bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-sm rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary block p-2.5 outline-none min-w-[180px] transition-all cursor-pointer"
-                                    value={filters.area}
+                                    value=""
                                     onChange={(e) => {
                                         const value = e.target.value;
                                         if (!value) return;
@@ -450,7 +491,7 @@ export default function AppointmentList() {
                                 <Calendar size={18} className="text-slate-400" />
                                 <select
                                     className="bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-sm rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary block p-2.5 outline-none min-w-[180px] transition-all cursor-pointer"
-                                    value={filters.status}
+                                    value=""
                                     onChange={(e) => {
                                         const value = e.target.value;
                                         if (!value) return;
@@ -613,8 +654,12 @@ export default function AppointmentList() {
                                                         <Calendar size={18} className="text-primary" />
                                                         <span className="font-semibold text-lg">{appt.date}</span>
                                                     </div>
-                                                    <span className={`text-xs px-2 py-1 rounded-md bg-slate-100 dark:bg-slate-800 border dark:border-slate-600 capitalize ${appt.status === 'confirmed' ? 'text-green-600 dark:text-green-400' : 'text-slate-500 dark:text-slate-400'}`}>
-                                                        {appt.status}
+                                                    <span className={`text-xs px-2 py-1 rounded-md border capitalize ${appt.status === 'confirmed' || appt.status === 'confirmada' ? 'bg-green-50 dark:bg-green-900/30 text-green-600 dark:text-green-400 border-green-200' :
+                                                        appt.status === 'en_espera' ? 'bg-yellow-50 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400 border-yellow-200 font-bold' :
+                                                            appt.status === 'en_tratamiento' ? 'bg-sky-50 dark:bg-sky-900/30 text-sky-600 dark:text-sky-400 border-sky-200 font-bold' :
+                                                                'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 dark:border-slate-600'
+                                                        }`}>
+                                                        {getStatusName(appt.status)}
                                                     </span>
                                                 </div>
 

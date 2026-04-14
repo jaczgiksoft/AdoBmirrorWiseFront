@@ -106,3 +106,16 @@ export async function findKioskAppointments(phoneNumber) {
         throw err.response?.data || err;
     }
 }
+
+/**
+ * 📍 Check-In de cita (Kiosco)
+ */
+export async function checkInAppointment(id) {
+    try {
+        const res = await api.patch(`/appointments/${id}/check-in`);
+        return res.data;
+    } catch (err) {
+        console.error("❌ Error al hacer check-in:", err);
+        throw err.response?.data || err;
+    }
+}
