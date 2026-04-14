@@ -59,7 +59,7 @@ export default function ConfirmationKiosk() {
             setIsLoading(true);
             setError(null);
             try {
-                const data = await findKioskAppointments(phoneNumber);
+                const data = await findKioskAppointments(phoneNumber, tenant?.id);
                 if (data && data.length > 0) {
                     setAppointments(data);
                     setStep(2);
@@ -87,7 +87,7 @@ export default function ConfirmationKiosk() {
             setError(null);
             try {
                 await Promise.all(
-                    selectedAppointments.map(id => checkInAppointment(id))
+                    selectedAppointments.map(id => checkInAppointment(id, tenant?.id))
                 );
                 setStep(3);
             } catch (err) {

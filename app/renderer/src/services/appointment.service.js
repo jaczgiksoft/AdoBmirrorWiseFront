@@ -95,10 +95,10 @@ export async function deleteAppointment(id) {
 /**
  * 🔍 Buscar citas para el Kiosko (por teléfono)
  */
-export async function findKioskAppointments(phoneNumber) {
+export async function findKioskAppointments(phoneNumber, tenantId) {
     try {
         const res = await api.get("/appointments/kiosk/find", {
-            params: { phone_number: phoneNumber }
+            params: { phone_number: phoneNumber, tenant_id: tenantId }
         });
         return res.data;
     } catch (err) {
@@ -110,9 +110,9 @@ export async function findKioskAppointments(phoneNumber) {
 /**
  * 📍 Check-In de cita (Kiosco)
  */
-export async function checkInAppointment(id) {
+export async function checkInAppointment(id, tenantId) {
     try {
-        const res = await api.patch(`/appointments/${id}/check-in`);
+        const res = await api.patch(`/appointments/${id}/check-in`, { tenant_id: tenantId });
         return res.data;
     } catch (err) {
         console.error("❌ Error al hacer check-in:", err);
