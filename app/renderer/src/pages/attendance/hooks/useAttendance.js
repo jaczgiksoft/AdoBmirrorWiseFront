@@ -1,56 +1,83 @@
 // app/renderer/src/pages/attendance/hooks/useAttendance.js
-import { useState, useEffect } from "react";
-import { INITIAL_ATTENDANCE_DATA, ATTENDANCE_TYPES, LATENESS_OPTIONS } from "../services/attendanceService";
+import { useState, useEffect, useCallback } from "react";
+import attendanceService from "../services/attendanceService";
 import { getEmployees } from "@/services/employee.service";
-
-const STORAGE_KEY = "bwise_attendance_data";
+import { useToastStore } from "@/store/useToastStore";
 
 export function useAttendance() {
-    const [records, setRecords] = useState(() => {
-        const saved = localStorage.getItem(STORAGE_KEY);
-        try {
-            return saved ? JSON.parse(saved) : INITIAL_ATTENDANCE_DATA;
-        } catch (e) {
-            console.error("Error parsing attendance storage:", e);
-            return INITIAL_ATTENDANCE_DATA;
-        }
-    });
-
+    const { addToast } = useToastStore();
+    const [records, setRecords] = useState([]);
     const [employees, setEmployees] = useState([]);
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState(null);
 
-    useEffect(() => {
-        const fetchEmployeesData = async () => {
-            try {
-                const data = await getEmployees();
-                setEmployees(data);
-            } catch (err) {
-                console.error("Error fetching employees for attendance:", err);
-            }
-        };
-        fetchEmployeesData();
+    const fetchEmployeesData = useCallback(async () => {
+        try {
+            const data = await getEmployees();
+            setEmployees(data);
+        } catch (err) {
+            console.error("Error fetching employees for attendance:", err);
+        }
     }, []);
 
-    // Persist changes to localStorage
-    useEffect(() => {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
-    }, [records]);
+    const fetchRecords = useCallback(async (filters = {}) => {
+        setIsLoading(true);
+        setError(null);
+        try {
+            const data = await attendanceService.getAll(filters);
+            setRecords(data);
+        } catch (err) {
+            const msg = err.response?.data?.message || "Error al cargar asistencias";
+            setError(msg);
+            addToast({ type: "error", title: "Atención", message: msg });
+        } finally {
+            setIsLoading(false);
+        }
+    }, [addToast]);
 
-    // Add a new record
-    const addRecord = (newRecord) => {
-        const id = Math.max(0, ...records.map(r => r.id)) + 1;
-        setRecords(prev => [{ ...newRecord, id, dateTime: new Date().toISOString() }, ...prev]);
+    useEffect(() => {
+        fetchEmployeesData();
+        fetchRecords();
+    }, [fetchEmployeesData, fetchRecords]);
+
+    const addRecord = async (newRecord) => {
+        setIsLoading(true);
+        try {
+            await attendanceService.create(newRecord);
+            addToast({ type: "success", title: "Éxito", message: "Asistencia registrada correctamente" });
+            await fetchRecords(); // Refresh list
+            return true;
+        } catch (err) {
+            const msg = err.response?.data?.message || "Error al registrar asistencia";
+            addToast({ type: "error", title: "Error", message: msg });
+            return false;
+        } finally {
+            setIsLoading(false);
+        }
     };
 
-    // Delete a record
-    const deleteRecord = (id) => {
-        setRecords(prev => prev.filter(r => r.id !== id));
+    const deleteRecord = async (id) => {
+        setIsLoading(true);
+        try {
+            await attendanceService.delete(id);
+            addToast({ type: "success", title: "Éxito", message: "Registro eliminado correctamente" });
+            setRecords(prev => prev.filter(r => r.id !== id));
+            return true;
+        } catch (err) {
+            const msg = err.response?.data?.message || "Error al eliminar registro";
+            addToast({ type: "error", title: "Error", message: msg });
+            return false;
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     return {
         records,
         employees,
-        attendanceTypes: ATTENDANCE_TYPES,
-        latenessOptions: LATENESS_OPTIONS,
+        isLoading,
+        error,
+        fetchRecords,
         addRecord,
         deleteRecord
     };

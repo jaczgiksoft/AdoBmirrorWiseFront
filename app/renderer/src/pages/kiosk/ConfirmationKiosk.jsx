@@ -1,61 +1,110 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { 
-    Phone, 
-    Calendar, 
-    CheckCircle, 
-    X, 
-    Delete, 
-    User, 
-    Clock, 
+import {
+    Phone,
+    Calendar,
+    CheckCircle,
+    X,
+    Delete,
+    User,
+    Clock,
     ArrowRight,
-    Search
+    Search,
+    Trash2,
+    Loader2
 } from "lucide-react";
+import { findKioskAppointments, checkInAppointment } from "../../services/appointment.service";
 
 export default function ConfirmationKiosk() {
+    const navigate = useNavigate();
     const [step, setStep] = useState(1); // 1: Keypad, 2: Selection, 3: Confirmation
     const [phoneNumber, setPhoneNumber] = useState("");
+    const [appointments, setAppointments] = useState([]);
     const [selectedAppointments, setSelectedAppointments] = useState([]);
+    const [tenant, setTenant] = useState(null);
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState(null);
 
-    // Demo Data
-    const demoAppointments = useMemo(() => [
-        { id: 1, patient: "Juan Pérez", time: "10:30 AM", service: "Limpieza Dental", doctor: "Dr. García" },
-        { id: 2, patient: "María López", time: "11:15 AM", service: "Ortodoncia - Ajuste", doctor: "Dra. Sánchez" },
-        { id: 3, patient: "Carlos Ruiz", time: "01:00 PM", service: "Valoración Inicial", doctor: "Dr. García" },
-    ], []);
+    // 🔒 Validar sesión de Kiosko
+    useEffect(() => {
+        const storedTenant = localStorage.getItem("verifiedTenant");
+        if (!storedTenant) {
+            console.warn("⚠️ No hay código de cliente verificado. Redirigiendo a Login...");
+            navigate("/login");
+            return;
+        }
+        setTenant(JSON.parse(storedTenant));
+    }, [navigate]);
 
     const handleNumberClick = (num) => {
+        setError(null);
         if (phoneNumber.length < 10) {
             setPhoneNumber(prev => prev + num);
         }
     };
 
     const handleDelete = () => {
+        setError(null);
         setPhoneNumber(prev => prev.slice(0, -1));
     };
 
-    const handleEnter = () => {
-        if (phoneNumber.length >= 7) { // Simple validation for demo
-            setStep(2);
+    const handleClear = () => {
+        setError(null);
+        setPhoneNumber("");
+    };
+
+    const handleEnter = async () => {
+        if (phoneNumber.length >= 7) {
+            setIsLoading(true);
+            setError(null);
+            try {
+                const data = await findKioskAppointments(phoneNumber);
+                if (data && data.length > 0) {
+                    setAppointments(data);
+                    setStep(2);
+                } else {
+                    setError("No se encontraron citas pendientes para este número.");
+                }
+            } catch (err) {
+                console.error("Error al buscar citas:", err);
+                setError("Ocurrió un error al buscar tus citas. Por favor intenta de nuevo.");
+            } finally {
+                setIsLoading(false);
+            }
         }
     };
 
     const toggleSelection = (id) => {
-        setSelectedAppointments(prev => 
+        setSelectedAppointments(prev =>
             prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
         );
     };
 
-    const handleConfirmSelection = () => {
+    const handleConfirmSelection = async () => {
         if (selectedAppointments.length > 0) {
-            setStep(3);
+            setIsLoading(true);
+            setError(null);
+            try {
+                await Promise.all(
+                    selectedAppointments.map(id => checkInAppointment(id))
+                );
+                setStep(3);
+            } catch (err) {
+                console.error("Error confirmando citas:", err);
+                setError("Ocurrió un error al confirmar tus citas. Por favor intenta de nuevo.");
+            } finally {
+                setIsLoading(false);
+            }
         }
     };
 
     const resetKiosk = () => {
         setStep(1);
         setPhoneNumber("");
+        setAppointments([]);
         setSelectedAppointments([]);
+        setError(null);
     };
 
     return (
@@ -85,23 +134,44 @@ export default function ConfirmationKiosk() {
                             </span>
                         </div>
 
+                        {error && (
+                            <motion.div
+                                initial={{ opacity: 0, y: -10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className="bg-red-500/10 border border-red-500/20 text-red-400 p-4 rounded-2xl mb-6 text-sm text-center font-medium"
+                            >
+                                {error}
+                            </motion.div>
+                        )}
+
                         <div className="grid grid-cols-3 gap-4">
                             {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(num => (
                                 <KeypadButton key={num} label={num} onClick={() => handleNumberClick(num.toString())} />
                             ))}
-                            <KeypadButton label="+" onClick={() => handleNumberClick("+")} />
+                            <KeypadButton
+                                label={<Trash2 size={24} className="text-red-400" />}
+                                onClick={handleClear}
+                                className="bg-red-500/10 hover:bg-red-500/20 border-red-500/20"
+                            />
                             <KeypadButton label="0" onClick={() => handleNumberClick("0")} />
-                            <KeypadButton 
-                                label={<Delete size={28} />} 
-                                onClick={handleDelete} 
-                                className="bg-slate-700/50 text-slate-400" 
+                            <KeypadButton
+                                label={<Delete size={28} />}
+                                onClick={handleDelete}
+                                className="bg-slate-700/50 text-slate-400"
                             />
                             <button
                                 onClick={handleEnter}
-                                disabled={phoneNumber.length < 7}
-                                className="col-span-3 mt-4 py-6 rounded-3xl bg-sky-500 hover:bg-sky-400 text-white text-2xl font-black shadow-lg shadow-sky-500/20 transition-all active:scale-95 disabled:opacity-50 disabled:active:scale-100"
+                                disabled={phoneNumber.length < 7 || isLoading}
+                                className="col-span-3 mt-4 py-6 rounded-3xl bg-sky-500 hover:bg-sky-400 text-white text-2xl font-black shadow-lg shadow-sky-500/20 transition-all active:scale-95 disabled:opacity-50 disabled:active:scale-100 flex items-center justify-center gap-3"
                             >
-                                CONTINUAR
+                                {isLoading ? (
+                                    <>
+                                        <Loader2 className="animate-spin" size={28} />
+                                        BUSCANDO...
+                                    </>
+                                ) : (
+                                    "CONTINUAR"
+                                )}
                             </button>
                         </div>
                     </motion.div>
@@ -122,15 +192,15 @@ export default function ConfirmationKiosk() {
                         </div>
 
                         <div className="space-y-4 mb-10 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
-                            {demoAppointments.map(appt => (
+                            {appointments.map(appt => (
                                 <motion.div
                                     key={appt.id}
                                     whileTap={{ scale: 0.98 }}
                                     onClick={() => toggleSelection(appt.id)}
                                     className={`
                                         p-6 rounded-3xl border-2 transition-all cursor-pointer flex items-center justify-between
-                                        ${selectedAppointments.includes(appt.id) 
-                                            ? 'bg-sky-500/20 border-sky-500 shadow-lg shadow-sky-500/10' 
+                                        ${selectedAppointments.includes(appt.id)
+                                            ? 'bg-sky-500/20 border-sky-500 shadow-lg shadow-sky-500/10'
                                             : 'bg-slate-900/50 border-white/5 hover:border-white/20'}
                                     `}
                                 >
@@ -140,7 +210,7 @@ export default function ConfirmationKiosk() {
                                         </div>
                                         <div>
                                             <p className="text-xl font-bold text-white">{appt.patient}</p>
-                                            <p className="text-sm text-slate-400 font-medium">{appt.service} • {appt.doctor}</p>
+                                            <p className="text-sm text-slate-400 font-medium">{appt.doctor} • {new Date(appt.date).toLocaleDateString()}</p>
                                         </div>
                                     </div>
                                     <div className="text-right">
@@ -165,10 +235,10 @@ export default function ConfirmationKiosk() {
                             </button>
                             <button
                                 onClick={handleConfirmSelection}
-                                disabled={selectedAppointments.length === 0}
-                                className="flex-[2] py-5 rounded-3xl bg-sky-500 text-white font-black hover:bg-sky-400 shadow-lg shadow-sky-500/20 transition-all disabled:opacity-50"
+                                disabled={selectedAppointments.length === 0 || isLoading}
+                                className="flex-[2] py-5 rounded-3xl bg-sky-500 text-white font-black hover:bg-sky-400 shadow-lg shadow-sky-500/20 transition-all disabled:opacity-50 flex items-center justify-center gap-3"
                             >
-                                CONFIRMAR LLEGADA
+                                {isLoading ? <Loader2 className="animate-spin" size={24} /> : "CONFIRMAR LLEGADA"}
                             </button>
                         </div>
                     </motion.div>

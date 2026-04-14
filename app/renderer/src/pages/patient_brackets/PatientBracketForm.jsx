@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { motion } from "framer-motion";
-import { X, Box } from "lucide-react";
+import { X, Box, Loader2 } from "lucide-react";
 import { useToastStore } from "@/store/useToastStore";
 import { useHotkeys } from "@/hooks/useHotkeys";
 import { ConfirmDialog } from "@/components/feedback";
+import bracketTypeService from "@/services/bracket_type.service";
 
 export default function PatientBracketForm({ open, onClose, onSaved, itemToEdit = null }) {
     const { addToast } = useToastStore();
@@ -12,7 +13,7 @@ export default function PatientBracketForm({ open, onClose, onSaved, itemToEdit 
     const initialForm = {
         name: "",
         description: "",
-        color: "#6366f1", // Default indigo
+        color: "#6366f1", // Default indigo 
     };
 
     const [form, setForm] = useState(initialForm);
@@ -27,13 +28,16 @@ export default function PatientBracketForm({ open, onClose, onSaved, itemToEdit 
         if (open) {
             if (itemToEdit) {
                 setForm({
-                    ...initialForm,
-                    ...itemToEdit,
+                    name: itemToEdit.name || "",
+                    description: itemToEdit.description || "",
+                    color: itemToEdit.color || "#6366f1",
                 });
             } else {
                 setForm(initialForm);
             }
-            setTimeout(() => firstRef.current?.focus(), 50);
+            // Pequeño delay para que el modal termine de animarse antes del focus
+            const timer = setTimeout(() => firstRef.current?.focus(), 150);
+            return () => clearTimeout(timer);
         }
     }, [open, itemToEdit]);
 
@@ -44,7 +48,7 @@ export default function PatientBracketForm({ open, onClose, onSaved, itemToEdit 
                 if (!open) return;
                 e.preventDefault();
                 e.stopPropagation();
-                if (confirmCancel) return;
+                if (confirmCancel || saving) return;
 
                 if (form.name || form.description) {
                     setConfirmCancel(true);
@@ -54,24 +58,17 @@ export default function PatientBracketForm({ open, onClose, onSaved, itemToEdit 
                 return "prevent";
             },
             enter: (e) => {
-                if (!open || confirmCancel) return;
+                if (!open || confirmCancel || saving) return;
                 // Si estamos en un textarea, dejamos que Enter haga nueva línea
                 if (document.activeElement.tagName === "TEXTAREA") return;
 
                 e.preventDefault();
                 e.stopPropagation();
-                const isValid = validateForm();
-                if (isValid) handleSubmit();
-                else
-                    addToast({
-                        type: "warning",
-                        title: "Campos incompletos",
-                        message: "Por favor completa los campos obligatorios.",
-                    });
+                handleSubmit();
                 return "prevent";
             },
         },
-        [open, form, confirmCancel]
+        [open, form, confirmCancel, saving]
     );
 
     const handleChange = (e) => {
@@ -97,30 +94,46 @@ export default function PatientBracketForm({ open, onClose, onSaved, itemToEdit 
 
     const handleSubmit = async () => {
         if (saving) return;
+
+        if (!validateForm()) {
+            addToast({
+                type: "warning",
+                title: "Campos incompletos",
+                message: "Por favor completa los campos obligatorios.",
+            });
+            return;
+        }
+
         setSaving(true);
         try {
-            // Simular guardado
-            const payload = { 
-                ...form, 
-                id: isEditing ? itemToEdit.id : Date.now(),
-                updatedAt: new Date().toISOString()
+            const payload = {
+                name: form.name.trim(),
+                description: form.description?.trim() || null,
+                color: form.color,
             };
 
-            await new Promise(resolve => setTimeout(resolve, 500));
+            let result;
+            if (isEditing) {
+                result = await bracketTypeService.update(itemToEdit.id, payload);
+            } else {
+                result = await bracketTypeService.create(payload);
+            }
 
-            onSaved(payload);
             addToast({
                 type: "success",
                 title: isEditing ? "Bracket actualizado" : "Bracket creado",
-                message: `"${payload.name}" se guardó correctamente.`,
+                message: `"${payload.name}" se guardó correctamente en la base de datos.`,
             });
+            
+            onSaved(result);
             handleExit();
         } catch (err) {
             console.error("❌ Error al guardar bracket:", err);
+            const errorMsg = err.response?.data?.message || "No se pudo procesar la solicitud.";
             addToast({
                 type: "error",
                 title: "Error al guardar",
-                message: "No se pudo procesar la solicitud.",
+                message: errorMsg,
             });
         } finally {
             setSaving(false);
@@ -148,7 +161,7 @@ export default function PatientBracketForm({ open, onClose, onSaved, itemToEdit 
                     {/* Encabezado */}
                     <div className="flex justify-between items-center p-6 border-b border-slate-100 dark:border-slate-700">
                         <div className="flex items-center gap-3">
-                            <div 
+                            <div
                                 className="w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-lg"
                                 style={{ backgroundColor: form.color }}
                             >
@@ -168,7 +181,7 @@ export default function PatientBracketForm({ open, onClose, onSaved, itemToEdit 
 
                     {/* Formulario */}
                     <div className="p-6 flex flex-col gap-5">
-                        
+
                         {/* Nombre */}
                         <div>
                             <label className="block text-sm font-medium mb-1.5 label-required text-slate-700 dark:text-slate-300">Marca / Tipo de Bracket</label>
@@ -216,8 +229,9 @@ export default function PatientBracketForm({ open, onClose, onSaved, itemToEdit 
                     <div className="p-6 border-t border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-dark/20 flex justify-end gap-3">
                         <button
                             type="button"
+                            disabled={saving}
                             onClick={() => (form.name || form.description ? setConfirmCancel(true) : handleExit())}
-                            className="px-4 py-2 rounded-lg bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-600 transition cursor-pointer font-medium text-sm"
+                            className="px-4 py-2 rounded-lg bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-600 transition cursor-pointer font-medium text-sm disabled:opacity-50"
                         >
                             Cancelar
                         </button>
@@ -225,9 +239,16 @@ export default function PatientBracketForm({ open, onClose, onSaved, itemToEdit 
                             type="button"
                             onClick={handleSubmit}
                             disabled={saving}
-                            className="px-6 py-2 rounded-lg bg-primary text-white hover:bg-sky-500 transition disabled:opacity-50 cursor-pointer font-semibold text-sm shadow-lg shadow-sky-500/20"
+                            className="flex items-center gap-2 px-6 py-2 rounded-lg bg-primary text-white hover:bg-sky-500 transition disabled:opacity-50 cursor-pointer font-semibold text-sm shadow-lg shadow-sky-500/20"
                         >
-                            {saving ? "Guardando..." : isEditing ? "Actualizar" : "Guardar"}
+                            {saving ? (
+                                <>
+                                    <Loader2 className="animate-spin" size={16} />
+                                    <span>Guardando...</span>
+                                </>
+                            ) : (
+                                isEditing ? "Actualizar" : "Guardar"
+                            )}
                         </button>
                     </div>
 

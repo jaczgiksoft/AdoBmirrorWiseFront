@@ -91,3 +91,31 @@ export async function deleteAppointment(id) {
         throw err.response?.data || err;
     }
 }
+
+/**
+ * 🔍 Buscar citas para el Kiosko (por teléfono)
+ */
+export async function findKioskAppointments(phoneNumber) {
+    try {
+        const res = await api.get("/appointments/kiosk/find", {
+            params: { phone_number: phoneNumber }
+        });
+        return res.data;
+    } catch (err) {
+        console.error("❌ Error al buscar citas de kiosko:", err);
+        throw err.response?.data || err;
+    }
+}
+
+/**
+ * 📍 Check-In de cita (Kiosco)
+ */
+export async function checkInAppointment(id) {
+    try {
+        const res = await api.patch(`/appointments/${id}/check-in`);
+        return res.data;
+    } catch (err) {
+        console.error("❌ Error al hacer check-in:", err);
+        throw err.response?.data || err;
+    }
+}

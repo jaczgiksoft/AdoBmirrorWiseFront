@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { motion } from "framer-motion";
+import { createReferral, updateReferral } from "@/services/referral.service";
 import { X, Share2 } from "lucide-react";
 import { useToastStore } from "@/store/useToastStore";
 import { useHotkeys } from "@/hooks/useHotkeys";
@@ -11,7 +12,10 @@ export default function ReferralForm({ open, onClose, onSaved, itemToEdit = null
 
     const initialForm = {
         name: "",
-        color: "#0ea5e9", // Default sky blue
+        contact_name: "",
+        contact_phone: "",
+        contact_email: "",
+        notes: "",
     };
 
     const [form, setForm] = useState(initialForm);
@@ -93,30 +97,44 @@ export default function ReferralForm({ open, onClose, onSaved, itemToEdit = null
 
     const handleSubmit = async () => {
         if (saving) return;
+        
+        const isValid = validateForm();
+        if (!isValid) {
+            addToast({
+                type: "warning",
+                title: "Campos incompletos",
+                message: "Por favor revisa los errores en el formulario.",
+            });
+            return;
+        }
+
         setSaving(true);
         try {
-            // Simular guardado
-            const payload = { 
-                ...form, 
-                id: isEditing ? itemToEdit.id : Date.now(),
-                updatedAt: new Date().toISOString()
-            };
+            // Filtrar campos vacíos (excepto el nombre) para no mandarlos a la API
+            const payload = Object.fromEntries(
+                Object.entries(form).filter(([key, value]) => key === 'name' || (value !== null && value !== ""))
+            );
 
-            await new Promise(resolve => setTimeout(resolve, 500));
+            if (isEditing) {
+                await updateReferral(itemToEdit.id, payload);
+            } else {
+                await createReferral(payload);
+            }
 
-            onSaved(payload);
             addToast({
                 type: "success",
                 title: isEditing ? "Fuente actualizada" : "Fuente registrada",
-                message: `"${payload.name}" se guardó correctamente.`,
+                message: `"${form.name}" se guardó correctamente.`,
             });
+            
+            onSaved();
             handleExit();
         } catch (err) {
             console.error("❌ Error al guardar fuente de referido:", err);
             addToast({
                 type: "error",
                 title: "Error al guardar",
-                message: "No se pudo procesar la solicitud.",
+                message: err.message || "No se pudo procesar la solicitud.",
             });
         } finally {
             setSaving(false);
@@ -139,15 +157,12 @@ export default function ReferralForm({ open, onClose, onSaved, itemToEdit = null
                     animate={{ scale: 1, opacity: 1 }}
                     exit={{ scale: 0.95, opacity: 0 }}
                     transition={{ duration: 0.2 }}
-                    className="bg-white dark:bg-secondary rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 w-full max-w-sm overflow-hidden flex flex-col"
+                    className="bg-white dark:bg-secondary rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 w-full max-w-lg overflow-hidden flex flex-col"
                 >
                     {/* Encabezado */}
                     <div className="flex justify-between items-center p-6 border-b border-slate-100 dark:border-slate-700">
                         <div className="flex items-center gap-3">
-                            <div 
-                                className="w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-lg"
-                                style={{ backgroundColor: form.color }}
-                            >
+                            <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-lg bg-primary">
                                 <Share2 size={22} />
                             </div>
                             <h2 className="text-xl font-semibold text-primary">
@@ -163,8 +178,8 @@ export default function ReferralForm({ open, onClose, onSaved, itemToEdit = null
                     </div>
 
                     {/* Formulario */}
-                    <div className="p-6 flex flex-col gap-6">
-                        
+                    <div className="p-6 flex flex-col gap-5 max-h-[70vh] overflow-y-auto custom-scrollbar">
+
                         {/* Nombre */}
                         <div>
                             <label className="block text-sm font-medium mb-1.5 label-required text-slate-700 dark:text-slate-300">Fuente de Referido</label>
@@ -179,19 +194,56 @@ export default function ReferralForm({ open, onClose, onSaved, itemToEdit = null
                             {errors.name && <span className="text-xs text-error mt-1">{errors.name}</span>}
                         </div>
 
-                        {/* Color */}
-                        <div>
-                            <label className="block text-sm font-medium mb-1.5 text-slate-700 dark:text-slate-300">Color Representativo</label>
-                            <div className="flex items-center gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            {/* Contacto */}
+                            <div>
+                                <label className="block text-sm font-medium mb-1.5 text-slate-700 dark:text-slate-300">Persona de Contacto</label>
                                 <input
-                                    type="color"
-                                    name="color"
-                                    value={form.color}
+                                    name="contact_name"
+                                    placeholder="Nombre del contacto"
+                                    value={form.contact_name}
                                     onChange={handleChange}
-                                    className="w-12 h-12 rounded-lg border-2 border-slate-200 dark:border-slate-700 cursor-pointer p-1 bg-white dark:bg-slate-800"
+                                    className="input w-full"
                                 />
-                                <span className="text-sm font-mono text-slate-500 uppercase">{form.color}</span>
                             </div>
+
+                            {/* Teléfono */}
+                            <div>
+                                <label className="block text-sm font-medium mb-1.5 text-slate-700 dark:text-slate-300">Teléfono</label>
+                                <input
+                                    name="contact_phone"
+                                    placeholder="Ej. +52 55..."
+                                    value={form.contact_phone}
+                                    onChange={handleChange}
+                                    className="input w-full"
+                                />
+                            </div>
+                        </div>
+
+                        {/* Email */}
+                        <div>
+                            <label className="block text-sm font-medium mb-1.5 text-slate-700 dark:text-slate-300">Correo Electrónico</label>
+                            <input
+                                name="contact_email"
+                                type="email"
+                                placeholder="ejemplo@correo.com"
+                                value={form.contact_email}
+                                onChange={handleChange}
+                                className="input w-full"
+                            />
+                        </div>
+
+                        {/* Notas */}
+                        <div>
+                            <label className="block text-sm font-medium mb-1.5 text-slate-700 dark:text-slate-300">Notas / Descripción</label>
+                            <textarea
+                                name="notes"
+                                rows={3}
+                                placeholder="Detalles adicionales sobre esta fuente..."
+                                value={form.notes}
+                                onChange={handleChange}
+                                className="input w-full resize-none"
+                            />
                         </div>
                     </div>
 

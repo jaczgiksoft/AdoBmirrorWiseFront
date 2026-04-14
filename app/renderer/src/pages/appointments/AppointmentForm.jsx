@@ -11,6 +11,7 @@ import { getAllServices } from "@/services/service.service";
 import { getAllProcesses, getProcessById, createProcess, updateProcess } from "@/services/process.service";
 import { getAllSteps, createStep } from "@/services/step.service";
 import { useHotkeys } from "@/hooks/useHotkeys";
+import { DateInput } from "@/components/inputs";
 import { ConfirmDialog } from "@/components/feedback";
 
 // DnD Imports
@@ -671,7 +672,12 @@ export default function AppointmentForm({ open, onClose, onSaved, itemToEdit = n
                                 </div>
                                 <div><label className="label-required block text-sm mb-1 dark:text-slate-200">Área Clínica</label><select name="clinic_area_id" value={form.clinic_area_id} onChange={handleChange} className={`input ${errors.clinic_area_id ? "border-error" : ""}`}><option value="">Seleccionar área...</option>{clinicAreas.length > 0 ? clinicAreas.map(c => <option key={c.id} value={c.id}>{c.name}</option>) : <option value="1">Unidad 1</option>}</select></div>
                                 <div><label className="label-required block text-sm mb-1 dark:text-slate-200">Doctor</label><select name="employee_id" value={form.employee_id} onChange={handleChange} className={`input ${errors.employee_id ? "border-error" : ""}`}><option value="">Seleccionar doctor...</option>{doctors.map(d => <option key={d.id} value={d.id}>{d.first_name} {d.last_name}</option>)}</select></div>
-                                <div><label className="label-required block text-sm mb-1 dark:text-slate-200">Fecha</label><input type="date" name="date" value={form.date} onChange={handleChange} className="input" /></div>
+                                <DateInput
+                                    label="Fecha"
+                                    value={form.date}
+                                    onChange={(val) => handleChange({ target: { name: "date", value: val } })}
+                                    required={true}
+                                />
                                 <div className="flex gap-2">
                                     <div className="flex-1"><label className="label-required block text-sm mb-1 dark:text-slate-200">Inicio</label><input type="time" name="start_time" value={form.start_time} onChange={handleChange} className="input" /></div>
                                     <div className="flex-1"><label className="label-required block text-sm mb-1 dark:text-slate-200">Fin</label><input type="time" name="end_time" value={form.end_time} onChange={handleChange} className="input" /></div>

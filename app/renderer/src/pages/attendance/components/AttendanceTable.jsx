@@ -7,72 +7,74 @@ export default function AttendanceTable({ records, onDelete, sortConfig, onSort 
     const columns = [
         {
             header: "Empleado",
-            accessor: "employeeName",
+            accessor: "employee",
             sortable: true,
             render: (row) => (
                 <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-primary">
-                        <User size={16} />
+                    <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-primary overflow-hidden">
+                        {row.employee?.profile_image ? (
+                            <img src={row.employee.profile_image} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                            <User size={16} />
+                        )}
                     </div>
                     <div>
-                        <p className="font-semibold text-slate-800 dark:text-slate-100 text-sm">{row.employeeName}</p>
+                        <p className="font-semibold text-slate-800 dark:text-slate-100 text-sm">
+                            {row.employee ? `${row.employee.first_name} ${row.employee.last_name}` : "---"}
+                        </p>
                     </div>
                 </div>
             )
         },
         {
-            header: "Tipo",
-            accessor: "type",
+            header: "Fecha",
+            accessor: "date",
             sortable: true,
-            render: (row) => {
-                const colors = {
-                    "Entrada": "text-green-500 bg-green-500/10",
-                    "Salida": "text-red-500 bg-red-500/10",
-                    "Salida de comida": "text-orange-500 bg-orange-500/10",
-                    "Entrada de comida": "text-cyan-500 bg-cyan-500/10"
-                };
-                return (
-                    <span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${colors[row.type] || "text-slate-500 bg-slate-500/10"}`}>
-                        {row.type}
-                    </span>
-                );
-            }
+            render: (row) => (
+                <span className="text-sm font-medium text-slate-700 dark:text-slate-200">
+                    {new Date(row.date + "T00:00:00").toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" })}
+                </span>
+            )
         },
         {
-            header: "Fecha y Hora",
-            accessor: "dateTime",
-            sortable: true,
-            render: (row) => {
-                const date = new Date(row.dateTime);
-                return (
-                    <div className="flex flex-col">
-                        <span className="text-sm font-medium text-slate-700 dark:text-slate-200">
-                            {date.toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" })}
+            header: "Entrada / Salida",
+            accessor: "check_in",
+            render: (row) => (
+                <div className="flex flex-col">
+                    {row.check_in && (
+                        <span className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">
+                            Entrada: {row.check_in}
                         </span>
-                        <span className="text-xs text-slate-400">
-                            {date.toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+                    )}
+                    {row.check_out && (
+                        <span className="text-xs text-rose-600 dark:text-rose-400 font-medium">
+                            Salida: {row.check_out}
                         </span>
-                    </div>
-                );
-            }
+                    )}
+                    {!row.check_in && !row.check_out && <span className="text-xs text-slate-400">---</span>}
+                </div>
+            )
         },
         {
             header: "Estado",
-            accessor: "isLate",
+            accessor: "status",
             sortable: true,
-            render: (row) => (
-                row.isLate ? (
-                    <div className="flex items-center gap-1.5 text-amber-500">
-                        <AlertTriangle size={14} />
-                        <span className="text-xs font-semibold">Con Retardo</span>
+            render: (row) => {
+                const statusMap = {
+                    present: { label: "Puntual", color: "text-emerald-500", icon: CheckCircle2 },
+                    late: { label: "Retardo", color: "text-amber-500", icon: AlertTriangle },
+                    absent: { label: "Falta", color: "text-rose-500", icon: AlertTriangle }
+                };
+                const config = statusMap[row.status] || { label: row.status, color: "text-slate-500", icon: AlertTriangle };
+                const Icon = config.icon;
+
+                return (
+                    <div className={`flex items-center gap-1.5 ${config.color}`}>
+                        <Icon size={14} />
+                        <span className="text-xs font-semibold">{config.label}</span>
                     </div>
-                ) : (
-                    <div className="flex items-center gap-1.5 text-emerald-500">
-                        <CheckCircle2 size={14} />
-                        <span className="text-xs font-semibold">Puntual</span>
-                    </div>
-                )
-            )
+                );
+            }
         },
         {
             header: "Notas",

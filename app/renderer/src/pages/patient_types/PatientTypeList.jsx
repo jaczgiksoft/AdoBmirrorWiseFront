@@ -8,25 +8,21 @@ import PatientTypeForm from "./PatientTypeForm";
 import { PlusCircle, Search, Home, Layout, Edit2, Trash2, Users, ChevronLeft } from "lucide-react";
 import { Pagination } from "@/components/ui";
 
-const STORAGE_KEY = "bwise_patient_types_mock_data";
+import * as patientTypeService from "@/services/patientType.service";
 
-const DEFAULT_TYPES = [
-    { id: 1, name: "VIP", description: "Pacientes con trato preferencial y descuentos especiales.", color: "#8b5cf6" },
-    { id: 2, name: "Convenio", description: "Pacientes que vienen de empresas con convenios activos.", color: "#10b981" },
-    { id: 3, name: "Frecuente", description: "Pacientes que han asistido a más de 5 citas en el último año.", color: "#3b82f6" },
-    { id: 4, name: "Referido", description: "Pacientes que vienen por recomendación de otro paciente.", color: "#f59e0b" }
-];
+const limit = 10;
 
 export default function PatientTypeList() {
     const navigate = useNavigate();
     const [items, setItems] = useState([]);
+    const [isLoading, setIsLoading] = useState(true);
     const [selectedIndex, setSelectedIndex] = useState(0);
     const [searchTerm, setSearchTerm] = useState("");
     const [page, setPage] = useState(1);
-    const limit = 10;
 
     // Estados para modales
     const [confirmOpen, setConfirmOpen] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
     const [itemToDelete, setItemToDelete] = useState(null);
     const [showForm, setShowForm] = useState(false);
     const [itemToEdit, setItemToEdit] = useState(null);
@@ -34,15 +30,26 @@ export default function PatientTypeList() {
     const searchRef = useRef(null);
     const { addToast } = useToastStore();
 
-    // 🔹 Cargar datos desde localStorage
-    useEffect(() => {
-        const stored = localStorage.getItem(STORAGE_KEY);
-        if (stored) {
-            setItems(JSON.parse(stored));
-        } else {
-            setItems(DEFAULT_TYPES);
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_TYPES));
+    // 🔹 Cargar datos desde la API
+    const fetchItems = async () => {
+        setIsLoading(true);
+        try {
+            const data = await patientTypeService.getAllPatientTypes();
+            setItems(data);
+        } catch (err) {
+            console.error("❌ Error al cargar tipos de pacientes:", err);
+            addToast({
+                type: "error",
+                title: "Error al cargar",
+                message: "No se pudieron obtener los tipos de pacientes."
+            });
+        } finally {
+            setIsLoading(false);
         }
+    };
+
+    useEffect(() => {
+        fetchItems();
         document.title = "Tipos de Pacientes | BWISE Dental";
     }, []);
 
@@ -116,32 +123,35 @@ export default function PatientTypeList() {
         setConfirmOpen(true);
     };
 
-    const handleConfirmDelete = () => {
+    const handleConfirmDelete = async () => {
         if (!itemToDelete) return;
-        const newItems = items.filter(i => i.id !== itemToDelete.id);
-        setItems(newItems);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(newItems));
-
-        setConfirmOpen(false);
-        setItemToDelete(null);
-
-        addToast({
-            type: "success",
-            title: "Tipo eliminado",
-            message: `"${itemToDelete.name}" fue eliminado correctamente.`,
-        });
+        setIsDeleting(true);
+        try {
+            await patientTypeService.deletePatientType(itemToDelete.id);
+            
+            addToast({
+                type: "success",
+                title: "Tipo eliminado",
+                message: `"${itemToDelete.name}" fue eliminado correctamente.`,
+            });
+            
+            fetchItems();
+            setConfirmOpen(false);
+            setItemToDelete(null);
+        } catch (err) {
+            console.error("❌ Error al eliminar tipo de paciente:", err);
+            addToast({
+                type: "error",
+                title: "Error al eliminar",
+                message: err.message || "No se pudo eliminar el tipo de paciente."
+            });
+        } finally {
+            setIsDeleting(false);
+        }
     };
 
-    const handleFormSaved = (savedItem) => {
-        let newItems;
-        if (itemToEdit) {
-            newItems = items.map(i => i.id === savedItem.id ? savedItem : i);
-        } else {
-            newItems = [...items, savedItem];
-        }
-
-        setItems(newItems);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(newItems));
+    const handleFormSaved = () => {
+        fetchItems();
         setShowForm(false);
     };
 
@@ -198,7 +208,12 @@ export default function PatientTypeList() {
                 </div>
 
                 {/* 📋 Tabla (Lista de Tarjetas) */}
-                {paginatedItems.length === 0 ? (
+                {isLoading ? (
+                    <div className="flex flex-col items-center justify-center py-20">
+                        <div className="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin mb-4" />
+                        <p className="text-slate-500 dark:text-slate-400 font-medium">Cargando tipos de pacientes...</p>
+                    </div>
+                ) : paginatedItems.length === 0 ? (
                     <div className="text-center py-20 bg-white dark:bg-secondary/30 rounded-2xl border border-dashed border-slate-300 dark:border-slate-700">
                         <Users className="mx-auto text-slate-300 dark:text-slate-600 mb-4" size={56} />
                         <p className="text-slate-500 dark:text-slate-400 font-medium">No se encontraron tipos de pacientes.</p>
@@ -299,9 +314,10 @@ export default function PatientTypeList() {
                 }
                 onConfirm={handleConfirmDelete}
                 onCancel={() => setConfirmOpen(false)}
-                confirmLabel="Eliminar"
+                confirmLabel={isDeleting ? "Eliminando..." : "Eliminar"}
                 cancelLabel="Cancelar"
                 confirmVariant="error"
+                disabled={isDeleting}
             />
         </div>
     );

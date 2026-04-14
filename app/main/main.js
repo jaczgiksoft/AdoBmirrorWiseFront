@@ -223,6 +223,8 @@ ipcMain.handle("app:open-kiosk", async () => {
         height: 768,
         minWidth: 800,
         minHeight: 600,
+        fullscreen: true,
+        kiosk: true,
         autoHideMenuBar: true,
         frame: false, // Frame-less for kiosk feel
         webPreferences: {

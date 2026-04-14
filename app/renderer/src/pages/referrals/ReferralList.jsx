@@ -5,19 +5,9 @@ import { useHotkeys } from "@/hooks/useHotkeys";
 import { useToastStore } from "@/store/useToastStore";
 import { ConfirmDialog } from "@/components/feedback";
 import ReferralForm from "./ReferralForm";
-import { PlusCircle, Search, Share2, Edit2, Trash2, ChevronLeft } from "lucide-react";
+import { getReferrals, deleteReferral as apiDeleteReferral } from "@/services/referral.service";
+import { PlusCircle, Search, Share2, Edit2, Trash2, ChevronLeft, Loader2, AlertCircle } from "lucide-react";
 import { Pagination } from "@/components/ui";
-
-const STORAGE_KEY = "bwise_referrals_mock_data";
-
-const DEFAULT_REFERRALS = [
-    { id: 1, name: "Recomendación", color: "#10b981" },
-    { id: 2, name: "Instagram", color: "#d946ef" },
-    { id: 3, name: "Facebook", color: "#3b82f6" },
-    { id: 4, name: "Google Maps", color: "#ef4444" },
-    { id: 5, name: "TV / Radio", color: "#f59e0b" },
-    { id: 6, name: "Página Web", color: "#0ea5e9" }
-];
 
 export default function ReferralList() {
     const navigate = useNavigate();
@@ -33,18 +23,34 @@ export default function ReferralList() {
     const [showForm, setShowForm] = useState(false);
     const [itemToEdit, setItemToEdit] = useState(null);
 
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+
     const searchRef = useRef(null);
     const { addToast } = useToastStore();
 
-    // 🔹 Cargar datos desde localStorage
-    useEffect(() => {
-        const stored = localStorage.getItem(STORAGE_KEY);
-        if (stored) {
-            setItems(JSON.parse(stored));
-        } else {
-            setItems(DEFAULT_REFERRALS);
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_REFERRALS));
+    // 🔹 Cargar datos desde la API
+    const fetchReferrals = async () => {
+        setLoading(true);
+        setError(null);
+        try {
+            const data = await getReferrals();
+            setItems(data);
+        } catch (err) {
+            console.error("❌ Error al obtener fuentes:", err);
+            setError("No se pudieron cargar las fuentes de referido.");
+            addToast({
+                type: "error",
+                title: "Error de carga",
+                message: "Ocurrido un problema al obtener los datos.",
+            });
+        } finally {
+            setLoading(false);
         }
+    };
+
+    useEffect(() => {
+        fetchReferrals();
         document.title = "Fuentes de Referido | BWISE Dental";
     }, []);
 
@@ -117,32 +123,32 @@ export default function ReferralList() {
         setConfirmOpen(true);
     };
 
-    const handleConfirmDelete = () => {
+    const handleConfirmDelete = async () => {
         if (!itemToDelete) return;
-        const newItems = items.filter(i => i.id !== itemToDelete.id);
-        setItems(newItems);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(newItems));
+        
+        try {
+            await apiDeleteReferral(itemToDelete.id);
+            setItems(prev => prev.filter(i => i.id !== itemToDelete.id));
 
-        setConfirmOpen(false);
-        setItemToDelete(null);
-
-        addToast({
-            type: "success",
-            title: "Fuente eliminada",
-            message: `"${itemToDelete.name}" fue eliminada correctamente.`,
-        });
+            addToast({
+                type: "success",
+                title: "Fuente eliminada",
+                message: `"${itemToDelete.name}" fue eliminada correctamente.`,
+            });
+        } catch (err) {
+            addToast({
+                type: "error",
+                title: "Error al eliminar",
+                message: err.message || "No se pudo eliminar la fuente.",
+            });
+        } finally {
+            setConfirmOpen(false);
+            setItemToDelete(null);
+        }
     };
 
-    const handleFormSaved = (savedItem) => {
-        let newItems;
-        if (itemToEdit) {
-            newItems = items.map(i => i.id === savedItem.id ? savedItem : i);
-        } else {
-            newItems = [...items, savedItem];
-        }
-
-        setItems(newItems);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(newItems));
+    const handleFormSaved = () => {
+        fetchReferrals();
         setShowForm(false);
     };
 
@@ -199,7 +205,23 @@ export default function ReferralList() {
                 </div>
 
                 {/* 📋 Lista de Referidos */}
-                {paginatedItems.length === 0 ? (
+                {loading ? (
+                    <div className="flex flex-col items-center justify-center py-20 bg-white dark:bg-secondary/30 rounded-2xl border border-slate-200 dark:border-slate-700">
+                        <Loader2 className="animate-spin text-primary mb-4" size={40} />
+                        <p className="text-slate-500 dark:text-slate-400 animate-pulse">Cargando fuentes de referido...</p>
+                    </div>
+                ) : error ? (
+                    <div className="text-center py-20 bg-red-50 dark:bg-red-950/20 rounded-2xl border border-dashed border-red-300 dark:border-red-800">
+                        <AlertCircle className="mx-auto text-red-500 mb-4" size={56} />
+                        <p className="text-red-800 dark:text-red-400 font-medium">{error}</p>
+                        <button 
+                            onClick={fetchReferrals}
+                            className="mt-4 text-sm font-semibold text-primary hover:underline"
+                        >
+                            Reintentar cargar
+                        </button>
+                    </div>
+                ) : paginatedItems.length === 0 ? (
                     <div className="text-center py-20 bg-white dark:bg-secondary/30 rounded-2xl border border-dashed border-slate-300 dark:border-slate-700">
                         <Share2 className="mx-auto text-slate-300 dark:text-slate-600 mb-4" size={56} />
                         <p className="text-slate-500 dark:text-slate-400 font-medium">No se encontraron fuentes de referido.</p>
@@ -214,23 +236,21 @@ export default function ReferralList() {
                                     key={item.id}
                                     layoutId={`referral-${item.id}`}
                                     onClick={() => handleEditClick(item)}
-                                    style={{ borderLeftColor: item.color, borderLeftWidth: '6px' }}
-                                    className={`relative flex items-center justify-between bg-white dark:bg-secondary rounded-xl px-5 py-4 cursor-pointer border-y border-r transition-all group overflow-hidden shadow-sm
+                                    className={`relative flex items-center justify-between bg-white dark:bg-secondary rounded-xl px-5 py-4 cursor-pointer border-l-4 transition-all group overflow-hidden shadow-sm
                                         ${isSelected
-                                            ? "ring-2 ring-primary/20 border-slate-300 dark:border-slate-600 shadow-md"
-                                            : "border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600"}
+                                            ? "ring-2 ring-primary/20 border-slate-300 dark:border-slate-600 shadow-md border-l-primary"
+                                            : "border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 border-l-slate-300 dark:border-l-slate-600"}
                                     `}
                                 >
                                     <div className="flex items-center gap-5">
-                                        <div
-                                            className="w-12 h-12 rounded-xl flex items-center justify-center text-white shadow-md transition-all group-hover:shadow-lg"
-                                            style={{ backgroundColor: item.color }}
-                                        >
+                                        <div className="w-12 h-12 rounded-xl flex items-center justify-center text-white shadow-md transition-all group-hover:shadow-lg bg-primary/10 text-primary">
                                             <Share2 size={24} />
                                         </div>
                                         <div>
                                             <p className="font-bold text-slate-900 dark:text-slate-50 text-lg uppercase tracking-tight">{item.name}</p>
-                                            <p className="text-[11px] text-slate-400 dark:text-slate-500 font-mono">{item.color}</p>
+                                            <p className="text-[11px] text-slate-400 dark:text-slate-500 font-mono">
+                                                {item.contact_email || "Sin correo"} • {item.contact_phone || "Sin teléfono"}
+                                            </p>
                                         </div>
                                     </div>
 

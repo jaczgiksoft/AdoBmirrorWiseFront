@@ -5,6 +5,7 @@ import { X, Users } from "lucide-react";
 import { useToastStore } from "@/store/useToastStore";
 import { useHotkeys } from "@/hooks/useHotkeys";
 import { ConfirmDialog } from "@/components/feedback";
+import * as patientTypeService from "@/services/patientType.service";
 
 export default function PatientTypeForm({ open, onClose, onSaved, itemToEdit = null }) {
     const { addToast } = useToastStore();
@@ -57,7 +58,7 @@ export default function PatientTypeForm({ open, onClose, onSaved, itemToEdit = n
                 if (!open || confirmCancel) return;
                 // Si estamos en un textarea, dejamos que Enter haga nueva línea
                 if (document.activeElement.tagName === "TEXTAREA") return;
-                
+
                 e.preventDefault();
                 e.stopPropagation();
                 const isValid = validateForm();
@@ -97,31 +98,44 @@ export default function PatientTypeForm({ open, onClose, onSaved, itemToEdit = n
 
     const handleSubmit = async () => {
         if (saving) return;
+        const isValid = validateForm();
+        if (!isValid) {
+            addToast({
+                type: "warning",
+                title: "Campos incompletos",
+                message: "Por favor completa los campos obligatorios.",
+            });
+            return;
+        }
+
         setSaving(true);
         try {
-            // Simular guardado (puro demostrativo)
-            const payload = { 
-                ...form, 
-                id: isEditing ? itemToEdit.id : Date.now(),
-                updatedAt: new Date().toISOString()
+            const payload = {
+                name: form.name.trim(),
+                description: form.description?.trim() || "",
+                color: form.color,
             };
 
-            // Simular delay
-            await new Promise(resolve => setTimeout(resolve, 500));
+            if (isEditing) {
+                await patientTypeService.updatePatientType(itemToEdit.id, payload);
+            } else {
+                await patientTypeService.createPatientType(payload);
+            }
 
-            onSaved(payload);
             addToast({
                 type: "success",
                 title: isEditing ? "Tipo actualizado" : "Tipo creado",
                 message: `"${payload.name}" se guardó correctamente.`,
             });
+            
+            onSaved();
             handleExit();
         } catch (err) {
             console.error("❌ Error al guardar tipo de paciente:", err);
             addToast({
                 type: "error",
                 title: "Error al guardar",
-                message: "No se pudo procesar la solicitud.",
+                message: err.message || "No se pudo procesar la solicitud.",
             });
         } finally {
             setSaving(false);
@@ -149,7 +163,7 @@ export default function PatientTypeForm({ open, onClose, onSaved, itemToEdit = n
                     {/* Encabezado */}
                     <div className="flex justify-between items-center p-6 border-b border-slate-100 dark:border-slate-700">
                         <div className="flex items-center gap-3">
-                            <div 
+                            <div
                                 className="w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-lg"
                                 style={{ backgroundColor: form.color }}
                             >
@@ -169,7 +183,7 @@ export default function PatientTypeForm({ open, onClose, onSaved, itemToEdit = n
 
                     {/* Formulario */}
                     <div className="p-6 flex flex-col gap-5 overflow-y-auto max-h-[70vh]">
-                        
+
                         {/* Nombre */}
                         <div>
                             <label className="block text-sm font-medium mb-1.5 label-required text-slate-700 dark:text-slate-300">Nombre del Tipo</label>

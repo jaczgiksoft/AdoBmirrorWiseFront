@@ -99,16 +99,24 @@ export const useNotificationStore = create((set, get) => ({
             const apiBase = process.env.VITE_API_URL || import.meta.env.VITE_API_URL;
             const socketURL = apiBase?.replace("/api", "") || "http://localhost:3000";
 
+            console.log("🌐 Intentando conectar Socket.IO a:", socketURL);
+
             const token = await window.electronAPI.getToken();
 
             const socketInstance = io(socketURL, {
                 transports: ["websocket"],
                 auth: { token }, // ✅ enviar JWT al backend
-                reconnection: false,
+                reconnection: true, // 🔄 Habilitar reconexión para pruebas
+                reconnectionAttempts: 5,
             });
 
             socketInstance.on("connect", () => {
-                console.log("📡 Socket conectado:", socketInstance.id);
+                console.log("📡 ✅ Socket conectado satisfactoriamente:", socketInstance.id);
+                set({ _connecting: false });
+            });
+
+            socketInstance.on("connect_error", (err) => {
+                console.error("❌ 🛑 Error de conexión Socket.IO:", err.message);
                 set({ _connecting: false });
             });
 

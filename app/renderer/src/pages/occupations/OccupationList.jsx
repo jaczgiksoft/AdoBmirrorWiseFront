@@ -1,26 +1,19 @@
-import { useRef, useEffect, useState } from "react";
+import { useRef, useEffect, useState, useCallback } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { useHotkeys } from "@/hooks/useHotkeys";
 import { useToastStore } from "@/store/useToastStore";
 import { ConfirmDialog } from "@/components/feedback";
 import OccupationForm from "./OccupationForm";
-import { PlusCircle, Search, Briefcase, Edit2, Trash2, ChevronLeft } from "lucide-react";
+import * as occupationService from "@/services/occupation.service";
+import { PlusCircle, Search, Briefcase, Edit2, Trash2, ChevronLeft, Loader2, AlertCircle } from "lucide-react";
 import { Pagination } from "@/components/ui";
-
-const STORAGE_KEY = "bwise_occupations_mock_data";
-
-const DEFAULT_OCCUPATIONS = [
-    { id: 1, name: "Estudiante", color: "#3b82f6" },
-    { id: 2, name: "Profesional Independiente", color: "#10b981" },
-    { id: 3, name: "Empleado Público", color: "#6366f1" },
-    { id: 4, name: "Jubilado", color: "#f59e0b" },
-    { id: 5, name: "Desempleado", color: "#94a3b8" }
-];
 
 export default function OccupationList() {
     const navigate = useNavigate();
     const [items, setItems] = useState([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState(null);
     const [selectedIndex, setSelectedIndex] = useState(0);
     const [searchTerm, setSearchTerm] = useState("");
     const [page, setPage] = useState(1);
@@ -35,17 +28,30 @@ export default function OccupationList() {
     const searchRef = useRef(null);
     const { addToast } = useToastStore();
 
-    // 🔹 Cargar datos desde localStorage
-    useEffect(() => {
-        const stored = localStorage.getItem(STORAGE_KEY);
-        if (stored) {
-            setItems(JSON.parse(stored));
-        } else {
-            setItems(DEFAULT_OCCUPATIONS);
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_OCCUPATIONS));
+    // 🔹 Cargar datos desde la API
+    const fetchOccupations = useCallback(async () => {
+        setIsLoading(true);
+        setError(null);
+        try {
+            const data = await occupationService.getOccupations();
+            setItems(data);
+        } catch (err) {
+            console.error("❌ Error al cargar ocupaciones:", err);
+            setError("No se pudieron cargar las ocupaciones. Por favor intenta de nuevo.");
+            addToast({
+                type: "error",
+                title: "Error de carga",
+                message: "Ocurrió un problema al obtener la lista de ocupaciones.",
+            });
+        } finally {
+            setIsLoading(false);
         }
+    }, [addToast]);
+
+    useEffect(() => {
+        fetchOccupations();
         document.title = "Ocupaciones | BWISE Dental";
-    }, []);
+    }, [fetchOccupations]);
 
     // 🔹 Filtrado y Paginación
     const filteredItems = items.filter(occ =>
@@ -63,17 +69,17 @@ export default function OccupationList() {
                 navigate("/settings", { state: { from: "/settings/occupations" } });
             },
             arrowdown: (e) => {
-                if (confirmOpen || showForm) return "prevent";
+                if (confirmOpen || showForm || isLoading) return "prevent";
                 e.preventDefault();
                 setSelectedIndex((prev) => (prev + 1) % paginatedItems.length);
             },
             arrowup: (e) => {
-                if (confirmOpen || showForm) return "prevent";
+                if (confirmOpen || showForm || isLoading) return "prevent";
                 e.preventDefault();
                 setSelectedIndex((prev) => (prev - 1 + paginatedItems.length) % paginatedItems.length);
             },
             enter: (e) => {
-                if (confirmOpen || showForm) return "prevent";
+                if (confirmOpen || showForm || isLoading) return "prevent";
                 e.preventDefault();
                 const item = paginatedItems[selectedIndex];
                 if (item) handleEditClick(item);
@@ -84,7 +90,7 @@ export default function OccupationList() {
                 handleCreateClick();
             },
             delete: (e) => {
-                if (confirmOpen || showForm) return "prevent";
+                if (confirmOpen || showForm || isLoading) return "prevent";
                 e.preventDefault();
                 const item = paginatedItems[selectedIndex];
                 if (item) handleDeleteClick(item);
@@ -97,7 +103,7 @@ export default function OccupationList() {
                 return "prevent";
             },
         },
-        [paginatedItems, selectedIndex, confirmOpen, showForm]
+        [paginatedItems, selectedIndex, confirmOpen, showForm, isLoading]
     );
 
     // 🛠 Handlers
@@ -116,33 +122,31 @@ export default function OccupationList() {
         setConfirmOpen(true);
     };
 
-    const handleConfirmDelete = () => {
+    const handleConfirmDelete = async () => {
         if (!itemToDelete) return;
-        const newItems = items.filter(i => i.id !== itemToDelete.id);
-        setItems(newItems);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(newItems));
-
-        setConfirmOpen(false);
-        setItemToDelete(null);
-
-        addToast({
-            type: "success",
-            title: "Ocupación eliminada",
-            message: `"${itemToDelete.name}" fue eliminada correctamente.`,
-        });
+        try {
+            await occupationService.deleteOccupation(itemToDelete.id);
+            addToast({
+                type: "success",
+                title: "Ocupación eliminada",
+                message: `"${itemToDelete.name}" fue eliminada correctamente.`,
+            });
+            fetchOccupations();
+        } catch (err) {
+            addToast({
+                type: "error",
+                title: "Error al eliminar",
+                message: err.message || "No se pudo eliminar la ocupación.",
+            });
+        } finally {
+            setConfirmOpen(false);
+            setItemToDelete(null);
+        }
     };
 
-    const handleFormSaved = (savedItem) => {
-        let newItems;
-        if (itemToEdit) {
-            newItems = items.map(i => i.id === savedItem.id ? savedItem : i);
-        } else {
-            newItems = [...items, savedItem];
-        }
-
-        setItems(newItems);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(newItems));
+    const handleFormSaved = () => {
         setShowForm(false);
+        fetchOccupations();
     };
 
     return (
@@ -197,8 +201,24 @@ export default function OccupationList() {
                     </motion.button>
                 </div>
 
-                {/* 📋 Lista de Ocupaciones */}
-                {paginatedItems.length === 0 ? (
+                {/* 📋 Estado de Carga / Error */}
+                {isLoading && items.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-20 bg-white dark:bg-secondary/30 rounded-2xl border border-slate-200 dark:border-slate-800">
+                        <Loader2 className="animate-spin text-primary mb-4" size={40} />
+                        <p className="text-slate-500 dark:text-slate-400 animate-pulse">Cargando ocupaciones...</p>
+                    </div>
+                ) : error ? (
+                    <div className="flex flex-col items-center justify-center py-20 bg-red-50 dark:bg-red-500/10 rounded-2xl border border-dashed border-red-200 dark:border-red-900/50">
+                        <AlertCircle className="text-red-500 mb-4" size={40} />
+                        <p className="text-red-600 dark:text-red-400 font-medium">{error}</p>
+                        <button
+                            onClick={fetchOccupations}
+                            className="mt-4 text-sm text-primary hover:underline font-semibold"
+                        >
+                            Reintentar cargar
+                        </button>
+                    </div>
+                ) : paginatedItems.length === 0 ? (
                     <div className="text-center py-20 bg-white dark:bg-secondary/30 rounded-2xl border border-dashed border-slate-300 dark:border-slate-700">
                         <Briefcase className="mx-auto text-slate-300 dark:text-slate-600 mb-4" size={56} />
                         <p className="text-slate-500 dark:text-slate-400 font-medium">No se encontraron ocupaciones.</p>
@@ -214,23 +234,23 @@ export default function OccupationList() {
                                     key={item.id}
                                     layoutId={`occupation-${item.id}`}
                                     onClick={() => handleEditClick(item)}
-                                    style={{ borderLeftColor: item.color, borderLeftWidth: '6px' }}
-                                    className={`relative flex items-center justify-between bg-white dark:bg-secondary rounded-xl px-5 py-4 cursor-pointer border-y border-r transition-all group overflow-hidden shadow-sm
+                                    className={`relative flex items-center justify-between bg-white dark:bg-secondary rounded-xl px-5 py-4 cursor-pointer border transition-all group overflow-hidden shadow-sm
                                         ${isSelected
-                                            ? "ring-2 ring-primary/20 border-slate-300 dark:border-slate-600 shadow-md"
+                                            ? "ring-2 ring-primary/20 border-primary dark:border-primary/50 shadow-md"
                                             : "border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600"}
                                     `}
                                 >
                                     <div className="flex items-center gap-5">
                                         <div
-                                            className="w-12 h-12 rounded-xl flex items-center justify-center text-white shadow-md transition-all group-hover:shadow-lg"
-                                            style={{ backgroundColor: item.color }}
+                                            className="w-12 h-12 rounded-xl flex items-center justify-center text-white shadow-md transition-all group-hover:shadow-lg bg-primary/10 text-primary"
                                         >
                                             <Briefcase size={22} />
                                         </div>
                                         <div>
                                             <p className="font-bold text-slate-900 dark:text-slate-50 text-lg uppercase tracking-tight">{item.name}</p>
-                                            <p className="text-[11px] text-slate-400 dark:text-slate-500 font-mono tracking-widest">{item.color}</p>
+                                            {item.description && (
+                                                <p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-1">{item.description}</p>
+                                            )}
                                         </div>
                                     </div>
 
