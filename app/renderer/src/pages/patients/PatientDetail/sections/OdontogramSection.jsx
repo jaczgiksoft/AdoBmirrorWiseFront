@@ -649,7 +649,7 @@ const buildInitialToothStates = () => {
 // ==========================================
 
 // Individual Tooth Component (Frontal) - Unchanged visuals
-function Tooth({ id, type, hasBracket, isBroken, repairCount = 0, isSelectedBracket, isBracketMode, onToothClick, onToothRightClick, currentClinicalAction, onResize, hideLabel, hoveredPreviewType, hasNote, onNoteClick }) {
+function Tooth({ id, type, hasBracket, isBroken, repairCount = 0, isSelectedBracket, isBracketMode, isTadMode, onToothClick, onToothRightClick, currentClinicalAction, onResize, hideLabel, hoveredPreviewType, hasNote, onNoteClick }) {
     const isImplantCrown = type === 'implant-crown';
     const activeTypes = isImplantCrown ? ['implant', 'crown'] : (type ? type.split('+') : ['original']);
     const isCombined = activeTypes.length > 1 || isImplantCrown;
@@ -805,7 +805,7 @@ function Tooth({ id, type, hasBracket, isBroken, repairCount = 0, isSelectedBrac
                 </AnimatePresence>
 
                 {/* Eye Icon for Notes */}
-                {!isInvalidDeciduous && (
+                {!isInvalidDeciduous && !isBracketMode && !isTadMode && (
                     <button
                         type="button"
                         onClick={(e) => {
@@ -815,7 +815,7 @@ function Tooth({ id, type, hasBracket, isBroken, repairCount = 0, isSelectedBrac
                         onPointerDown={(e) => e.stopPropagation()}
                         onPointerUp={(e) => e.stopPropagation()}
                         className={`
-                            absolute right-[-4px] z-60 p-1 rounded-full bg-white dark:bg-white shadow-sm border border-red-700
+                            absolute right-[-4px] z-100 p-1 rounded-full bg-white dark:bg-white shadow-sm border border-red-700
                             transition-all duration-200 transform hover:scale-110
                             ${isMaxillary ? 'bottom-0' : 'top-0'}
                             ${hasNote ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}
@@ -1224,6 +1224,7 @@ function ArchRow({ activeRadialTooth, teethIds, toothStates, brackets, bracketWi
                             repairCount={brackets[id]?.repairCount || 0}
                             isSelectedBracket={selectedBracket === id}
                             isBracketMode={isBracketMode}
+                            isTadMode={isTadMode}
                             onToothClick={isTadMode ? () => { } : onToothClick}
                             onToothRightClick={isTadMode ? undefined : onToothRightClick}
                             currentClinicalAction={currentClinicalAction}
@@ -1650,6 +1651,11 @@ function ToothNoteModal({ isOpen, onClose, onSave, toothId, initialNote }) {
         onClose();
     };
 
+    const handleDelete = () => {
+        onSave(toothId, '');
+        onClose();
+    };
+
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
             <motion.div
@@ -1683,11 +1689,27 @@ function ToothNoteModal({ isOpen, onClose, onSave, toothId, initialNote }) {
                     />
                 </div>
 
-                <div className="px-6 py-4 bg-slate-50 dark:bg-slate-800/80 border-t border-slate-200 dark:border-slate-700 flex justify-end items-center gap-3">
-                    <button type="button" onClick={onClose} className="btn btn-ghost border border-slate-300 dark:border-slate-600">Cancelar</button>
-                    <button type="button" onClick={handleSave} className="btn btn-primary bg-blue-600 hover:bg-blue-700 border-none shadow-md shadow-blue-500/30 font-bold">
-                        Guardar Nota
-                    </button>
+                <div className="px-6 py-4 bg-slate-50 dark:bg-slate-800/80 border-t border-slate-200 dark:border-slate-700 flex justify-between items-center gap-3">
+                    <div className="flex-1">
+                        {initialNote && (
+                            <button
+                                type="button"
+                                onClick={handleDelete}
+                                className="btn btn-ghost btn-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 gap-2 font-medium border border-transparent hover:border-red-200 dark:hover:border-red-900/50 transition-all"
+                            >
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                                Borrar Nota
+                            </button>
+                        )}
+                    </div>
+                    <div className="flex gap-3">
+                        <button type="button" onClick={onClose} className="btn btn-ghost border border-slate-300 dark:border-slate-600">Cancelar</button>
+                        <button type="button" onClick={handleSave} className="btn btn-primary bg-blue-600 hover:bg-blue-700 border-none shadow-md shadow-blue-500/30 font-bold">
+                            Guardar Nota
+                        </button>
+                    </div>
                 </div>
             </motion.div>
         </div>

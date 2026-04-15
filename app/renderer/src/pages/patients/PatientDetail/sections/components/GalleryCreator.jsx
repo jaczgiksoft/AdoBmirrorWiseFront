@@ -9,7 +9,8 @@ import {
     Image as ImageIcon,
     ChevronRight,
     ChevronDown,
-    Save
+    Save,
+    Eye
 } from 'lucide-react';
 import { useParams } from 'react-router-dom';
 import CropperModal from './CropperModal';
@@ -40,6 +41,9 @@ export default function GalleryCreator({ onClose, onSave }) {
     const [cropperOpen, setCropperOpen] = useState(false);
     const [pendingImage, setPendingImage] = useState(null);
     const [activeSlot, setActiveSlot] = useState(null); // { type: 'photo' | 'xray', key?: string, cxId?: number }
+
+    // --- NOTES EDITOR STATE ---
+    const [editingNotesImage, setEditingNotesImage] = useState(null); // { type: 'photo' | 'xray', keyOrId: string|number, url: string, notes: [] }
 
     // --- COMPUTED ---
     const filledCount = MANDATORY_KEYS.reduce((acc, { key }) => acc + (photos[key] ? 1 : 0), 0);
@@ -80,9 +84,9 @@ export default function GalleryCreator({ onClose, onSave }) {
         const croppedUrl = URL.createObjectURL(blob);
 
         if (activeSlot.type === 'photo') {
-            setPhotos(prev => ({ ...prev, [activeSlot.key]: { blob, url: croppedUrl } }));
+            setPhotos(prev => ({ ...prev, [activeSlot.key]: { blob, url: croppedUrl, notes: [] } }));
         } else if (activeSlot.type === 'xray') {
-            setXrays(prev => [...prev, { id: activeSlot.id, blob, url: croppedUrl }]);
+            setXrays(prev => [...prev, { id: activeSlot.id, blob, url: croppedUrl, notes: [] }]);
         }
 
         closeCropper();
@@ -92,6 +96,25 @@ export default function GalleryCreator({ onClose, onSave }) {
         setCropperOpen(false);
         setPendingImage(null);
         setActiveSlot(null);
+    };
+
+    // --- NOTES HANDLERS ---
+    const handleOpenNotes = (type, keyOrId, url, notes = []) => {
+        setEditingNotesImage({ type, keyOrId, url, notes });
+    };
+
+    const handleSaveNotes = (newNotes) => {
+        if (!editingNotesImage) return;
+        const { type, keyOrId } = editingNotesImage;
+        if (type === 'photo') {
+            setPhotos(prev => ({
+                ...prev,
+                [keyOrId]: { ...prev[keyOrId], notes: newNotes }
+            }));
+        } else if (type === 'xray') {
+            setXrays(prev => prev.map(x => x.id === keyOrId ? { ...x, notes: newNotes } : x));
+        }
+        setEditingNotesImage(null);
     };
 
     const handleRemovePhoto = (key) => {
@@ -150,6 +173,15 @@ export default function GalleryCreator({ onClose, onSave }) {
                     image={pendingImage}
                     onSave={handleCropperSave}
                     onCancel={closeCropper}
+                />
+            )}
+
+            {/* --- NOTES EDITOR MODAL --- */}
+            {editingNotesImage && (
+                <ImageNotesEditor
+                    imageObj={editingNotesImage}
+                    onSaveNotes={handleSaveNotes}
+                    onClose={() => setEditingNotesImage(null)}
                 />
             )}
 
@@ -258,8 +290,10 @@ export default function GalleryCreator({ onClose, onSave }) {
                                     key={key}
                                     label={label}
                                     image={photos[key]?.url}
+                                    notes={photos[key]?.notes}
                                     onUpload={(file) => handlePhotoUpload(key, file)}
                                     onRemove={() => handleRemovePhoto(key)}
+                                    onOpenNotes={() => handleOpenNotes('photo', key, photos[key].url, photos[key].notes)}
                                     required
                                 />
                             ))}
@@ -285,7 +319,9 @@ export default function GalleryCreator({ onClose, onSave }) {
                                     key={xray.id}
                                     label="Radiografía"
                                     image={xray.url}
+                                    notes={xray.notes}
                                     onRemove={() => handleRemoveXray(xray.id)}
+                                    onOpenNotes={() => handleOpenNotes('xray', xray.id, xray.url, xray.notes)}
                                 />
                             ))}
 
@@ -367,7 +403,7 @@ function WizardSteps({ currentStep }) {
     );
 }
 
-function DropzoneCard({ label, image, onUpload, onRemove, required }) {
+function DropzoneCard({ label, image, notes = [], onUpload, onRemove, onOpenNotes, required }) {
     const inputRef = useRef(null);
     const [isDragging, setIsDragging] = useState(false);
 
@@ -439,6 +475,12 @@ function DropzoneCard({ label, image, onUpload, onRemove, required }) {
                             Reemplazar
                         </button>
                         <button
+                            onClick={(e) => { e.stopPropagation(); onOpenNotes(); }}
+                            className="px-3 py-1.5 bg-blue-500/80 hover:bg-blue-600 text-white rounded-lg text-xs backdrop-blur-sm transition-colors flex items-center gap-1.5"
+                        >
+                            <Eye size={14} /> Notas {notes.length > 0 && `(${notes.length})`}
+                        </button>
+                        <button
                             onClick={(e) => { e.stopPropagation(); onRemove(); }}
                             className="px-3 py-1.5 bg-red-500/80 hover:bg-red-600 text-white rounded-lg text-xs backdrop-blur-sm transition-colors"
                         >
@@ -502,6 +544,169 @@ function AddXrayCard({ onUpload }) {
             />
             <Plus size={32} strokeWidth={1.5} className="mb-2" />
             <span className="text-sm font-medium">Añadir Radiografía</span>
+        </div>
+    );
+}
+
+function ImageNotesEditor({ imageObj, onSaveNotes, onClose }) {
+    const [notes, setNotes] = useState(imageObj.notes || []);
+    const [activeNote, setActiveNote] = useState(null); // { id?, x, y, text }
+    const imageRef = useRef(null);
+
+    const handleImageClick = (e) => {
+        if (activeNote) return;
+        
+        const rect = imageRef.current.getBoundingClientRect();
+        const x = ((e.clientX - rect.left) / rect.width) * 100;
+        const y = ((e.clientY - rect.top) / rect.height) * 100;
+
+        setActiveNote({ x, y, text: '' });
+    };
+
+    const handleSaveNote = (text) => {
+        if (activeNote.id) {
+            // Edit
+            setNotes(notes.map(n => n.id === activeNote.id ? { ...n, text } : n));
+        } else {
+            // Add
+            setNotes([...notes, { id: Date.now(), x: activeNote.x, y: activeNote.y, text }]);
+        }
+        setActiveNote(null);
+    };
+
+    const handleDeleteNote = (id) => {
+        setNotes(notes.filter(n => n.id !== id));
+        setActiveNote(null);
+    };
+
+    const handleClose = () => {
+        onSaveNotes(notes);
+    };
+
+    return (
+        <div className="fixed inset-0 z-[100] bg-slate-900/95 flex flex-col animate-in fade-in duration-200">
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-white/10 bg-slate-900">
+                <h3 className="text-white font-bold flex items-center gap-2">
+                    <Eye size={20} className="text-[var(--color-primary)]" />
+                    Anotaciones en Imagen
+                </h3>
+                <button onClick={onClose} className="text-slate-400 hover:text-white transition-colors" title="Cancelar cambios">
+                    <X size={24} />
+                </button>
+            </div>
+            
+            {/* Body */}
+            <div className="flex-1 overflow-auto flex items-center justify-center p-8 relative">
+                <div className="relative inline-block max-w-[90vw] max-h-[80vh]">
+                    <img 
+                        ref={imageRef}
+                        src={imageObj.url} 
+                        alt="Edición de Notas" 
+                        className="max-h-[80vh] w-auto h-auto object-contain shadow-2xl rounded-xl cursor-crosshair"
+                        onClick={handleImageClick}
+                        draggable={false}
+                        style={{ maxWidth: '100%' }}
+                    />
+                    
+                    {/* Render Notes */}
+                    {notes.map(note => (
+                        <div
+                            key={note.id}
+                            className="absolute z-10 p-1 rounded-full bg-white shadow-sm border border-red-700 cursor-pointer transform -translate-x-1/2 -translate-y-1/2 hover:scale-110 transition-transform"
+                            style={{ left: `${note.x}%`, top: `${note.y}%` }}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setActiveNote(note);
+                            }}
+                            title={note.text}
+                        >
+                            <svg className="w-5 h-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                            </svg>
+                        </div>
+                    ))}
+
+                    {/* Active Note Modal/Popover */}
+                    {activeNote && (
+                        <NotePopover 
+                            note={activeNote} 
+                            onSave={handleSaveNote} 
+                            onDelete={() => activeNote.id ? handleDeleteNote(activeNote.id) : setActiveNote(null)}
+                            onCancel={() => setActiveNote(null)}
+                        />
+                    )}
+                </div>
+            </div>
+
+            {/* Footer / Toolbar */}
+            <div className="p-4 border-t border-white/10 bg-slate-900 flex items-center justify-between">
+                <p className="text-slate-400 text-sm flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-primary)]"></span>
+                    Haz clic en cualquier parte de la imagen para agregar una nota.
+                </p>
+                <div className="flex items-center gap-3">
+                    <button 
+                        onClick={onClose}
+                        className="px-4 py-2 rounded-lg text-sm font-medium text-slate-300 hover:bg-slate-800 transition-colors"
+                    >
+                        Descartar Cambios
+                    </button>
+                    <button 
+                        onClick={handleClose}
+                        className="px-4 py-2 rounded-lg text-sm font-medium bg-[var(--color-primary)] hover:bg-cyan-400 text-white transition-colors shadow-lg"
+                    >
+                        Guardar ({notes.length} Notas)
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+function NotePopover({ note, onSave, onDelete, onCancel }) {
+    const [text, setText] = useState(note.text || '');
+
+    return (
+        <div 
+            className="absolute z-50 bg-white dark:bg-slate-800 rounded-xl shadow-xl w-64 p-4 border border-slate-200 dark:border-slate-700 transform -translate-x-1/2 mt-3 cursor-default"
+            style={{ left: `${note.x}%`, top: `${note.y}%` }}
+            onClick={e => e.stopPropagation()}
+        >
+            <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200 mb-2">Nota en la imagen</h4>
+            <textarea
+                value={text}
+                onChange={e => setText(e.target.value)}
+                placeholder="Escribe una observación..."
+                className="w-full text-sm p-2 rounded-lg bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] mb-3 resize-none h-20 text-slate-700 dark:text-slate-300"
+                autoFocus
+            />
+            <div className="flex justify-end gap-2">
+                <button 
+                    onClick={onCancel}
+                    className="px-3 py-1.5 text-xs font-medium text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
+                >
+                    Cancelar
+                </button>
+                {note.id && (
+                    <button 
+                        onClick={onDelete}
+                        className="px-3 py-1.5 text-xs font-medium text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                    >
+                        Quitar
+                    </button>
+                )}
+                <button 
+                    onClick={() => onSave(text)}
+                    disabled={!text.trim()}
+                    className="px-3 py-1.5 text-xs font-medium bg-[var(--color-primary)] hover:bg-cyan-400 text-white rounded-lg transition-colors disabled:opacity-50"
+                >
+                    Aceptar
+                </button>
+            </div>
+            {/* Arrow pointer */}
+            <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2 rotate-45 w-3 h-3 bg-white dark:bg-slate-800 border-l border-t border-slate-200 dark:border-slate-700"></div>
         </div>
     );
 }
