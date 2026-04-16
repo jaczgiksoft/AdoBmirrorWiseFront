@@ -3904,37 +3904,57 @@ export default function OdontogramSection() {
                                         </motion.button>
 
                                         {selectedBracket && (
-                                            <motion.button
+                                            <motion.div
                                                 initial={{ opacity: 0, x: -10 }}
                                                 animate={{ opacity: 1, x: 0 }}
                                                 exit={{ opacity: 0, x: -10 }}
-                                                onClick={() => {
-                                                    const isBroken = !!brackets[selectedBracket]?.isBroken;
-                                                    setBrackets(prev => {
-                                                        const current = prev[selectedBracket] || { isBroken: false, repairCount: 0 };
-                                                        // Increment repair count when moving from broken to repaired
-                                                        const nextRepairCount = isBroken ? (current.repairCount || 0) + 1 : (current.repairCount || 0);
-                                                        return {
-                                                            ...prev,
-                                                            [selectedBracket]: {
-                                                                ...current,
-                                                                isBroken: !isBroken,
-                                                                repairCount: nextRepairCount
-                                                            }
-                                                        };
-                                                    });
-                                                }}
-                                                type="button"
-                                                className={`px-3 py-1.5 rounded-md flex items-center gap-1.5 text-xs font-semibold transition-all border shadow-sm overflow-hidden whitespace-nowrap ${brackets[selectedBracket]?.isBroken
-                                                    ? 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 border-green-200 dark:border-green-800'
-                                                    : 'bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-800'
-                                                    }`}
+                                                className="flex items-center gap-2 bg-amber-50 dark:bg-amber-900/20 px-2 py-1 rounded-md border border-amber-200 dark:border-amber-800 shadow-sm"
                                             >
-                                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                                                </svg>
-                                                {brackets[selectedBracket]?.isBroken ? 'Repuesto de Bracket' : 'Bracket Roto'}
-                                            </motion.button>
+                                                <span className="text-xs font-semibold text-amber-700 dark:text-amber-400 whitespace-nowrap">Repuestos:</span>
+                                                <div className="flex items-center gap-1">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setBrackets(prev => {
+                                                                const current = prev[selectedBracket] || { repairCount: 0 };
+                                                                if ((current.repairCount || 0) <= 0) return prev;
+                                                                return {
+                                                                    ...prev,
+                                                                    [selectedBracket]: {
+                                                                        ...current,
+                                                                        repairCount: (current.repairCount || 0) - 1
+                                                                    }
+                                                                };
+                                                            });
+                                                        }}
+                                                        disabled={!(brackets[selectedBracket]?.repairCount > 0)}
+                                                        className="w-6 h-6 flex items-center justify-center bg-white dark:bg-slate-700 text-amber-700 dark:text-amber-400 rounded border border-amber-200 dark:border-amber-700 hover:bg-amber-100 dark:hover:bg-amber-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                                    >
+                                                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" /></svg>
+                                                    </button>
+                                                    <span className="w-6 text-center text-sm font-bold text-amber-700 dark:text-amber-400">
+                                                        {brackets[selectedBracket]?.repairCount || 0}
+                                                    </span>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setBrackets(prev => {
+                                                                const current = prev[selectedBracket] || { repairCount: 0 };
+                                                                return {
+                                                                    ...prev,
+                                                                    [selectedBracket]: {
+                                                                        ...current,
+                                                                        repairCount: (current.repairCount || 0) + 1
+                                                                    }
+                                                                };
+                                                            });
+                                                        }}
+                                                        className="w-6 h-6 flex items-center justify-center bg-white dark:bg-slate-700 text-amber-700 dark:text-amber-400 rounded border border-amber-200 dark:border-amber-700 hover:bg-amber-100 dark:hover:bg-amber-800 transition-colors"
+                                                    >
+                                                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                                                    </button>
+                                                </div>
+                                            </motion.div>
                                         )}
                                     </div>
                                 )}
