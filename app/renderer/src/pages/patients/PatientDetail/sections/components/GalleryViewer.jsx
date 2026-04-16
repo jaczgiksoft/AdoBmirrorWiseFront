@@ -48,13 +48,13 @@ export default function GalleryViewer({ collections, initialCollectionId, onClos
         setSelectedImages([]); // Reset selection when toggling
     };
 
-    const handleImageToggle = (url) => {
+    const handleImageToggle = (imgObj) => {
         setSelectedImages(prev => {
-            if (prev.includes(url)) {
-                return prev.filter(i => i !== url);
+            if (prev.some(i => i.url === imgObj.url)) {
+                return prev.filter(i => i.url !== imgObj.url);
             }
             if (prev.length >= 3) return prev; // Limit to 3
-            return [...prev, url];
+            return [...prev, imgObj];
         });
     };
 
@@ -188,7 +188,8 @@ export default function GalleryViewer({ collections, initialCollectionId, onClos
         MANDATORY_KEYS.forEach(({ key, label }) => {
             if (currentCollection.photos[key]) {
                 images.push({
-                    url: currentCollection.photos[key],
+                    url: currentCollection.photos[key].url,
+                    notes: currentCollection.photos[key].notes,
                     label: label
                 });
             }
@@ -196,9 +197,10 @@ export default function GalleryViewer({ collections, initialCollectionId, onClos
 
         // Add X-Rays
         if (currentCollection.photos.x_rays) {
-            currentCollection.photos.x_rays.forEach((url, idx) => {
+            currentCollection.photos.x_rays.forEach((xray, idx) => {
                 images.push({
-                    url: url,
+                    url: xray.url,
+                    notes: xray.notes,
                     label: `Radiografía ${idx + 1}`
                 });
             });
@@ -452,16 +454,16 @@ export default function GalleryViewer({ collections, initialCollectionId, onClos
                                             <ImageCard
                                                 key={key}
                                                 label={label}
-                                                src={currentCollection.photos[key]}
+                                                src={currentCollection.photos[key].url}
                                                 onPreview={() => {
                                                     if (isComparisonMode) {
                                                         handleImageToggle(currentCollection.photos[key]);
                                                     } else {
-                                                        openLightbox(currentCollection.photos[key]);
+                                                        openLightbox(currentCollection.photos[key].url);
                                                     }
                                                 }}
                                                 isSelectable={isComparisonMode}
-                                                isSelected={selectedImages.includes(currentCollection.photos[key])}
+                                                isSelected={selectedImages.some(i => i.url === currentCollection.photos[key].url)}
                                             />
 
                                         );
@@ -489,16 +491,16 @@ export default function GalleryViewer({ collections, initialCollectionId, onClos
                                                 <ImageCard
                                                     key={idx}
                                                     label={`Radiografía ${idx + 1}`}
-                                                    src={url}
+                                                    src={xray.url}
                                                     onPreview={() => {
                                                         if (isComparisonMode) {
-                                                            handleImageToggle(url);
+                                                            handleImageToggle(xray);
                                                         } else {
-                                                            openLightbox(url);
+                                                            openLightbox(xray.url);
                                                         }
                                                     }}
                                                     isSelectable={isComparisonMode}
-                                                    isSelected={selectedImages.includes(url)}
+                                                    isSelected={selectedImages.some(i => i.url === xray.url)}
                                                 />
 
                                             );
@@ -533,7 +535,7 @@ export default function GalleryViewer({ collections, initialCollectionId, onClos
                 <AdvancedImageViewer
                     images={selectedImages}
                     onClose={() => setShowAdvancedViewer(false)}
-                    onRemoveImage={(url) => handleImageToggle(url)}
+                    onRemoveImage={(imgObj) => handleImageToggle(imgObj)}
                 />
             )}
 

@@ -140,19 +140,32 @@ export default function GalleryCreator({ onClose, onSave }) {
             formData.append('description', `Galería: ${name}`);
 
             // Añadir fotos obligatorias
+            const notesMap = {};
             MANDATORY_KEYS.forEach(({ key }) => {
                 if (photos[key]?.blob) {
+                    const fileName = `${key}.jpg`;
                     // Usamos el 'key' como nombre del archivo para identificarlo en el backend
-                    formData.append('photos', photos[key].blob, `${key}.jpg`);
+                    formData.append('photos', photos[key].blob, fileName);
+                    if (photos[key].notes && photos[key].notes.length > 0) {
+                        notesMap[fileName] = photos[key].notes;
+                    }
                 }
             });
 
             // Añadir radiografías
             xrays.forEach((x, index) => {
                 if (x.blob) {
-                    formData.append('photos', x.blob, `xray_${index + 1}.jpg`);
+                    const fileName = `xray_${index + 1}.jpg`;
+                    formData.append('photos', x.blob, fileName);
+                    if (x.notes && x.notes.length > 0) {
+                        notesMap[fileName] = x.notes;
+                    }
                 }
             });
+
+            if (Object.keys(notesMap).length > 0) {
+                formData.append('notes', JSON.stringify(notesMap));
+            }
 
             await patientGalleryService.createGallery(formData);
             onSave(); // Notificar al padre para cerrar y recargar

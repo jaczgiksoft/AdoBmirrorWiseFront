@@ -3,10 +3,10 @@ import { AnimatePresence, motion } from "framer-motion";
 import { CheckCircle, Info, AlertTriangle, XCircle, X } from "lucide-react";
 
 const icons = {
-    success: <CheckCircle className="text-green-400" size={20} />,
-    error: <XCircle className="text-red-400" size={20} />,
-    warning: <AlertTriangle className="text-yellow-400" size={20} />,
-    info: <Info className="text-blue-400" size={20} />,
+    success: <CheckCircle className="text-green-600 dark:text-green-400" size={20} />,
+    error: <XCircle className="text-red-600 dark:text-red-400" size={20} />,
+    warning: <AlertTriangle className="text-yellow-600 dark:text-yellow-400" size={20} />,
+    info: <Info className="text-blue-600 dark:text-blue-400" size={20} />,
 };
 
 export default function ToastContainer({ toasts, removeToast }) {
@@ -21,11 +21,11 @@ export default function ToastContainer({ toasts, removeToast }) {
                         exit={{ opacity: 0, y: 20 }}
                         transition={{ duration: 0.25 }}
                         className={`flex items-start gap-3 px-4 py-3 rounded-xl shadow-lg w-80
-              bg-slate-800/95 border border-slate-700 text-slate-100
-              ${toast.type === "success" && "border-green-500/60"}
-              ${toast.type === "error" && "border-red-500/60"}
-              ${toast.type === "warning" && "border-yellow-500/60"}
-              ${toast.type === "info" && "border-blue-500/60"}
+              bg-white dark:bg-slate-800/95 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100
+              ${toast.type === "success" && "border-green-500/60 dark:border-green-500/60"}
+              ${toast.type === "error" && "border-red-500/60 dark:border-red-500/60"}
+              ${toast.type === "warning" && "border-yellow-500/60 dark:border-yellow-100/60"}
+              ${toast.type === "info" && "border-blue-500/60 dark:border-blue-500/60"}
             `}
                     >
                         <div className="pt-[2px]">{icons[toast.type] || icons.info}</div>
@@ -34,14 +34,14 @@ export default function ToastContainer({ toasts, removeToast }) {
                                 {toast.title || "Notificación"}
                             </p>
                             {toast.message && (
-                                <p className="text-xs text-slate-400 mt-[2px]">
+                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-[2px]">
                                     {toast.message}
                                 </p>
                             )}
                         </div>
                         <button
                             onClick={() => removeToast(toast.id)}
-                            className="text-slate-400 hover:text-slate-200 transition p-[2px]"
+                            className="text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition p-[2px]"
                         >
                             <X size={14} />
                         </button>

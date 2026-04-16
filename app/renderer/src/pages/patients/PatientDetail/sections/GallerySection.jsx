@@ -42,14 +42,19 @@ export default function GallerySection() {
 
                 folder.images.forEach(img => {
                     const fullUrl = `${API_BASE}/${img.file_path}`;
-                    // Intentamos recuperar la llave original basada en el file_name (que guardamos como slot_name)
-                    // Si el nombre contiene una de las llaves obligatorias
                     const slotKey = MANDATORY_KEYS.find(k => img.file_name.includes(k));
+                    
+                    let notes = [];
+                    if (img.notes) {
+                        try {
+                            notes = typeof img.notes === 'string' ? JSON.parse(img.notes) : img.notes;
+                        } catch(e){}
+                    }
 
                     if (slotKey) {
-                        photoMap[slotKey] = fullUrl;
+                        photoMap[slotKey] = { url: fullUrl, notes };
                     } else {
-                        x_rays.push(fullUrl);
+                        x_rays.push({ url: fullUrl, notes });
                     }
                 });
 
