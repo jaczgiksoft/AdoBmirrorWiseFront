@@ -12,8 +12,12 @@ import {
     ArrowRight,
     Search,
     Trash2,
-    Loader2
+    Loader2,
+    QrCode,
+    ChevronRight,
+    Keyboard
 } from "lucide-react";
+import { QRCodeSVG } from "qrcode.react";
 import { findKioskAppointments, checkInAppointment } from "../../services/appointment.service";
 
 export default function ConfirmationKiosk() {
@@ -25,6 +29,14 @@ export default function ConfirmationKiosk() {
     const [tenant, setTenant] = useState(null);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState(null);
+    const [isQRVisible, setIsQRVisible] = useState(true);
+    const [qrValue, setQrValue] = useState("");
+
+    // 🔄 Generar QR aleatorio
+    const generateRandomQR = () => {
+        const randomString = Math.random().toString(36).substring(2, 15).toUpperCase();
+        setQrValue(`BWISE-KIOSK-${randomString}`);
+    };
 
     // 🔒 Validar sesión de Kiosko
     useEffect(() => {
@@ -35,6 +47,7 @@ export default function ConfirmationKiosk() {
             return;
         }
         setTenant(JSON.parse(storedTenant));
+        generateRandomQR();
     }, [navigate]);
 
     const handleNumberClick = (num) => {
@@ -105,76 +118,141 @@ export default function ConfirmationKiosk() {
         setAppointments([]);
         setSelectedAppointments([]);
         setError(null);
+        setIsQRVisible(true);
+        generateRandomQR();
     };
 
     return (
         <div className="h-screen w-screen bg-slate-900 flex items-center justify-center font-sans overflow-hidden text-slate-100">
             {/* Background Accent */}
-            <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-sky-500/10 blur-[120px] rounded-full -translate-y-1/2 translate-x-1/2" />
-            <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-purple-500/10 blur-[120px] rounded-full translate-y-1/2 -translate-x-1/2" />
+            {/* <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-sky-500/10 blur-[120px] rounded-full -translate-y-1/2 translate-x-1/2" />
+            <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-purple-500/10 blur-[120px] rounded-full translate-y-1/2 -translate-x-1/2" /> */}
 
             <AnimatePresence mode="wait">
                 {step === 1 && (
-                    <motion.div
-                        key="keypad"
-                        initial={{ opacity: 0, scale: 0.9 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.9 }}
-                        transition={{ duration: 0.4 }}
-                        className="bg-slate-800/80 backdrop-blur-xl p-8 rounded-[40px] shadow-2xl border border-white/10 w-[420px]"
-                    >
-                        <div className="text-center mb-8">
-                            <h2 className="text-3xl font-black text-white mb-2">Auto-Confirmación</h2>
-                            <p className="text-slate-400">Ingresa tu número de teléfono</p>
-                        </div>
-
-                        <div className="bg-slate-900/50 p-6 rounded-3xl mb-8 border border-white/5 text-center">
-                            <span className="text-4xl font-mono tracking-widest text-sky-400 h-10 block">
-                                {phoneNumber || <span className="text-slate-700">_ _ _ _ _ _ _ _ _ _</span>}
-                            </span>
-                        </div>
-
-                        {error && (
+                    <AnimatePresence mode="wait">
+                        {isQRVisible ? (
                             <motion.div
-                                initial={{ opacity: 0, y: -10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                className="bg-red-500/10 border border-red-500/20 text-red-400 p-4 rounded-2xl mb-6 text-sm text-center font-medium"
+                                key="qr-code-view"
+                                initial={{ opacity: 0, scale: 0.9 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0.9 }}
+                                transition={{ duration: 0.4 }}
+                                className="bg-slate-800/80 backdrop-blur-xl p-10 rounded-[40px] shadow-2xl border border-white/10 w-[420px] relative overflow-hidden group"
                             >
-                                {error}
+                                {/* Botón de Flecha para ocultar */}
+                                <button
+                                    onClick={() => setIsQRVisible(false)}
+                                    className="absolute top-6 right-6 p-3 rounded-full bg-white/5 hover:bg-sky-500 text-slate-400 hover:text-white transition-all shadow-xl z-20 active:scale-90"
+                                    title="Ingreso Manual"
+                                >
+                                    <ChevronRight size={24} />
+                                </button>
+
+                                <div className="text-center mb-10">
+                                    <h2 className="text-3xl font-black text-white mb-2 tracking-tight">Auto-Confirmación</h2>
+                                    <p className="text-slate-400">Escanea el código para registrarte</p>
+                                </div>
+
+                                <div className="bg-white p-8 rounded-[32px] shadow-2xl shadow-sky-500/10 flex items-center justify-center relative">
+                                    <QRCodeSVG
+                                        value={qrValue}
+                                        size={280}
+                                        level="H"
+                                        includeMargin={false}
+                                        className="rounded-xl"
+                                    />
+                                    {/* Icono central decorativo */}
+                                    <div className="absolute inset-0 flex items-center justify-center">
+                                        <div className="bg-slate-900 p-2 rounded-2xl border-4 border-white shadow-xl">
+                                            <QrCode size={32} className="text-sky-500" />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="mt-10 flex flex-col items-center gap-4">
+
+                                    <button
+                                        onClick={() => setIsQRVisible(false)}
+                                        className="text-slate-500 hover:text-slate-300 transition-colors text-sm font-medium flex items-center gap-2"
+                                    >
+                                        <Keyboard size={16} />
+                                        O ingresar manualmente
+                                    </button>
+                                </div>
+                            </motion.div>
+                        ) : (
+                            <motion.div
+                                key="keypad"
+                                initial={{ opacity: 0, scale: 0.9 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0.9 }}
+                                transition={{ duration: 0.4 }}
+                                className="bg-slate-800/80 backdrop-blur-xl p-8 rounded-[40px] shadow-2xl border border-white/10 w-[420px] relative"
+                            >
+                                {/* Botón para volver al QR */}
+                                <button
+                                    onClick={() => setIsQRVisible(true)}
+                                    className="absolute top-6 right-6 p-3 rounded-full bg-white/5 hover:bg-sky-500 text-slate-400 hover:text-white transition-all z-20 active:scale-90"
+                                    title="Mostrar QR"
+                                >
+                                    <QrCode size={20} />
+                                </button>
+
+                                <div className="text-center mb-8">
+                                    <h2 className="text-3xl font-black text-white mb-2">Ingreso Manual</h2>
+                                    <p className="text-slate-400">Ingresa tu número de teléfono</p>
+                                </div>
+
+                                <div className="bg-slate-900/50 p-6 rounded-3xl mb-8 border border-white/5 text-center">
+                                    <span className="text-4xl font-mono tracking-widest text-sky-400 h-10 block">
+                                        {phoneNumber || <span className="text-slate-700">_ _ _ _ _ _ _ _ _ _</span>}
+                                    </span>
+                                </div>
+
+                                {error && (
+                                    <motion.div
+                                        initial={{ opacity: 0, y: -10 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        className="bg-red-500/10 border border-red-500/20 text-red-400 p-4 rounded-2xl mb-6 text-sm text-center font-medium"
+                                    >
+                                        {error}
+                                    </motion.div>
+                                )}
+
+                                <div className="grid grid-cols-3 gap-4">
+                                    {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(num => (
+                                        <KeypadButton key={num} label={num} onClick={() => handleNumberClick(num.toString())} />
+                                    ))}
+                                    <KeypadButton
+                                        label={<Trash2 size={24} className="text-red-400" />}
+                                        onClick={handleClear}
+                                        className="bg-red-500/10 hover:bg-red-500/20 border-red-500/20"
+                                    />
+                                    <KeypadButton label="0" onClick={() => handleNumberClick("0")} />
+                                    <KeypadButton
+                                        label={<Delete size={28} />}
+                                        onClick={handleDelete}
+                                        className="bg-slate-700/50 text-slate-400"
+                                    />
+                                    <button
+                                        onClick={handleEnter}
+                                        disabled={phoneNumber.length < 7 || isLoading}
+                                        className="col-span-3 mt-4 py-6 rounded-3xl bg-sky-500 hover:bg-sky-400 text-white text-2xl font-black shadow-lg shadow-sky-500/20 transition-all active:scale-95 disabled:opacity-50 disabled:active:scale-100 flex items-center justify-center gap-3"
+                                    >
+                                        {isLoading ? (
+                                            <>
+                                                <Loader2 className="animate-spin" size={28} />
+                                                BUSCANDO...
+                                            </>
+                                        ) : (
+                                            "CONTINUAR"
+                                        )}
+                                    </button>
+                                </div>
                             </motion.div>
                         )}
-
-                        <div className="grid grid-cols-3 gap-4">
-                            {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(num => (
-                                <KeypadButton key={num} label={num} onClick={() => handleNumberClick(num.toString())} />
-                            ))}
-                            <KeypadButton
-                                label={<Trash2 size={24} className="text-red-400" />}
-                                onClick={handleClear}
-                                className="bg-red-500/10 hover:bg-red-500/20 border-red-500/20"
-                            />
-                            <KeypadButton label="0" onClick={() => handleNumberClick("0")} />
-                            <KeypadButton
-                                label={<Delete size={28} />}
-                                onClick={handleDelete}
-                                className="bg-slate-700/50 text-slate-400"
-                            />
-                            <button
-                                onClick={handleEnter}
-                                disabled={phoneNumber.length < 7 || isLoading}
-                                className="col-span-3 mt-4 py-6 rounded-3xl bg-sky-500 hover:bg-sky-400 text-white text-2xl font-black shadow-lg shadow-sky-500/20 transition-all active:scale-95 disabled:opacity-50 disabled:active:scale-100 flex items-center justify-center gap-3"
-                            >
-                                {isLoading ? (
-                                    <>
-                                        <Loader2 className="animate-spin" size={28} />
-                                        BUSCANDO...
-                                    </>
-                                ) : (
-                                    "CONTINUAR"
-                                )}
-                            </button>
-                        </div>
-                    </motion.div>
+                    </AnimatePresence>
                 )}
 
                 {step === 2 && (

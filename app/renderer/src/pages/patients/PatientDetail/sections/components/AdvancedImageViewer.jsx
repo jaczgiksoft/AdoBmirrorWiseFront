@@ -42,9 +42,9 @@ export default function AdvancedImageViewer({ images = [], onClose, onRemoveImag
 
             {/* --- MAIN GRID --- */}
             <div className={`flex-1 p-4 grid gap-0 ${gridCols} overflow-hidden`}>
-                {images.map((imgUrl, index) => (
+                {images.map((imgObj, index) => (
                     <div
-                        key={`${imgUrl}-${index}`}
+                        key={`${imgObj.url}-${index}`}
                         className="relative w-full h-full bg-black/40 rounded-xl overflow-hidden border border-white/10 group"
                     >
                         <TransformWrapper
@@ -80,7 +80,7 @@ export default function AdvancedImageViewer({ images = [], onClose, onRemoveImag
                                         <div className="w-px h-4 bg-white/20 mx-1" />
                                         <ToolButton
                                             icon={<Trash2 size={18} />}
-                                            onClick={() => onRemoveImage(imgUrl)}
+                                            onClick={() => onRemoveImage(imgObj)}
                                             variant="danger"
                                             title="Quitar de la vista"
                                         />
@@ -89,13 +89,40 @@ export default function AdvancedImageViewer({ images = [], onClose, onRemoveImag
                                     {/* Image Area */}
                                     <TransformComponent
                                         wrapperClass="!w-full !h-full"
-                                        contentClass="!w-full !h-full flex items-center justify-center"
+                                        contentClass="!w-full !h-full flex items-center justify-center p-8"
                                     >
-                                        <img
-                                            src={imgUrl}
-                                            alt={`Image ${index + 1}`}
-                                            className="max-w-full max-h-full object-contain"
-                                        />
+                                        <div className="relative inline-block">
+                                            <img
+                                                src={imgObj.url}
+                                                alt={`Image ${index + 1}`}
+                                                className="max-w-full max-h-full object-contain shadow-2xl"
+                                                draggable={false}
+                                            />
+                                            {/* Render Notes */}
+                                            {imgObj.notes && imgObj.notes.map((note) => (
+                                                <div
+                                                    key={note.id || `${note.x}-${note.y}`}
+                                                    className="absolute z-10 group"
+                                                    style={{ left: `${note.x}%`, top: `${note.y}%` }}
+                                                >
+                                                    <div className="p-1 rounded-full bg-white shadow-md border 
+                                                    border-green-600 cursor-pointer transform -translate-x-1/2 -translate-y-1/2 hover:scale-110 transition-transform relative z-20">
+                                                        <svg className="w-5 h-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                                        </svg>
+                                                    </div>
+                                                    
+                                                    {/* Tooltip / Popover */}
+                                                    <div className="absolute opacity-0 invisible group-hover:opacity-100 group-hover:visible 
+                                                    bg-slate-800 text-white text-sm px-3 py-2 rounded-lg shadow-xl w-48
+                                                    transition-all duration-200 z-50 transform -translate-x-1/2 mt-2 pointer-events-none text-center">
+                                                        {note.text}
+                                                        <div className="absolute -top-1 left-1/2 transform -translate-x-1/2 rotate-45 w-2 h-2 bg-slate-800 pointer-events-none"/>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
                                     </TransformComponent>
                                 </>
                             )}

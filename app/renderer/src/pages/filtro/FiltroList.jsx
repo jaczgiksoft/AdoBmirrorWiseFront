@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
+import dayjs from "dayjs";
 import {
     Activity,
     BarChart2,
@@ -21,15 +22,52 @@ import {
     ClipboardList,
     RotateCcw,
     Trash2,
-    Archive
+    Archive,
+    Search,
+    UserCheck,
+    Briefcase
 } from "lucide-react";
+import {
+    BarChart,
+    Bar,
+    XAxis,
+    YAxis,
+    CartesianGrid,
+    Tooltip,
+    ResponsiveContainer,
+    AreaChart,
+    Area,
+    PieChart,
+    Pie,
+    Cell,
+    Legend
+} from 'recharts';
+
 import { PageHeader } from "@/components/layout";
+import DateInput from "@/components/inputs/DateInput";
 import { useFiltroData } from "./hooks/useFiltroData";
+import { useClinicalPerformance } from "./hooks/useClinicalPerformance";
+
+const COLORS = ['#22c55e', '#ef4444', '#3b82f6', '#f59e0b', '#a855f7'];
 
 export default function FiltroList() {
     const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState("clinica");
-    const { clinicaStats, inventarioStats } = useFiltroData();
+    
+    // Filtros para Desempeño Clínico
+    const [filters, setFilters] = useState({
+        startDate: dayjs().subtract(30, 'day').format('YYYY-MM-DD'),
+        endDate: dayjs().format('YYYY-MM-DD'),
+        doctorId: "all",
+        serviceId: "all"
+    });
+
+    const { inventarioStats } = useFiltroData();
+    const { loading, employees, services, dashboardData } = useClinicalPerformance(filters);
+
+    const handleFilterChange = (key, value) => {
+        setFilters(prev => ({ ...prev, [key]: value }));
+    };
 
     return (
         <div className="bg-slate-50 dark:bg-dark min-h-screen flex flex-col font-sans text-slate-900 dark:text-slate-50">
@@ -39,10 +77,11 @@ export default function FiltroList() {
                 transition={{ duration: 0.3 }}
                 className="w-full max-w-7xl mx-auto px-6 mt-6 pb-20"
             >
+                {/* Header Section */}
                 <div className="flex items-center justify-between gap-4 mb-8 flex-wrap">
                     <PageHeader
-                        title="Filtro"
-                        subtitle="Análisis de rendimiento y métricas de la clínica"
+                        title="Dashboard de Desempeño"
+                        subtitle="Análisis de rendimiento clínico e inventario"
                         onBack={() => navigate("/dashboard")}
                     />
 
@@ -72,113 +111,167 @@ export default function FiltroList() {
                             transition={{ duration: 0.2 }}
                             className="space-y-8"
                         >
-                            {/* KPI Cards */}
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                                {clinicaStats.kpis.map((stat, i) => (
-                                    <KPICard key={i} {...stat} />
-                                ))}
-                            </div>
-
-                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                                {/* Estado de Rendimiento */}
-                                <div className="lg:col-span-2 space-y-6">
-                                    <div className="bg-white dark:bg-secondary rounded-2xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm">
-                                        <div className="flex items-center justify-between mb-6">
-                                            <h3 className="text-lg font-bold flex items-center gap-2">
-                                                <Activity className="text-blue-500" size={20} />
-                                                Estado de Rendimiento
-                                            </h3>
-                                            <span className="text-xs font-bold bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 px-3 py-1 rounded-full uppercase tracking-wider">
-                                                Actualizado hoy
-                                            </span>
-                                        </div>
-
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                            {/* Duración Promedio */}
-                                            <div className="bg-slate-50 dark:bg-slate-800/50 p-5 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700">
-                                                <p className="text-sm text-slate-500 dark:text-slate-400 font-medium mb-1">Duración promedio por cita</p>
-                                                <p className="text-3xl font-black text-slate-900 dark:text-slate-100">{clinicaStats.rendimiento.duracionPromedio}</p>
-                                                <div className="mt-4 flex items-center gap-2 text-xs font-bold text-emerald-500 bg-emerald-50 dark:bg-emerald-500/10 px-2 py-1 rounded w-fit">
-                                                    <ArrowDownRight size={14} /> -8% vs mes anterior
-                                                </div>
-                                            </div>
-
-                                            {/* Ortodoncia General */}
-                                            <div className="bg-slate-50 dark:bg-slate-800/50 p-5 rounded-2xl border border-slate-200 dark:border-slate-800">
-                                                <div className="flex items-center gap-2 mb-3">
-                                                    <div className="w-2 h-2 rounded-full bg-purple-500 shadow-[0_0_8px_rgba(168,85,247,0.5)]"></div>
-                                                    <p className="text-sm font-bold uppercase tracking-wide text-slate-600 dark:text-slate-400">{clinicaStats.rendimiento.ortodoncia.label}</p>
-                                                </div>
-                                                <div className="space-y-3">
-                                                    <div className="flex justify-between items-center text-sm">
-                                                        <span className="text-slate-500">Duración del servicio</span>
-                                                        <span className="font-bold">{clinicaStats.rendimiento.ortodoncia.duracion}</span>
-                                                    </div>
-                                                    <div className="flex justify-between items-center text-sm">
-                                                        <span className="text-slate-500">Tiempo de espera</span>
-                                                        <span className="font-bold">{clinicaStats.rendimiento.ortodoncia.espera}</span>
-                                                    </div>
-                                                    <div className="pt-2 border-t border-slate-200 dark:border-slate-700 flex justify-between items-center">
-                                                        <span className="text-sm font-medium">Total pacientes</span>
-                                                        <span className="text-lg font-black text-purple-600 dark:text-purple-400">{clinicaStats.rendimiento.ortodoncia.totalPacientes}</span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        {/* Tiempos de Espera Proyectados */}
-                                        <div className="mt-8 border-t border-slate-100 dark:border-slate-800 pt-8">
-                                            <div className="flex items-center justify-between mb-6">
-                                                <p className="font-bold text-slate-700 dark:text-slate-300">Espera entre agendar y atender</p>
-                                                <div className="flex gap-4">
-                                                    <div className="flex flex-col items-end">
-                                                        <span className="text-xs text-slate-400">Espera promedio</span>
-                                                        <span className="text-xl font-bold text-slate-900 dark:text-slate-100">{clinicaStats.rendimiento.espera.promedio}</span>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                                <EsperaMetric label="+30 min" value={clinicaStats.rendimiento.espera.critico} color="text-red-500" icon={AlertTriangle} />
-                                                <EsperaMetric label="Día crítico" value={clinicaStats.rendimiento.espera.diaCritico} color="text-amber-500" icon={Calendar} />
-                                                <EsperaMetric label="Sin espera" value={clinicaStats.rendimiento.espera.sinEspera} color="text-emerald-500" icon={TrendingUp} />
-                                                <EsperaMetric label="Tendencia" value="Excelente" color="text-blue-500" icon={Zap} />
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Servicios más solicitados */}
-                                <div className="bg-white dark:bg-secondary rounded-2xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm">
-                                    <h3 className="text-lg font-bold mb-6 flex items-center gap-2">
-                                        <TrendingUp className="text-emerald-500" size={20} />
-                                        Servicios Solicitados
-                                    </h3>
-                                    <div className="space-y-5">
-                                        {clinicaStats.rendimiento.solicitados.map((item, i) => (
-                                            <div key={i} className="group cursor-default">
-                                                <div className="flex justify-between items-center mb-1.5">
-                                                    <span className="text-sm font-bold text-slate-700 dark:text-slate-300">{item.name}</span>
-                                                    <span className="text-xs font-bold text-slate-400">{item.count} citas</span>
-                                                </div>
-                                                <div className="h-2 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                                                    <motion.div
-                                                        initial={{ width: 0 }}
-                                                        animate={{ width: `${(item.count / 42) * 100}%` }}
-                                                        transition={{ duration: 1, delay: 0.1 * i }}
-                                                        className={`h-full ${item.color} rounded-full`}
-                                                    />
-                                                </div>
-                                            </div>
+                            {/* Filtros Superiores */}
+                            <div className="bg-white dark:bg-secondary p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                                <DateInput 
+                                    label="Desde" 
+                                    value={filters.startDate} 
+                                    onChange={(val) => handleFilterChange('startDate', val)} 
+                                />
+                                <DateInput 
+                                    label="Hasta" 
+                                    value={filters.endDate} 
+                                    onChange={(val) => handleFilterChange('endDate', val)} 
+                                />
+                                
+                                <div className="space-y-1">
+                                    <label className="text-[11px] uppercase tracking-wide text-slate-500 dark:text-slate-400 ml-1">Personal / Doctor</label>
+                                    <select 
+                                        className="w-full px-3 py-2.5 rounded-lg border bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 border-slate-300 dark:border-slate-700 text-sm focus:ring-2 focus:ring-primary/50"
+                                        value={filters.doctorId}
+                                        onChange={(e) => handleFilterChange('doctorId', e.target.value)}
+                                    >
+                                        <option value="all">Todos los empleados</option>
+                                        {employees.map(emp => (
+                                            <option key={emp.id} value={emp.id}>{emp.name || `${emp.first_name} ${emp.last_name}`}</option>
                                         ))}
-                                    </div>
-                                    <div className="mt-10 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800">
-                                        <p className="text-xs text-slate-400 font-medium leading-relaxed">
-                                            Los servicios de estética y prevención representan el 64% de la demanda semanal.
-                                        </p>
-                                    </div>
+                                    </select>
+                                </div>
+
+                                <div className="space-y-1">
+                                    <label className="text-[11px] uppercase tracking-wide text-slate-500 dark:text-slate-400 ml-1">Tipo de Servicio</label>
+                                    <select 
+                                        className="w-full px-3 py-2.5 rounded-lg border bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 border-slate-300 dark:border-slate-700 text-sm focus:ring-2 focus:ring-primary/50"
+                                        value={filters.serviceId}
+                                        onChange={(e) => handleFilterChange('serviceId', e.target.value)}
+                                    >
+                                        <option value="all">Todos los servicios</option>
+                                        {services.map(ser => (
+                                            <option key={ser.id} value={ser.id}>{ser.name}</option>
+                                        ))}
+                                    </select>
                                 </div>
                             </div>
+
+                            {loading ? (
+                                <div className="h-64 flex items-center justify-center">
+                                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+                                </div>
+                            ) : dashboardData ? (
+                                <>
+                                    {/* KPI Cards */}
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                                        <KPICard 
+                                            label="% Citas Bien" 
+                                            value={`${dashboardData.kpis.successRate}%`} 
+                                            icon={UserCheck} 
+                                            color="text-emerald-500" 
+                                            bg="bg-emerald-500/10" 
+                                        />
+                                        <KPICard 
+                                            label="Total de Retrasos" 
+                                            value={dashboardData.kpis.totalDelays} 
+                                            icon={Clock} 
+                                            color="text-rose-500" 
+                                            bg="bg-rose-500/10" 
+                                        />
+                                        <KPICard 
+                                            label="Doctor del Mes" 
+                                            value={dashboardData.kpis.topDoctor} 
+                                            icon={Zap} 
+                                            color="text-amber-500" 
+                                            bg="bg-amber-500/10" 
+                                        />
+                                        <KPICard 
+                                            label="vs. Mes Anterior" 
+                                            value={`+${dashboardData.kpis.comparison}%`} 
+                                            icon={TrendingUp} 
+                                            color="text-blue-500" 
+                                            bg="bg-blue-500/10" 
+                                        />
+                                    </div>
+
+                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                                        {/* Chart: Desempeño Individual */}
+                                        <ChartContainer title="Desempeño Individual por Empleado" icon={BarChart2}>
+                                            <ResponsiveContainer width="100%" height={300}>
+                                                <BarChart data={dashboardData.charts.barData}>
+                                                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                                                    <XAxis dataKey="name" fontSize={12} />
+                                                    <YAxis fontSize={12} />
+                                                    <Tooltip 
+                                                        contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
+                                                    />
+                                                    <Legend />
+                                                    <Bar dataKey="Bien" fill="#22c55e" radius={[4, 4, 0, 0]} />
+                                                    <Bar dataKey="Retraso" fill="#ef4444" radius={[4, 4, 0, 0]} />
+                                                </BarChart>
+                                            </ResponsiveContainer>
+                                        </ChartContainer>
+
+                                        {/* Chart: Evolución General */}
+                                        <ChartContainer title="Evolución del Desempeño (% Éxito)" icon={Activity}>
+                                            <ResponsiveContainer width="100%" height={300}>
+                                                <AreaChart data={dashboardData.charts.areaData}>
+                                                    <defs>
+                                                        <linearGradient id="colorRate" x1="0" y1="0" x2="0" y2="1">
+                                                            <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
+                                                            <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                                                        </linearGradient>
+                                                    </defs>
+                                                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                                                    <XAxis dataKey="date" fontSize={10} />
+                                                    <YAxis fontSize={12} unit="%" />
+                                                    <Tooltip />
+                                                    <Area type="monotone" dataKey="rate" stroke="#3b82f6" fillOpacity={1} fill="url(#colorRate)" strokeWidth={3} />
+                                                </AreaChart>
+                                            </ResponsiveContainer>
+                                        </ChartContainer>
+
+                                        {/* Chart: Distribución de Servicios del Top Performer */}
+                                        <div className="lg:col-span-2">
+                                            <ChartContainer title={`Servicios más realizados: ${dashboardData.kpis.topDoctor}`} icon={Briefcase}>
+                                                <div className="flex flex-col md:flex-row items-center">
+                                                    <div className="w-full md:w-1/2 h-[300px]">
+                                                        <ResponsiveContainer width="100%" height="100%">
+                                                            <PieChart>
+                                                                <Pie
+                                                                    data={dashboardData.charts.pieData}
+                                                                    innerRadius={60}
+                                                                    outerRadius={100}
+                                                                    paddingAngle={5}
+                                                                    dataKey="value"
+                                                                >
+                                                                    {dashboardData.charts.pieData.map((entry, index) => (
+                                                                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                                                    ))}
+                                                                </Pie>
+                                                                <Tooltip />
+                                                            </PieChart>
+                                                        </ResponsiveContainer>
+                                                    </div>
+                                                    <div className="w-full md:w-1/2 space-y-4">
+                                                        {dashboardData.charts.pieData.map((entry, index) => (
+                                                            <div key={index} className="flex justify-between items-center p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50">
+                                                                <div className="flex items-center gap-3">
+                                                                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }}></div>
+                                                                    <span className="text-sm font-medium">{entry.name}</span>
+                                                                </div>
+                                                                <span className="font-bold">{entry.value} serv.</span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            </ChartContainer>
+                                        </div>
+                                    </div>
+                                </>
+                            ) : (
+                                <div className="p-20 text-center bg-white dark:bg-secondary rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-700">
+                                    <AlertTriangle className="mx-auto text-slate-400 mb-4" size={48} />
+                                    <p className="text-slate-500 font-medium">No hay datos disponibles para los filtros seleccionados.</p>
+                                </div>
+                            )}
                         </motion.div>
                     ) : (
                         <motion.div
@@ -327,22 +420,26 @@ function KPICard({ label, value, icon: Icon, color, bg }) {
                 </div>
                 <div>
                     <p className="text-xs text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider mb-0.5">{label}</p>
-                    <p className="text-3xl font-black text-slate-900 dark:text-slate-100 tracking-tight">{value}</p>
+                    <p className="text-2xl font-black text-slate-900 dark:text-slate-100 tracking-tight">{value}</p>
                 </div>
             </div>
         </motion.div>
     );
 }
 
-function EsperaMetric({ label, value, color, icon: Icon }) {
+function ChartContainer({ title, icon: Icon, children }) {
     return (
-        <div className="flex flex-col items-center p-3 rounded-xl bg-white dark:bg-secondary border border-slate-100 dark:border-slate-700 shadow-sm">
-            <div className={`mb-2 ${color}`}>
-                <Icon size={18} />
+        <motion.div 
+            initial={{ opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white dark:bg-secondary rounded-2xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm"
+        >
+            <div className="flex items-center gap-2 mb-6">
+                <Icon className="text-primary" size={20} />
+                <h3 className="font-bold text-slate-800 dark:text-slate-100">{title}</h3>
             </div>
-            <p className="text-lg font-black">{value}</p>
-            <p className="text-[10px] font-bold text-slate-400 uppercase">{label}</p>
-        </div>
+            {children}
+        </motion.div>
     );
 }
 
