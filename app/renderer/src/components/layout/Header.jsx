@@ -5,9 +5,11 @@ import { useAuthStore } from "@/store/useAuthStore";
 import { useNotificationStore } from "@/store/useNotificationStore";
 import { NotificationPanel, ConfirmDialog } from "@/components/feedback";
 import { useToastStore } from "@/store/useToastStore";
+import { useAppUpdate } from "@/hooks/useAppUpdate";
 import { API_BASE } from "@/utils/apiBase";
 
 export default function Header() {
+    const { update } = useAppUpdate();
     const { user, logout } = useAuthStore();
     const tenant = user?.tenant;
 
@@ -33,7 +35,34 @@ export default function Header() {
         document.documentElement.classList.contains("dark") ? "dark" : "light"
     );
     const [hoverTheme, setHoverTheme] = useState(false);
+    const [downloading, setDownloading] = useState(false);
+    const [dismissed, setDismissed] = useState(false);
 
+    const handleUpdate = async () => {
+        try {
+            setDownloading(true);
+
+            await window.electronAPI.downloadUpdate();
+
+            addToast({
+                title: "Actualización descargada",
+                message: "Ejecuta el instalador para completar la actualización.",
+                type: "success",
+            });
+            setDismissed(true);
+
+        } catch (error) {
+            console.error(error);
+
+            addToast({
+                title: "Error al actualizar",
+                message: "No se pudo descargar la actualización.",
+                type: "error",
+            });
+        } finally {
+            setDownloading(false);
+        }
+    };
     /* 📡 Cargar notificaciones + WebSocket */
     useEffect(() => {
         if (!user?.id) return;
@@ -87,6 +116,10 @@ export default function Header() {
         logout();
     };
 
+    useEffect(() => {
+        console.log("🔄 Update cambió:", update);
+    }, [update]);
+
     return (
         <div className="
     w-full flex flex-col
@@ -95,7 +128,24 @@ export default function Header() {
     sticky top-0
     bg-white dark:bg-secondary
 ">
+            {update && !dismissed && (
+                <div className="
+        w-full bg-yellow-100 text-yellow-800
+        dark:bg-yellow-900/40 dark:text-yellow-300
+        text-xs px-4 py-2 flex items-center justify-between
+    ">
+                    <span>
+                        🚀 Nueva versión disponible: <strong>{update.version}</strong>
+                    </span>
 
+                    <button
+                        className="ml-3 text-xs underline hover:opacity-80"
+                        onClick={handleUpdate}
+                    >
+                        {downloading ? "Descargando..." : "Actualizar"}
+                    </button>
+                </div>
+            )}
 
             {/* 🔹 HEADER PRINCIPAL */}
             <header className="

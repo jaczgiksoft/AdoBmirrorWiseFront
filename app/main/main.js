@@ -1,10 +1,12 @@
 // main.js
 require("dotenv").config();
-const { app, BrowserWindow, ipcMain, globalShortcut } = require("electron");
+const { app, BrowserWindow, ipcMain, globalShortcut, shell } = require("electron");
 const path = require("path");
 const keytar = require("keytar");
 const net = require("net");
 const os = require("os");
+const { initUpdater } = require("./updater");
+const { checkForUpdates } = require("./updater/updater.service");
 
 let mainWindow = null;
 let kioskWindow = null;
@@ -128,9 +130,11 @@ app.whenReady().then(async () => {
         console.warn(`⚠️ Puerto ${port} ocupado. Saltando inicio del backend.`);
     }
 
-    createWindow();
+    await createWindow();
 
-    // ✅ Registrar F5 y evitar el recargado
+    // 🚀 AQUÍ INICIAMOS EL CHECKEO
+    initUpdater(mainWindow);
+
     globalShortcut.register("F5", () => {
         const win = BrowserWindow.getFocusedWindow();
         if (win) win.webContents.send("shortcut:save");
@@ -179,6 +183,29 @@ process.on("SIGTERM", () => {
  * 🔌 IPC — Comunicación segura entre Main y Renderer
  */
 ipcMain.handle("ping", async () => "pong");
+
+ipcMain.handle("app:check-update", async () => {
+    console.log("📡 Renderer pidió check de update");
+    return await checkForUpdates();
+});
+
+ipcMain.handle("app:download-update", async () => {
+    try {
+        console.log("⬇️ Descargando update...");
+
+        const result = await checkForUpdates();
+
+        if (result?.url) {
+            await shell.openExternal(result.url);
+            console.log("🚀 Abriendo instalador...");
+        }
+
+        return true;
+    } catch (error) {
+        console.error("❌ Error al descargar update:", error);
+        return false;
+    }
+});
 
 // 🔐 Token seguro con Keytar
 ipcMain.handle("auth:save-token", async (_, token) => {
@@ -237,7 +264,7 @@ ipcMain.handle("app:open-kiosk", async () => {
     const isDev = !app.isPackaged;
     const vitePort = process.env.VITE_PORT || 5173;
     const devURL = `http://localhost:${vitePort}`;
-    
+
     if (isDev) {
         kioskWindow.loadURL(`${devURL}/kiosk`);
     } else {

@@ -12,7 +12,9 @@ const validChannels = [
     "app:open-settings",
     "shortcut:save",
     "system:get-pcname",
-    "app:open-kiosk"
+    "app:open-kiosk",
+    "app:update-available",
+    "app:download-update"
 ];
 
 contextBridge.exposeInMainWorld("electronAPI", {
@@ -65,5 +67,6 @@ contextBridge.exposeInMainWorld("electronAPI", {
      * 🖥️ Información del sistema — obtener nombre del equipo
      */
     getPcName: async () => ipcRenderer.invoke("system:get-pcname"),
-
+    checkUpdate: () => ipcRenderer.invoke("app:check-update"),
+    downloadUpdate: () => ipcRenderer.invoke("app:download-update"),
 });
