@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { Layers, Plus, X, Calendar, Clock, Undo2, Redo2, Trash2, Loader2, LayoutGrid, XCircle } from 'lucide-react';
 import { DateInput } from '@/components/inputs';
@@ -6,6 +6,29 @@ import { ConfirmDialog } from '@/components/feedback';
 import bracketImg from '@/assets/images/odontogram/bracket.svg';
 import bracketGanchoImg from '@/assets/images/odontogram/bracket-gancho.svg';
 import tadImg from '@/assets/images/odontogram/tad.svg';
+
+// Assets RAW for inlining support (ensures they appear in captureOdontogramImage)
+import bracketImgRaw from '@/assets/images/odontogram/bracket.svg?raw';
+import bracketGanchoImgRaw from '@/assets/images/odontogram/bracket-gancho.svg?raw';
+import tadImgRaw from '@/assets/images/odontogram/tad.svg?raw';
+
+const inlineSvg = (raw) => {
+    if (!raw) return '';
+    try {
+        // Remove Byte Order Mark (BOM) if present and UTF-16 declaration
+        const cleanRaw = raw.replace(/^\uFEFF/, '').replace(/encoding="UTF-16"/i, 'encoding="UTF-8"');
+        // Base64 encoding is more robust for data URLs
+        const base64 = btoa(unescape(encodeURIComponent(cleanRaw)));
+        return `data:image/svg+xml;base64,${base64}`;
+    } catch (e) {
+        console.error("[ElasticsSection] Error inlining SVG:", e);
+        return '';
+    }
+};
+
+const BRACKET_IMG_DATA = inlineSvg(bracketImgRaw);
+const BRACKET_GANCHO_IMG_DATA = inlineSvg(bracketGanchoImgRaw);
+const TAD_IMG_DATA = inlineSvg(tadImgRaw);
 
 import { getToothSrc, generateCombinedSvgDataUrl } from './components/toothSvgHelpers';
 import * as odontogramService from '@/services/odontogram.service';
@@ -177,6 +200,7 @@ import { usePatientElasticsData } from '@/hooks/usePatientElasticsData';
 export default function ElasticsSection() {
     // Leer el ID del paciente de la URL para aislar datos en localStorage
     const { id: patientId } = useParams();
+    const svgRef = useRef(null);
 
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
@@ -686,10 +710,66 @@ export default function ElasticsSection() {
         }
     }, [history, historyIndex]);
 
+    const captureOdontogramImage = async () => {
+        if (!svgRef.current) return null;
+
+        try {
+            const svgElement = svgRef.current;
+            const serializer = new XMLSerializer();
+            let source = serializer.serializeToString(svgElement);
+
+            // Añadir el namespace de XML si no existe
+            if (!source.match(/^<svg[^>]+xmlns="http\:\/\/www\.w3\.org\/2000\/svg"/)) {
+                source = source.replace(/^<svg/, '<svg xmlns="http://www.w3.org/2000/svg"');
+            }
+            if (!source.match(/^<svg[^>]+xmlns\:xlink="http\:\/\/www\.w3\.org\/1999\/xlink"/)) {
+                source = source.replace(/^<svg/, '<svg xmlns:xlink="http://www.w3.org/1999/xlink"');
+            }
+
+            // Crear un Blob desde el SVG
+            const svgBlob = new Blob([source], { type: 'image/svg+xml;charset=utf-8' });
+            const url = URL.createObjectURL(svgBlob);
+
+            return new Promise((resolve) => {
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = svgElement.viewBox.baseVal.width || svgElement.width.baseVal.value;
+                    canvas.height = svgElement.viewBox.baseVal.height || svgElement.height.baseVal.value;
+                    const ctx = canvas.getContext('2d');
+                    ctx.fillStyle = 'white'; // Fondo blanco para la vista previa
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    ctx.drawImage(img, 0, 0);
+                    URL.revokeObjectURL(url);
+
+                    canvas.toBlob((blob) => {
+                        if (blob) {
+                            const file = new File([blob], 'odontogram_preview.png', { type: 'image/png' });
+                            resolve(file);
+                        } else {
+                            resolve(null);
+                        }
+                    }, 'image/png');
+                };
+                img.onerror = () => {
+                    URL.revokeObjectURL(url);
+                    resolve(null);
+                };
+                img.src = url;
+            });
+        } catch (error) {
+            console.error("Error al capturar la imagen del odontograma:", error);
+            return null;
+        }
+    };
+
     const handleSaveInstruction = async () => {
         if (isReadOnly) return;
 
         const type = ELASTIC_TYPES.find(t => t.id === selectedElasticTypeId);
+
+        // Capturar la imagen antes de guardar
+        const previewFile = await captureOdontogramImage();
 
         const newInstruction = {
             startDate,
@@ -705,7 +785,7 @@ export default function ElasticsSection() {
             }
         };
 
-        const success = await saveInstruction(newInstruction);
+        const success = await saveInstruction(newInstruction, previewFile);
         if (success) {
             setIsModalOpen(false);
         }
@@ -1068,6 +1148,7 @@ export default function ElasticsSection() {
                                         <>
                                             {/* SVG Container - Compact ViewBox */}
                                             <svg
+                                                ref={svgRef}
                                                 width="1400"
                                                 height="500"
                                                 viewBox="0 0 1400 500"
@@ -1200,7 +1281,7 @@ export default function ElasticsSection() {
                                                                 <rect x={-tadHalfSize} y={-120} width={tadSize * 2} height={240} fill="transparent" />
                                                                 {hasTad ? (
                                                                     <image
-                                                                        href={tadImg}
+                                                                        href={TAD_IMG_DATA}
                                                                         width={tadSize}
                                                                         height={tadSize}
                                                                         style={{ transformOrigin: `${tadHalfSize}px ${tadHalfSize}px`, transform: tooth.isUpper ? 'none' : 'rotate(180deg)' }}
@@ -1233,7 +1314,7 @@ export default function ElasticsSection() {
                                                         const activeConfig = hookConfig || normalConfig;
 
                                                         const useHookBracket = !!hookConfig;
-                                                        const currentBracketImg = useHookBracket ? bracketGanchoImg : bracketImg;
+                                                        const currentBracketImg = useHookBracket ? BRACKET_GANCHO_IMG_DATA : BRACKET_IMG_DATA;
 
                                                         const scale = activeConfig ? (activeConfig.scale || 1) : 1;
                                                         const offsetX = activeConfig ? (activeConfig.offsetX || 0) : 0;
