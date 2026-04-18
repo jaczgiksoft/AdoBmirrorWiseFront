@@ -28,21 +28,21 @@ export const getToothRaw = (id, type) => {
     return originalEntry ? originalEntry[1] : null;
 };
 
-// Helper to get image src by Tooth ID and Type (Inlined as Data URL for capture support)
+// Helper to get image src by Tooth ID and Type
 export const getToothSrc = (id, type) => {
-    const raw = getToothRaw(id, type);
-    if (!raw) return null;
+    // Try to find the specific type first
+    const specificTypeEntry = Object.entries(toothImages).find(([path]) =>
+        path.includes(`/odontogram/${type}/tooth-${id}.svg`)
+    );
 
-    try {
-        // Remove Byte Order Mark (BOM) if present and UTF-16 declaration
-        const cleanRaw = raw.replace(/^\uFEFF/, '').replace(/encoding="UTF-16"/i, 'encoding="UTF-8"');
-        // Base64 encoding is more robust for data URLs
-        const base64 = btoa(unescape(encodeURIComponent(cleanRaw)));
-        return `data:image/svg+xml;base64,${base64}`;
-    } catch (e) {
-        console.error("[toothSvgHelpers] Error inlining tooth SVG:", e);
-        return null;
-    }
+    if (specificTypeEntry) return specificTypeEntry[1];
+
+    // Fallback to original if not found
+    const originalEntry = Object.entries(toothImages).find(([path]) =>
+        path.includes(`/odontogram/original/tooth-${id}.svg`)
+    );
+
+    return originalEntry ? originalEntry[1] : null;
 };
 
 export const getBaseSvgType = (types) => {
