@@ -3,24 +3,28 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
     X, Calendar, Clock, User, Stethoscope, FileText, Edit2, ArrowRight,
     AlertCircle, CheckCircle, Activity, Lock, Phone, Mail, CreditCard,
-    History, MapPin, Star, Receipt, BadgeCheck
+    History, MapPin, Star, Receipt, BadgeCheck, Loader2
 } from "lucide-react";
 import { API_BASE } from "@/utils/apiBase";
 import PatientEvaluationModal from "./PatientEvaluationModal";
 import AppointmentCheckoutModal from "./AppointmentCheckoutModal";
 import ChargeBreakdown from "./checkout/ChargeBreakdown";
 import { getStatusConfig } from "@/utils/statusConfig";
+import { updateAppointment } from "@/services/appointment.service";
+import { useToastStore } from "@/store/useToastStore";
 
-export default function AppointmentDetailModal({ appointment, open, onClose, onEdit }) {
+export default function AppointmentDetailModal({ appointment, open, onClose, onEdit, onSuccess }) {
     // 1. Hooks (MUST be top level and unconditional)
     const [activeTab, setActiveTab] = useState('details');
     const [evaluations, setEvaluations] = useState([]);
     const [showEvaluationModal, setShowEvaluationModal] = useState(false);
+    const [loadingStatus, setLoadingStatus] = useState(false);
 
     // Checkout state
     const [showCheckout, setShowCheckout] = useState(false);
     const [checkoutResult, setCheckoutResult] = useState(null);
 
+    const { addToast } = useToastStore();
     const hasEvaluation = evaluations.some(e => e.appointmentId === appointment?.id);
 
     const isEditable = useMemo(() => {
@@ -45,6 +49,34 @@ export default function AppointmentDetailModal({ appointment, open, onClose, onE
 
     // 2. Early Return
     if (!open || !appointment) return null;
+
+    // 3. Status Change Handler
+    const handleStatusChange = async (newStatus) => {
+        if (loadingStatus) return;
+        setLoadingStatus(true);
+        try {
+            await updateAppointment(appointment.id, { status: newStatus });
+            const statusLabels = {
+                en_tratamiento: 'Tratamiento iniciado',
+                finalizada: 'Cita finalizada',
+            };
+            addToast({
+                type: 'success',
+                title: statusLabels[newStatus] || 'Estado actualizado',
+                message: `La cita pasó a: ${getStatusConfig(newStatus).label}`,
+            });
+            onSuccess?.();
+            onClose();
+        } catch (err) {
+            addToast({
+                type: 'error',
+                title: 'Error al actualizar',
+                message: err?.message || 'No se pudo cambiar el estado de la cita.',
+            });
+        } finally {
+            setLoadingStatus(false);
+        }
+    };
 
     // 3. Logic & Helpers (Post-check)
     const statusConfig = getStatusConfig(appointment.status);
@@ -592,18 +624,26 @@ export default function AppointmentDetailModal({ appointment, open, onClose, onE
                                             {/* Status Specific Actions */}
                                             {appointment.status === 'en_espera' && (
                                                 <button
-                                                    className="flex items-center gap-2 bg-indigo-600 text-white px-8 py-3 rounded-xl font-bold shadow-lg shadow-indigo-500/20 hover:bg-indigo-700 transition active:scale-95"
+                                                    onClick={() => handleStatusChange('en_tratamiento')}
+                                                    disabled={loadingStatus}
+                                                    className="flex items-center gap-2 bg-indigo-600 text-white px-8 py-3 rounded-xl font-bold shadow-lg shadow-indigo-500/20 hover:bg-indigo-700 transition active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed disabled:active:scale-100"
                                                 >
-                                                    <ArrowRight size={18} />
-                                                    Pasar a Tratamiento
+                                                    {loadingStatus
+                                                        ? <><Loader2 size={18} className="animate-spin" /> Procesando...</>
+                                                        : <><ArrowRight size={18} /> Iniciar Tratamiento</>
+                                                    }
                                                 </button>
                                             )}
                                             {appointment.status === 'en_tratamiento' && (
                                                 <button
-                                                    className="flex items-center gap-2 bg-emerald-600 text-white px-8 py-3 rounded-xl font-bold shadow-lg shadow-emerald-500/20 hover:bg-emerald-700 transition active:scale-95"
+                                                    onClick={() => handleStatusChange('finalizada')}
+                                                    disabled={loadingStatus}
+                                                    className="flex items-center gap-2 bg-emerald-600 text-white px-8 py-3 rounded-xl font-bold shadow-lg shadow-emerald-500/20 hover:bg-emerald-700 transition active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed disabled:active:scale-100"
                                                 >
-                                                    <CheckCircle size={18} />
-                                                    Finalizar Cita
+                                                    {loadingStatus
+                                                        ? <><Loader2 size={18} className="animate-spin" /> Procesando...</>
+                                                        : <><CheckCircle size={18} /> Finalizar Cita</>
+                                                    }
                                                 </button>
                                             )}
 
@@ -712,33 +752,43 @@ function StatusStepper({ appointment }) {
     // Determine Journey State
     const journeyState = {};
 
-    // Logic:
-    // 1. Check-in
-    journeyState.check_in = checkin_at ? 'completed' : 'pending';
+    // Logic for Pre-Arrival or Inactive states
+    const isPreArrival = ['pendiente', 'confirmada'].includes(status);
 
-    // 2. Waiting Room
-    if (treatment_started_at || paid_at || status === 'finalizada') {
-        journeyState.waiting_room = 'completed';
-    } else if (checkin_at) {
-        journeyState.waiting_room = 'active';
-    } else {
+    if (isPreArrival) {
+        journeyState.check_in = 'pending';
         journeyState.waiting_room = 'pending';
-    }
-
-    // 3. Treatment
-    if (paid_at || status === 'finalizada') {
-        journeyState.treatment = 'completed';
-    } else if (treatment_started_at) {
-        journeyState.treatment = 'active';
-    } else {
         journeyState.treatment = 'pending';
-    }
-
-    // 4. Finished
-    if (paid_at || status === 'finalizada') {
-        journeyState.finished = 'completed';
-    } else {
         journeyState.finished = 'pending';
+    } else {
+        // Helper flags for Active/Completed journey
+        const hasArrival = checkin_at || ['en_espera', 'en_tratamiento', 'finalizada'].includes(status);
+        const hasStartedTreatment = treatment_started_at || ['en_tratamiento', 'finalizada'].includes(status);
+        const isFinished = status === 'finalizada' || paid_at;
+
+        // 1. Check-in
+        journeyState.check_in = hasArrival ? 'completed' : 'pending';
+
+        // 2. Waiting Room
+        if (hasStartedTreatment) {
+            journeyState.waiting_room = 'completed';
+        } else if (status === 'en_espera' || hasArrival) {
+            journeyState.waiting_room = 'active';
+        } else {
+            journeyState.waiting_room = 'pending';
+        }
+
+        // 3. Treatment
+        if (isFinished) {
+            journeyState.treatment = 'completed';
+        } else if (status === 'en_tratamiento' || hasStartedTreatment) {
+            journeyState.treatment = 'active';
+        } else {
+            journeyState.treatment = 'pending';
+        }
+
+        // 4. Finished
+        journeyState.finished = isFinished ? 'completed' : 'pending';
     }
 
     // Override: Cancelled
