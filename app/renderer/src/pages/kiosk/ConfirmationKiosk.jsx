@@ -32,10 +32,15 @@ export default function ConfirmationKiosk() {
     const [isQRVisible, setIsQRVisible] = useState(true);
     const [qrValue, setQrValue] = useState("");
 
-    // 🔄 Generar QR aleatorio
-    const generateRandomQR = () => {
-        const randomString = Math.random().toString(36).substring(2, 15).toUpperCase();
-        setQrValue(`BWISE-KIOSK-${randomString}`);
+    // 🎯 Generar QR con token codificado que incluye el tenant_id
+    const generateQRToken = (tenantId) => {
+        const payload = JSON.stringify({
+            tenant_id: tenantId,
+            type: 'qr-checkin',
+            issued_at: Date.now()
+        });
+        const token = btoa(payload);
+        setQrValue(token);
     };
 
     // 🔒 Validar sesión de Kiosko
@@ -46,8 +51,9 @@ export default function ConfirmationKiosk() {
             navigate("/login");
             return;
         }
-        setTenant(JSON.parse(storedTenant));
-        generateRandomQR();
+        const parsedTenant = JSON.parse(storedTenant);
+        setTenant(parsedTenant);
+        generateQRToken(parsedTenant?.id);
     }, [navigate]);
 
     const handleNumberClick = (num) => {
@@ -119,7 +125,7 @@ export default function ConfirmationKiosk() {
         setSelectedAppointments([]);
         setError(null);
         setIsQRVisible(true);
-        generateRandomQR();
+        generateQRToken(tenant?.id);
     };
 
     return (

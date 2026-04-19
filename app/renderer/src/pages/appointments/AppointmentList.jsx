@@ -724,6 +724,7 @@ export default function AppointmentList() {
                 appointment={selectedAppointment}
                 onClose={() => setShowDetail(false)}
                 onEdit={handleEditFromDetail}
+                onSuccess={refreshAppointments}
             />
 
             <AppointmentForm
