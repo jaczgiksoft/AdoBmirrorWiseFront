@@ -43,21 +43,29 @@ export function usePatientElasticsData(patientId) {
         loadInstructions();
     }, [loadInstructions]);
 
-    const saveInstruction = async (newInstruction) => {
+    const saveInstruction = async (newInstruction, imageFile) => {
         try {
-            // Mapear de formato de UI a base de datos
-            const dataToSave = {
-                patient_id: patientId,
-                start_date: newInstruction.startDate,
-                end_date: newInstruction.endDate || null,
-                hours: newInstruction.hours,
-                notes: newInstruction.notes,
-                upper_elastic: newInstruction.typeId, // Usamos typeId como placeholder para upper_elastic
-                lower_elastic: newInstruction.type,   // Usamos type (label) como placeholder para lower_elastic
-                odontogram_data: newInstruction.odontogramData
-            };
+            // Mapear de formato de UI a base de datos usando FormData para permitir subida de archivos
+            const formData = new FormData();
+            formData.append('patient_id', patientId);
+            formData.append('start_date', newInstruction.startDate);
+            if (newInstruction.endDate) {
+                formData.append('end_date', newInstruction.endDate);
+            }
+            formData.append('hours', newInstruction.hours);
+            formData.append('notes', newInstruction.notes);
+            formData.append('upper_elastic', newInstruction.typeId); // Usamos typeId como placeholder para upper_elastic
+            formData.append('lower_elastic', newInstruction.type);   // Usamos type (label) como placeholder para lower_elastic
+            
+            // Serializar el objeto de datos del odontograma
+            formData.append('odontogram_data', JSON.stringify(newInstruction.odontogramData));
 
-            const response = await patientElasticService.createElastic(dataToSave);
+            // Agregar el archivo de imagen capturado
+            if (imageFile) {
+                formData.append('preview_image', imageFile);
+            }
+
+            const response = await patientElasticService.createElastic(formData);
             
             if (response.success) {
                 await loadInstructions(); // Recargar para tener los datos actualizados con IDs reales

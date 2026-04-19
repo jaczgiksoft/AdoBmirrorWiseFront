@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { Layers, Plus, X, Calendar, Clock, Undo2, Redo2, Trash2, Loader2, LayoutGrid, XCircle } from 'lucide-react';
 import { DateInput } from '@/components/inputs';
@@ -177,6 +177,7 @@ import { usePatientElasticsData } from '@/hooks/usePatientElasticsData';
 export default function ElasticsSection() {
     // Leer el ID del paciente de la URL para aislar datos en localStorage
     const { id: patientId } = useParams();
+    const svgRef = useRef(null);
 
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
@@ -686,8 +687,84 @@ export default function ElasticsSection() {
         }
     }, [history, historyIndex]);
 
+    const captureOdontogramImage = async () => {
+        if (!svgRef.current) return null;
+
+        try {
+            const svgElement = svgRef.current;
+            const serializer = new XMLSerializer();
+            
+            // Clone the SVG to manipulate it without affecting the UI
+            const clonedSvg = svgElement.cloneNode(true);
+            clonedSvg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+
+            // 1. Inline all images (Teeth, Brackets, TADs)
+            const images = clonedSvg.querySelectorAll('image');
+            for (const img of images) {
+                const href = img.getAttribute('href');
+                if (href && !href.startsWith('data:')) {
+                    try {
+                        const response = await fetch(href);
+                        const blob = await response.blob();
+                        const base64 = await new Promise((resolve) => {
+                            const reader = new FileReader();
+                            reader.onloadend = () => resolve(reader.result);
+                            reader.readAsDataURL(blob);
+                        });
+                        img.setAttribute('href', base64);
+                    } catch (err) {
+                        console.error("Error inlining image in SVG:", href, err);
+                    }
+                }
+            }
+
+            const svgString = serializer.serializeToString(clonedSvg);
+            
+            // 2. Render SVG to Canvas
+            return new Promise((resolve) => {
+                const canvas = document.createElement('canvas');
+                // Use a higher scale for better quality if needed, but 1400x500 is base
+                canvas.width = 1400;
+                canvas.height = 500;
+                const ctx = canvas.getContext('2d');
+                
+                // Clear background to white (optional, but good for previews)
+                ctx.fillStyle = 'white';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                const img = new Image();
+                const svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+                const url = URL.createObjectURL(svgBlob);
+
+                img.onload = () => {
+                    ctx.drawImage(img, 0, 0);
+                    URL.revokeObjectURL(url);
+                    
+                    canvas.toBlob((blob) => {
+                        const file = new File([blob], `odontogram_preview_${Date.now()}.png`, { type: 'image/png' });
+                        resolve(file);
+                    }, 'image/png');
+                };
+
+                img.onerror = (err) => {
+                    console.error("Error drawing SVG to canvas:", err);
+                    URL.revokeObjectURL(url);
+                    resolve(null);
+                };
+
+                img.src = url;
+            });
+        } catch (error) {
+            console.error("Error capturing odontogram image:", error);
+            return null;
+        }
+    };
+
     const handleSaveInstruction = async () => {
         if (isReadOnly) return;
+
+        // Capture the image first
+        const imageFile = await captureOdontogramImage();
 
         const type = ELASTIC_TYPES.find(t => t.id === selectedElasticTypeId);
 
@@ -705,7 +782,7 @@ export default function ElasticsSection() {
             }
         };
 
-        const success = await saveInstruction(newInstruction);
+        const success = await saveInstruction(newInstruction, imageFile);
         if (success) {
             setIsModalOpen(false);
         }
@@ -1068,6 +1145,7 @@ export default function ElasticsSection() {
                                         <>
                                             {/* SVG Container - Compact ViewBox */}
                                             <svg
+                                                ref={svgRef}
                                                 width="1400"
                                                 height="500"
                                                 viewBox="0 0 1400 500"
