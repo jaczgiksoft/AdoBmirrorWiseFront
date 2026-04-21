@@ -45,7 +45,7 @@ async function createWindow() {
             nodeIntegration: false,
         },
     });
-
+    //mainWindow.maximize();
     const isDev = !app.isPackaged;
     const vitePort = process.env.VITE_PORT || 5173;
     const devURL = `http://localhost:${vitePort}`;

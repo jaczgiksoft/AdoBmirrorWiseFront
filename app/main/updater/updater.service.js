@@ -3,13 +3,14 @@ const axios = require("axios");
 
 // 🔢 versión actual de la app
 const CURRENT_VERSION = app.getVersion();
+const API_URL = process.env.API_URL;
 
 // 🧠 función principal
 async function checkForUpdates() {
     try {
         console.log("🔍 Checking for updates...");
 
-        const { data } = await axios.get("http://localhost:3000/api/system/version");
+        const { data } = await axios.get(`${API_URL}/system/version`);
 
         const latestVersion = data.version;
 
