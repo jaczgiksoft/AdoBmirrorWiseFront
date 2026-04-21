@@ -14,7 +14,8 @@ const validChannels = [
     "system:get-pcname",
     "app:open-kiosk",
     "app:update-available",
-    "app:download-update"
+    "app:download-update",
+    "app:get-update"
 ];
 
 contextBridge.exposeInMainWorld("electronAPI", {
@@ -69,4 +70,5 @@ contextBridge.exposeInMainWorld("electronAPI", {
     getPcName: async () => ipcRenderer.invoke("system:get-pcname"),
     checkUpdate: () => ipcRenderer.invoke("app:check-update"),
     downloadUpdate: () => ipcRenderer.invoke("app:download-update"),
+    getUpdate: () => ipcRenderer.invoke("app:get-update"),
 });

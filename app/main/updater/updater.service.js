@@ -10,6 +10,10 @@ async function checkForUpdates() {
     try {
         console.log("🔍 Checking for updates...");
 
+        const API_URL = app.isPackaged
+            ? "https://api.bwises.giksofttech.com/api"
+            : process.env.VITE_API_URL;
+
         const { data } = await axios.get(`${API_URL}/system/version`);
 
         const latestVersion = data.version;

@@ -11,6 +11,7 @@ const { checkForUpdates } = require("./updater/updater.service");
 let mainWindow = null;
 let kioskWindow = null;
 let backendServer = null; // referencia global al servidor backend
+let updateState = null;
 
 /**
  * 🧠 Verifica si el puerto está disponible antes de iniciar el backend
@@ -194,7 +195,6 @@ ipcMain.handle("app:check-update", async () => {
     console.log("📡 Renderer pidió check de update");
     return await checkForUpdates();
 });
-
 ipcMain.handle("app:download-update", async () => {
     try {
         console.log("⬇️ Descargando update...");
@@ -211,6 +211,9 @@ ipcMain.handle("app:download-update", async () => {
         console.error("❌ Error al descargar update:", error);
         return false;
     }
+});
+ipcMain.handle("app:get-update", async () => {
+    return updateState;
 });
 
 // 🔐 Token seguro con Keytar
