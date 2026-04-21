@@ -38,7 +38,7 @@ async function createWindow() {
         minHeight: 700,
         fullscreen: true,
         autoHideMenuBar: true,
-        frame: false,
+        frame: true,
         webPreferences: {
             preload: path.join(__dirname, "preload.js"),
             contextIsolation: true,
@@ -49,17 +49,18 @@ async function createWindow() {
     const isDev = !app.isPackaged;
     const vitePort = process.env.VITE_PORT || 5173;
     const devURL = `http://localhost:${vitePort}`;
-    const prodURL = `file://${path.join(__dirname, "../renderer/dist/index.html")}`;
 
     if (isDev) {
         console.log("🧩 Modo desarrollo activo");
         console.log(`🌐 Esperando a que Vite levante en ${devURL}...`);
-        await waitForVite(devURL); // 👈 Espera activa
+        await waitForVite(devURL);
         mainWindow.loadURL(devURL);
     } else {
         console.log("📦 Modo producción activo");
-        console.log(`📁 Cargando renderer empaquetado desde: ${prodURL}`);
-        mainWindow.loadURL(prodURL);
+
+        const indexPath = path.join(__dirname, "../renderer/dist/index.html");
+        console.log("📁 Cargando renderer desde:", indexPath);
+        mainWindow.loadFile(indexPath);
     }
 
     // 🔒 Bloqueo de teclas y captura de F11
@@ -121,7 +122,12 @@ app.whenReady().then(async () => {
 
     if (available) {
         try {
-            backendServer = require("../../core/src/server");
+            const serverPath = app.isPackaged
+                ? path.join(process.resourcesPath, "app.asar", "core", "src", "server.js")
+                : path.join(__dirname, "../../core/src/server");
+
+            backendServer = require(serverPath);
+
             console.log(`🚀 Backend iniciado en http://localhost:${port}`);
         } catch (err) {
             console.error("❌ Error al iniciar el backend:", err);
@@ -253,7 +259,7 @@ ipcMain.handle("app:open-kiosk", async () => {
         fullscreen: true,
         kiosk: true,
         autoHideMenuBar: true,
-        frame: false, // Frame-less for kiosk feel
+        frame: true, // Frame-less for kiosk feel
         webPreferences: {
             preload: path.join(__dirname, "preload.js"),
             contextIsolation: true,
@@ -266,9 +272,11 @@ ipcMain.handle("app:open-kiosk", async () => {
     const devURL = `http://localhost:${vitePort}`;
 
     if (isDev) {
-        kioskWindow.loadURL(`${devURL}/kiosk`);
+        kioskWindow.loadURL(`${devURL}#/kiosk`);
     } else {
-        kioskWindow.loadFile(path.join(__dirname, "../renderer/dist/index.html"), { hash: "/kiosk" });
+        kioskWindow.loadFile(path.join(__dirname, "../renderer/dist/index.html"), {
+            hash: "/kiosk",
+        });
     }
 
     kioskWindow.on("closed", () => {

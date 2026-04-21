@@ -1,6 +1,6 @@
 // src/router/AppRouter.jsx
 import React, { useEffect } from "react";
-import { BrowserRouter, Routes, Route, Navigate, useNavigate } from "react-router-dom";
+import { HashRouter, Routes, Route, Navigate, useNavigate } from "react-router-dom";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useNotificationStore } from "@/store/useNotificationStore";
 import { useToastStore } from "@/store/useToastStore";
@@ -144,7 +144,7 @@ export default function AppRouter() {
     }, [isAuthenticated]);
 
     return (
-        <BrowserRouter basename="/">
+        <HashRouter>
             <IpcRouterBridge />
 
             <Routes>
@@ -479,7 +479,7 @@ export default function AppRouter() {
 
             {/* 🧱 Global Toasts */}
             <ToastContainer toasts={toasts} removeToast={removeToast} />
-        </BrowserRouter>
+        </HashRouter>
     );
 }
 

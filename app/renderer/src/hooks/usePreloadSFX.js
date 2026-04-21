@@ -1,23 +1,24 @@
 import { useEffect } from "react";
+import approved from "@/assets/sfx/approved.wav";
+import cashMovement from "@/assets/sfx/cashMovement.wav";
+import confirmExit from "@/assets/sfx/confirmExit.wav";
+import lowStock from "@/assets/sfx/lowStock.wav";
+import notFound from "@/assets/sfx/notFound.wav";
 
-/**
- * usePreloadSFX — precarga los sonidos para evitar latencia al usarlos
- */
 export function usePreloadSFX() {
     useEffect(() => {
         const sounds = [
-            "/src/assets/sfx/approved.wav",
-            "/src/assets/sfx/cashMovement.wav",
-            "/src/assets/sfx/confirmExit.wav",
-            "/src/assets/sfx/lowStock.wav",
-            "/src/assets/sfx/notFound.wav",
+            approved,
+            cashMovement,
+            confirmExit,
+            lowStock,
+            notFound,
         ];
 
         sounds.forEach((src) => {
             const audio = new Audio(src);
-            audio.load(); // 👈 carga el archivo en caché
+            audio.load();
         });
-
         console.log("🔊 SFX precargados:", sounds.length);
     }, []);
 }

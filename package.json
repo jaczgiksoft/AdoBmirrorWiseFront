@@ -2,7 +2,7 @@
   "name": "bwise-dental-desktop",
   "version": "1.0.0",
   "description": "BWISE Dental Desktop — Aplicación instalable offline-first basada en Electron, React y SQLite.",
-  "author": "KIGSOFT Technology",
+  "author": "GIKSOFT Technology",
   "license": "MIT",
   "main": "app/main/main.js",
   "scripts": {
@@ -28,7 +28,6 @@
     "cross-env": "^10.1.0",
     "dayjs": "^1.11.19",
     "dotenv": "^17.2.3",
-    "electron": "38.2.2",
     "express": "^5.1.0",
     "framer-motion": "^12.23.24",
     "jspdf": "4.2.1",
@@ -54,6 +53,7 @@
     "@vitejs/plugin-react": "^5.0.4",
     "baseline-browser-mapping": "^2.10.0",
     "concurrently": "^9.2.1",
+    "electron": "^41.2.1",
     "electron-builder": "^26.0.12",
     "rimraf": "^6.0.1",
     "tailwindcss": "^4.1.14",
@@ -61,8 +61,8 @@
     "vite-plugin-svgr": "^4.5.0"
   },
   "build": {
-    "appId": "com.mirai.pos",
-    "productName": "Mirai POS Desktop",
+    "appId": "com.giksoft.bwise.dental.desktop",
+    "productName": "BWISE Dental Desktop",
     "directories": {
       "output": "build"
     },
