@@ -96,19 +96,24 @@ export const useNotificationStore = create((set, get) => ({
         set({ _connecting: true });
 
         try {
-            const apiBase = process.env.VITE_API_URL || import.meta.env.VITE_API_URL;
-            const socketURL = apiBase?.replace("/api", "") || "http://localhost:3000";
+            // const apiBase = process.env.VITE_API_URL || import.meta.env.VITE_API_URL;
+            // const socketURL = apiBase?.replace("/api", "") || "http://localhost:3000";
+            console.log("SOCKET URL:", import.meta.env.VITE_API_URL_SOCKET);
+            const socketURL = import.meta.env.VITE_API_URL_SOCKET;
 
             console.log("🌐 Intentando conectar Socket.IO a:", socketURL);
 
             const token = await window.electronAPI.getToken();
 
             const socketInstance = io(socketURL, {
-                transports: ["websocket"],
+                transports: ["polling", "websocket"],
                 auth: { token }, // ✅ enviar JWT al backend
                 reconnection: true, // 🔄 Habilitar reconexión para pruebas
                 reconnectionAttempts: 5,
             });
+            // const socketInstance = io(socketURL, {
+            //     transports: ["polling"], // 👈 CAMBIO
+            // });
 
             socketInstance.on("connect", () => {
                 console.log("📡 ✅ Socket conectado satisfactoriamente:", socketInstance.id);

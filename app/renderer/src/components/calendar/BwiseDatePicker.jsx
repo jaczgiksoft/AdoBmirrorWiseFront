@@ -4,22 +4,45 @@ import Datepicker from "react-tailwindcss-datepicker";
 import dayjs from "dayjs";
 import { Calendar } from "lucide-react";
 
-export default function DateInput({ label, value, onChange, popoverDirection = "down", required = false }) {
+/**
+ * BwiseDatePicker - Un componente de selección de fecha con navegación inteligente por teclado.
+ * Renderiza fuera del modal (Portal) para evitar problemas de clipping por overflow.
+ */
+export default function BwiseDatePicker({
+    value,
+    onChange,
+    label,
+    error,
+    placeholder = "Seleccionar fecha...",
+    displayFormat = "YYYY-MM-DD",
+    maxDate = null,
+    minDate = null,
+    inputClassName = "",
+    required = false,
+    popoverDirection = "down",
+    ...rest
+}) {
+    // Referencias para el posicionamiento
     const anchorRef = useRef(null);
     const [coords, setCoords] = useState({ top: 0, left: 0, width: 0 });
+
     const [isEditing, setIsEditing] = useState(false);
     const datepickerContainerRef = useRef(null);
-    const [cursorPos, setCursorPos] = useState(null);
 
+    // Estado interno para manejar el objeto que requiere react-tailwindcss-datepicker
     const [dateValue, setDateValue] = useState({
         startDate: value || null,
-        endDate: value || null
+        endDate: value || null,
     });
 
+    // Estado para mantener la posición del cursor entre re-renders (especialmente cuando cambia la key)
+    const [cursorPos, setCursorPos] = useState(null);
+
+    // Sincronizar el estado interno cuando cambia la prop value
     useEffect(() => {
         setDateValue({
             startDate: value || null,
-            endDate: value || null
+            endDate: value || null,
         });
     }, [value]);
 
@@ -38,6 +61,7 @@ export default function DateInput({ label, value, onChange, popoverDirection = "
     // Actualizar posición al montar y al cambiar dimensiones/scroll
     useEffect(() => {
         updatePosition();
+        // Usamos capture: true para detectar scrolls dentro de contenedores (como el modal)
         window.addEventListener("scroll", updatePosition, true);
         window.addEventListener("resize", updatePosition);
         return () => {
@@ -46,18 +70,20 @@ export default function DateInput({ label, value, onChange, popoverDirection = "
         };
     }, []);
 
-    const handleDateChange = (newValue) => {
+    const handleInternalChange = (newValue) => {
         setDateValue(newValue);
         const date = newValue?.startDate || "";
-        onChange(date);
+        if (onChange) onChange(date);
     };
 
     const handleKeyDown = (e) => {
+        // Cerrar modo edición al presionar Enter o Escape
         if (e.key === "Enter" || e.key === "Escape") {
             setIsEditing(false);
             return;
         }
 
+        // Bloqueo de teclas no permitidas (solo números, flechas y controles)
         const isNumber = e.key >= "0" && e.key <= "9";
         const isArrow = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key);
         const isControl = ["Backspace", "Delete", "Tab", "Enter", "Escape"].includes(e.key);
@@ -70,6 +96,7 @@ export default function DateInput({ label, value, onChange, popoverDirection = "
         const input = e.target;
         let pos = input.selectionStart;
 
+        // Si se presiona un número, reemplazar el dígito actual y saltar al siguiente
         if (isNumber) {
             e.preventDefault();
             const val = input.value;
@@ -77,13 +104,20 @@ export default function DateInput({ label, value, onChange, popoverDirection = "
                 const char = e.key;
                 const newValue = val.substring(0, pos) + char + val.substring(pos + 1);
 
-                handleDateChange({
+                // Validar límites si la fecha es válida
+                const newDayjs = dayjs(newValue);
+                if (newDayjs.isValid()) {
+                    if (maxDate && newDayjs.isAfter(dayjs(maxDate))) return;
+                    if (minDate && newDayjs.isBefore(dayjs(minDate))) return;
+                }
+
+                handleInternalChange({
                     startDate: newValue,
                     endDate: newValue,
                 });
 
                 let nextPos = pos + 1;
-                if (nextPos === 4 || nextPos === 7) nextPos++;
+                if (nextPos === 4 || nextPos === 7) nextPos++; // Saltar guion
                 if (nextPos > 9) nextPos = 9;
 
                 setCursorPos(nextPos);
@@ -91,6 +125,7 @@ export default function DateInput({ label, value, onChange, popoverDirection = "
             }
         }
 
+        // Navegación inteligente (flechas laterales)
         if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
             e.preventDefault();
             if (e.key === "ArrowRight") {
@@ -107,6 +142,7 @@ export default function DateInput({ label, value, onChange, popoverDirection = "
             return;
         }
 
+        // Incremento/Decremento (flechas arriba/abajo)
         if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
 
         const val = input.value;
@@ -123,9 +159,14 @@ export default function DateInput({ label, value, onChange, popoverDirection = "
         if (!currentDayjs.isValid()) return;
 
         const newDayjs = currentDayjs.add(amount, segment);
+
+        // Validar límites
+        if (maxDate && newDayjs.isAfter(dayjs(maxDate))) return;
+        if (minDate && newDayjs.isBefore(dayjs(minDate))) return;
+
         const newDateStr = newDayjs.format("YYYY-MM-DD");
 
-        handleDateChange({
+        handleInternalChange({
             startDate: newDateStr,
             endDate: newDateStr,
         });
@@ -146,33 +187,47 @@ export default function DateInput({ label, value, onChange, popoverDirection = "
         }, 10);
     };
 
+    // Formatear el valor para mostrarlo en el input visual
+    const formattedValue = value ? dayjs(value).format(displayFormat) : "";
+
+    // Efecto para restaurar el foco y la selección cuando cambia el valor o se entra en modo edición
+    // Esto es CRUCIAL porque si cambia el mes/año, la 'key' del Datepicker cambia y el componente se remonta
     useEffect(() => {
         if (isEditing && datepickerContainerRef.current) {
             const input = datepickerContainerRef.current.querySelector('input');
             if (input) {
+                // Solo aplicar si tenemos una posición guardada o si es el primer enfoque
                 const targetPos = cursorPos !== null ? cursorPos : 0;
+
+                // Usamos requestAnimationFrame o un pequeño timeout para asegurar que el DOM esté listo tras el posible re-montaje por key
                 const timer = setTimeout(() => {
                     input.focus();
                     input.setSelectionRange(targetPos, targetPos + 1);
                 }, 20);
+
                 return () => clearTimeout(timer);
             }
         }
     }, [isEditing, dateValue, cursorPos]);
 
+    // Manejar clics fuera para cerrar el modo edición
     useEffect(() => {
         if (!isEditing) return;
+
         const handleClickOutside = (e) => {
+            // Si el clic no es dentro del portal ni dentro del ancla, cerramos
             if (datepickerContainerRef.current && !datepickerContainerRef.current.contains(e.target)) {
                 if (anchorRef.current && !anchorRef.current.contains(e.target)) {
                     setIsEditing(false);
                 }
             }
         };
+
         document.addEventListener("mousedown", handleClickOutside);
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, [isEditing]);
 
+    // Bloquear el scroll del body cuando estamos en modo edición para evitar desplazamientos accidentales
     useEffect(() => {
         if (isEditing) {
             const originalStyle = window.getComputedStyle(document.body).overflow;
@@ -183,6 +238,7 @@ export default function DateInput({ label, value, onChange, popoverDirection = "
         }
     }, [isEditing]);
 
+    // Prevenir específicamente que la rueda del ratón (rueda de desplazamiento) actúe sobre toda la ventana mientras estamos editando
     useEffect(() => {
         if (isEditing) {
             const handleWheel = (e) => e.preventDefault();
@@ -191,25 +247,15 @@ export default function DateInput({ label, value, onChange, popoverDirection = "
         }
     }, [isEditing]);
 
-    const handleActivate = () => {
-        if (!value) {
-            const today = dayjs().format("YYYY-MM-DD");
-            handleDateChange({
-                startDate: today,
-                endDate: today
-            });
-        }
-        setIsEditing(true);
-    };
-
-    const formattedValue = value ? dayjs(value).format("YYYY-MM-DD") : "";
-
+    // Renderizado del componente
     return (
-        <div className="space-y-1 w-full relative">
+        <div className="w-full relative">
             {label && (
-                <label className={`text-[11px] uppercase tracking-wide text-slate-500 dark:text-slate-400 ml-1 ${required ? 'label-required' : ''}`}>
-                    {label}
-                </label>
+                <div className="flex justify-between items-center mb-1">
+                    <label className={`text-sm ${required ? 'label-required' : ''}`}>
+                        {label}
+                    </label>
+                </div>
             )}
 
             {/* Input Visual (Fuera del Portal): Se muestra cuando NO estamos editando */}
@@ -219,10 +265,10 @@ export default function DateInput({ label, value, onChange, popoverDirection = "
                         <input
                             readOnly
                             value={formattedValue}
-                            placeholder="Seleccionar fecha..."
-                            className="w-full px-3 py-2.5 rounded-lg border bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 border-slate-300 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all text-sm !cursor-pointer pr-10"
-                            onFocus={handleActivate}
-                            onClick={handleActivate}
+                            placeholder={placeholder}
+                            className={`input w-full !cursor-pointer pr-10 ${error ? "border-error ring-1 ring-error/50" : ""} ${inputClassName}`}
+                            onFocus={() => setIsEditing(true)}
+                            onClick={() => setIsEditing(true)}
                         />
                         <Calendar
                             size={16}
@@ -234,7 +280,11 @@ export default function DateInput({ label, value, onChange, popoverDirection = "
                 )}
             </div>
 
-            {/* Modo Edición (Dentro del Portal) */}
+            {/* 
+              Modo Edición (Dentro del Portal): Se muestra solo cuando el usuario interactúa.
+              Esto permite que el calendario sobresalga de footers/modales sin "flotar" 
+              constantemente sobre otros elementos al escrollear si no está activo.
+            */}
             {isEditing && coords.width > 0 && createPortal(
                 <div
                     ref={datepickerContainerRef}
@@ -254,6 +304,13 @@ export default function DateInput({ label, value, onChange, popoverDirection = "
                         onFocus={handleMouseInteraction}
                     >
                         <Datepicker
+                            /* 1. ELIMINAMOS LA KEY DINÁMICA PARA EVITAR EL PARPADEO */
+                            containerClassName="relative z-[9999]"
+                            useRange={false}
+                            asSingle={true}
+                            i18n={"es"}
+                            {...rest}
+                            /* 2. Mantenemos el valor sincronizado */
                             value={{
                                 startDate: dateValue.startDate ? dayjs(dateValue.startDate).toDate() : null,
                                 endDate: dateValue.endDate ? dayjs(dateValue.endDate).toDate() : null
@@ -263,20 +320,21 @@ export default function DateInput({ label, value, onChange, popoverDirection = "
                                     startDate: newValue?.startDate ? dayjs(newValue.startDate).format("YYYY-MM-DD") : null,
                                     endDate: newValue?.endDate ? dayjs(newValue.endDate).format("YYYY-MM-DD") : null
                                 };
-                                handleDateChange(formatted);
+                                handleInternalChange(formatted);
                             }}
-                            useRange={false}
-                            asSingle={true}
-                            displayFormat={"YYYY-MM-DD"}
-                            placeholder="Seleccionar fecha..."
-                            readOnly={false} // Cambiado a false para permitir escritura
-                            i18n={"es"}
-                            containerClassName="relative z-[9999]"
-                            popoverDirection={popoverDirection}
-                            inputClassName="w-full px-3 py-2.5 rounded-lg border bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 border-slate-300 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all text-sm"
+                            displayFormat={displayFormat}
+                            placeholder={placeholder}
+                            readOnly={false}
+                            maxDate={maxDate ? dayjs(maxDate).toDate() : null}
+                            minDate={minDate ? dayjs(minDate).toDate() : null}
+
+                            /* 3. ESTO MUEVE EL CALENDARIO SIN RE-MONTAR EL COMPONENTE */
                             startFrom={dateValue.startDate && dayjs(dateValue.startDate).isValid()
                                 ? dayjs(dateValue.startDate).toDate()
                                 : new Date()}
+
+                            popoverDirection={popoverDirection}
+                            inputClassName={`input w-full ${error ? "border-error ring-1 ring-error/50" : ""} ${inputClassName}`}
                         />
                     </div>
                 </div>,

@@ -91,7 +91,7 @@ export default function ClinicalSection() {
                 description: "Los cambios se han guardado correctamente en la base de datos.",
                 type: "success"
             });
-            
+
             await refreshProfile();
             setIsEditing(false);
         } catch (error) {

@@ -13,7 +13,9 @@ import PatientRepresentativeList from "./shared/PatientRepresentativeList";
 import PatientBillingDataModal from "./shared/PatientBillingDataModal";
 import PatientBillingDataList from "./shared/PatientBillingDataList";
 import { getReferrals } from "@/services/referral.service";
-import Datepicker from "react-tailwindcss-datepicker";
+import BwiseDatePicker from "@/components/calendar/BwiseDatePicker";
+import UniversalDatePicker from "@/components/inputs/UniversalDatePicker";
+import dayjs from "dayjs";
 
 export default function PatientForm({ open, onClose, onCreated, patientType }) {
     const { addToast } = useToastStore();
@@ -34,7 +36,7 @@ export default function PatientForm({ open, onClose, onCreated, patientType }) {
         middle_name: "",
         nickname: "",
         genre: "",
-        birth_date: "",
+        birth_date: dayjs().format("YYYY-MM-DD"),
         marital_status: "",
         phone_number: "",
         email: "",
@@ -72,10 +74,6 @@ export default function PatientForm({ open, onClose, onCreated, patientType }) {
     const [billingModalOpen, setBillingModalOpen] = useState(false);
     const [billingEditingIndex, setBillingEditingIndex] = useState(null);
     const [referrals, setReferrals] = useState([]);
-    const [birthDatePicker, setBirthDatePicker] = useState({
-        startDate: null,
-        endDate: null,
-    });
     const today = new Date().toISOString().split("T")[0];
     const firstRef = useRef(null);
 
@@ -182,22 +180,6 @@ export default function PatientForm({ open, onClose, onCreated, patientType }) {
     useEffect(() => {
         if (!open) return;
 
-        if (form.birth_date) {
-            setBirthDatePicker({
-                startDate: form.birth_date,
-                endDate: form.birth_date,
-            });
-        } else {
-            setBirthDatePicker({
-                startDate: null,
-                endDate: null,
-            });
-        }
-    }, [open]);
-
-    useEffect(() => {
-        if (!open) return;
-
         async function loadReferrals() {
             try {
                 const data = await getReferrals();
@@ -209,18 +191,6 @@ export default function PatientForm({ open, onClose, onCreated, patientType }) {
 
         loadReferrals();
     }, [open]);
-
-    const handleBirthDateChange = (value) => {
-        setBirthDatePicker(value);
-
-        const date = value?.startDate || "";
-        setForm((f) => ({
-            ...f,
-            birth_date: date,
-        }));
-
-        setErrors((prev) => ({ ...prev, birth_date: "" }));
-    };
 
     // 🔧 Manejo de cambios
     const handleChange = (e) => {
@@ -636,7 +606,7 @@ export default function PatientForm({ open, onClose, onCreated, patientType }) {
                                 </select>
                             </div>
 
-                            <div>
+                            <div className="flex flex-col relative z-[50]">
                                 <div className="flex justify-between items-center mb-1">
                                     <label className="text-sm label-required">Fecha de nacimiento</label>
                                     {form.birth_date && (
@@ -646,19 +616,24 @@ export default function PatientForm({ open, onClose, onCreated, patientType }) {
                                     )}
                                 </div>
 
-                                <Datepicker
-                                    value={birthDatePicker}
-                                    onChange={handleBirthDateChange}
-                                    useRange={false}
-                                    asSingle={true}
-                                    displayFormat={"YYYY-MM-DD"}
-                                    placeholder="Seleccionar fecha..."
-                                    readOnly={true}
-                                    i18n={"es"}
+                                {/* <BwiseDatePicker
+                                    value={form.birth_date}
+                                    onChange={(val) => {
+                                        setForm((f) => ({ ...f, birth_date: val }));
+                                        setErrors((prev) => ({ ...prev, birth_date: "" }));
+                                    }}
+                                    error={errors.birth_date}
                                     maxDate={new Date()}
-                                    inputClassName={`input ${errors.birth_date ? "border-error ring-1 ring-error/50" : ""}`}
+                                /> */}
+                                <UniversalDatePicker
+                                    value={form.birth_date}
+                                    onChange={(val) => {
+                                        setForm((f) => ({ ...f, birth_date: val }));
+                                        setErrors((prev) => ({ ...prev, birth_date: "" }));
+                                    }}
+                                    error={errors.birth_date}
+                                    maxDate={new Date()}
                                 />
-
                             </div>
                         </div>
 
@@ -1327,7 +1302,7 @@ export default function PatientForm({ open, onClose, onCreated, patientType }) {
 
 
                     {/* FOOTER — TAMBIÉN FIJO */}
-                    <div className="    sticky bottom-0 z-10
+                    <div style={{ zIndex: 100 }} className="    sticky bottom-0 z-10
     bg-white dark:bg-secondary
     border-t border-slate-300 dark:border-slate-700
     px-6 py-4 flex justify-between">

@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { Upload, X } from "lucide-react";
 import Modal from "@/components/ui/Modal";
-import Datepicker from "react-tailwindcss-datepicker";
+import UniversalDatePicker from "@/components/inputs/UniversalDatePicker";
+import dayjs from "dayjs";
 import { getReferrals } from "@/services/referral.service";
 import { getOccupations } from "@/services/occupation.service";
 import { updatePatientGeneral } from "@/services/patient.service";
@@ -50,10 +51,6 @@ export default function PatientGeneralEditModal({ open, onClose, profile, refres
     const [referrals, setReferrals] = useState([]);
     const [occupations, setOccupations] = useState([]);
     const [confirmCancel, setConfirmCancel] = useState(false);
-    const [birthDatePicker, setBirthDatePicker] = useState({
-        startDate: null,
-        endDate: null,
-    });
 
     // Populate form when profile or open state changes
     useEffect(() => {
@@ -88,13 +85,6 @@ export default function PatientGeneralEditModal({ open, onClose, profile, refres
                 ...baseForm,
                 photo_preview: profile.photo_url ? `${API_BASE}/${profile.photo_url}` : null,
             });
-
-            if (profile.birth_date) {
-                setBirthDatePicker({
-                    startDate: profile.birth_date,
-                    endDate: profile.birth_date,
-                });
-            }
         }
     }, [open, profile]);
 
@@ -121,8 +111,7 @@ export default function PatientGeneralEditModal({ open, onClose, profile, refres
     };
 
     const handleBirthDateChange = (newValue) => {
-        setBirthDatePicker(newValue);
-        setForm(prev => ({ ...prev, birth_date: newValue.startDate }));
+        setForm(prev => ({ ...prev, birth_date: newValue }));
     };
 
     const handlePhotoChange = (e) => {
@@ -215,34 +204,35 @@ export default function PatientGeneralEditModal({ open, onClose, profile, refres
                 </div>
             }
         >
-            <div className="flex flex-col gap-6">
+            <div className="flex flex-col gap-5">
 
                 {/* SECCIÓN 1: IDENTIDAD */}
-                <div className="space-y-4">
-                    <h3 className="text-sm font-semibold text-primary uppercase tracking-wider">
-                        🧩 Identidad y Expediente
+                <div className="flex flex-col gap-5">
+                    <h3 className="text-primary font-semibold text-sm">
+                        🧩 PASO 1 — Identidad y Expediente
                     </h3>
 
                     {/* FOTO */}
                     <div className="flex items-center gap-4">
-                        <label className="w-24 h-24 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 flex items-center justify-center cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-700 transition overflow-hidden shadow-sm">
+                        <label className="w-24 h-24 rounded-xl bg-slate-200 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 flex items-center justify-center cursor-pointer hover:bg-slate-300 dark:hover:bg-slate-700 transition overflow-hidden">
                             {form.photo_preview ? (
                                 <img src={form.photo_preview} className="w-full h-full object-cover" />
                             ) : (
                                 <div className="text-slate-400 flex flex-col items-center">
                                     <Upload size={20} />
-                                    <span className="text-[10px] mt-1 font-medium">Foto</span>
+                                    <span className="text-xs mt-1">Foto</span>
                                 </div>
                             )}
                             <input type="file" className="hidden" accept="image/*" onChange={handlePhotoChange} />
                         </label>
-                        <div className="text-xs text-slate-400 max-w-[200px]">
-                            Haz clic en el recuadro para actualizar la foto del paciente.
+                        <div className="text-xs text-slate-400">
+                            Selecciona la foto del paciente (opcional)
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
-                        <InputGroup label="Número de expediente" required>
+                    <div className="grid grid-cols-2 gap-3">
+                        <div>
+                            <label className="block text-sm mb-1 label-required">Número de expediente</label>
                             <input
                                 name="medical_record_number"
                                 value={form.medical_record_number || ""}
@@ -250,8 +240,9 @@ export default function PatientGeneralEditModal({ open, onClose, profile, refres
                                 className="input"
                                 placeholder="Ej: 000123"
                             />
-                        </InputGroup>
-                        <InputGroup label="Código familiar">
+                        </div>
+                        <div>
+                            <label className="block text-sm mb-1">Código familiar</label>
                             <input
                                 name="family_code"
                                 value={form.family_code || ""}
@@ -259,11 +250,12 @@ export default function PatientGeneralEditModal({ open, onClose, profile, refres
                                 className="input"
                                 placeholder="Ej: FAM-01"
                             />
-                        </InputGroup>
+                        </div>
                     </div>
 
-                    <div className="grid grid-cols-3 gap-4">
-                        <InputGroup label="Nombre" required>
+                    <div className="grid grid-cols-2 gap-3">
+                        <div>
+                            <label className="block text-sm mb-1 label-required">Nombre</label>
                             <input
                                 name="first_name"
                                 value={form.first_name || ""}
@@ -271,8 +263,9 @@ export default function PatientGeneralEditModal({ open, onClose, profile, refres
                                 className="input"
                                 placeholder="Nombre(s)"
                             />
-                        </InputGroup>
-                        <InputGroup label="Apellido paterno" required>
+                        </div>
+                        <div>
+                            <label className="block text-sm mb-1 label-required">Apellido paterno</label>
                             <input
                                 name="last_name"
                                 value={form.last_name || ""}
@@ -280,8 +273,12 @@ export default function PatientGeneralEditModal({ open, onClose, profile, refres
                                 className="input"
                                 placeholder="Paterno"
                             />
-                        </InputGroup>
-                        <InputGroup label="Apellido materno">
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                        <div>
+                            <label className="block text-sm mb-1">Apellido materno</label>
                             <input
                                 name="middle_name"
                                 value={form.middle_name || ""}
@@ -289,11 +286,9 @@ export default function PatientGeneralEditModal({ open, onClose, profile, refres
                                 className="input"
                                 placeholder="Materno"
                             />
-                        </InputGroup>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                        <InputGroup label="Apodo / Nickname">
+                        </div>
+                        <div>
+                            <label className="block text-sm mb-1">Apodo / Nickname</label>
                             <input
                                 name="nickname"
                                 value={form.nickname || ""}
@@ -301,8 +296,12 @@ export default function PatientGeneralEditModal({ open, onClose, profile, refres
                                 className="input"
                                 placeholder="Ej: Juanito"
                             />
-                        </InputGroup>
-                        <InputGroup label="Género" required>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                        <div>
+                            <label className="block text-sm mb-1 label-required">Género</label>
                             <select
                                 name="genre"
                                 value={form.genre || ""}
@@ -314,57 +313,51 @@ export default function PatientGeneralEditModal({ open, onClose, profile, refres
                                 <option value="female">Femenino</option>
                                 <option value="other">Otro</option>
                             </select>
-                        </InputGroup>
-                    </div>
+                        </div>
 
-                    <div className="grid grid-cols-2 gap-4">
-                        <InputGroup label="Fecha de nacimiento" required>
-                            <div className="relative">
-                                <Datepicker
-                                    value={birthDatePicker}
-                                    onChange={handleBirthDateChange}
-                                    useRange={false}
-                                    asSingle={true}
-                                    displayFormat={"YYYY-MM-DD"}
-                                    placeholder="Seleccionar..."
-                                    readOnly={true}
-                                    i18n={"es"}
-                                    maxDate={new Date()}
-                                    inputClassName="input w-full"
-                                    containerClassName="relative"
-                                />
+                        <div className="flex flex-col relative z-[50]">
+                            <div className="flex justify-between items-center mb-1">
+                                <label className="text-sm label-required">Fecha de nacimiento</label>
                                 {form.birth_date && (
-                                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full font-bold">
+                                    <span className="text-xs text-primary font-medium">
                                         {calculateAge(form.birth_date)}
                                     </span>
                                 )}
                             </div>
-                        </InputGroup>
-                        <InputGroup label="Estado civil">
-                            <select
-                                name="marital_status"
-                                value={form.marital_status || ""}
-                                onChange={handleChange}
-                                className="input"
-                            >
-                                <option value="">Seleccionar...</option>
-                                <option value="soltero">Soltero/a</option>
-                                <option value="capacitado">Capacitado/a</option>
-                                <option value="divorciado">Divorciado/a</option>
-                                <option value="viudo">Viudo/a</option>
-                                <option value="union libre">Unión libre</option>
-                            </select>
-                        </InputGroup>
+                            <UniversalDatePicker
+                                value={form.birth_date}
+                                onChange={handleBirthDateChange}
+                                maxDate={new Date()}
+                            />
+                        </div>
+                    </div>
+
+                    <div>
+                        <label className="block text-sm mb-1">Estado civil</label>
+                        <select
+                            name="marital_status"
+                            value={form.marital_status || ""}
+                            onChange={handleChange}
+                            className="input"
+                        >
+                            <option value="">Seleccionar...</option>
+                            <option value="soltero">Soltero/a</option>
+                            <option value="casado">Casado/a</option>
+                            <option value="divorciado">Divorciado/a</option>
+                            <option value="viudo">Viudo/a</option>
+                            <option value="union libre">Unión libre</option>
+                        </select>
                     </div>
                 </div>
 
                 {/* SECCIÓN 2: CONTACTO */}
-                <div className="space-y-4">
-                    <h3 className="text-sm font-semibold text-primary uppercase tracking-wider">
-                        📞 Contacto y Referencia
+                <div className="flex flex-col gap-5 mt-4">
+                    <h3 className="text-primary font-semibold text-sm">
+                        📞 PASO 2 — Contacto y Referencia
                     </h3>
-                    <div className="grid grid-cols-2 gap-4">
-                        <InputGroup label="Teléfono" required>
+                    <div className="grid grid-cols-2 gap-3">
+                        <div>
+                            <label className="block text-sm mb-1 label-required">Teléfono</label>
                             <input
                                 name="phone_number"
                                 value={form.phone_number || ""}
@@ -372,8 +365,9 @@ export default function PatientGeneralEditModal({ open, onClose, profile, refres
                                 className="input"
                                 placeholder="55-1234-5678"
                             />
-                        </InputGroup>
-                        <InputGroup label="Correo electrónico" required>
+                        </div>
+                        <div>
+                            <label className="block text-sm mb-1 label-required">Correo electrónico</label>
                             <input
                                 name="email"
                                 value={form.email || ""}
@@ -381,10 +375,11 @@ export default function PatientGeneralEditModal({ open, onClose, profile, refres
                                 className="input"
                                 placeholder="correo@ejemplo.com"
                             />
-                        </InputGroup>
+                        </div>
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
-                        <InputGroup label="Referido por">
+                    <div className="grid grid-cols-2 gap-3">
+                        <div>
+                            <label className="block text-sm mb-1">Referido por</label>
                             <select
                                 name="referral_id"
                                 value={form.referral_id || ""}
@@ -396,9 +391,10 @@ export default function PatientGeneralEditModal({ open, onClose, profile, refres
                                     <option key={r.id} value={r.id}>{r.name}</option>
                                 ))}
                             </select>
-                        </InputGroup>
+                        </div>
 
-                        <InputGroup label="Ocupación">
+                        <div>
+                            <label className="block text-sm mb-1">Ocupación</label>
                             <select
                                 name="occupation_id"
                                 value={form.occupation_id || ""}
@@ -410,28 +406,28 @@ export default function PatientGeneralEditModal({ open, onClose, profile, refres
                                     <option key={o.id} value={o.id}>{o.name}</option>
                                 ))}
                             </select>
-                        </InputGroup>
+                        </div>
                     </div>
                 </div>
 
                 {/* SECCIÓN 3: DIRECCIÓN */}
-                <div className="space-y-4">
-                    <h3 className="text-sm font-semibold text-primary uppercase tracking-wider">
-                        🏠 Dirección
+                <div className="flex flex-col gap-5 mt-4">
+                    <h3 className="text-primary font-semibold text-sm">
+                        🏠 PASO 3 — Dirección
                     </h3>
-                    <div className="grid grid-cols-3 gap-4">
-                        <div className="col-span-2">
-                            <InputGroup label="Calle">
-                                <input
-                                    name="address_street_name"
-                                    value={form.address_street_name || ""}
-                                    onChange={handleChange}
-                                    className="input"
-                                    placeholder="Av. Reforma"
-                                />
-                            </InputGroup>
+                    <div className="grid grid-cols-2 gap-3">
+                        <div>
+                            <label className="block text-sm mb-1">Calle</label>
+                            <input
+                                name="address_street_name"
+                                value={form.address_street_name || ""}
+                                onChange={handleChange}
+                                className="input"
+                                placeholder="Av. Reforma"
+                            />
                         </div>
-                        <InputGroup label="Número ext.">
+                        <div>
+                            <label className="block text-sm mb-1">Número exterior</label>
                             <input
                                 name="address_street_number"
                                 value={form.address_street_number || ""}
@@ -439,10 +435,11 @@ export default function PatientGeneralEditModal({ open, onClose, profile, refres
                                 className="input"
                                 placeholder="123"
                             />
-                        </InputGroup>
+                        </div>
                     </div>
-                    <div className="grid grid-cols-3 gap-4">
-                        <InputGroup label="Número int. / Depto.">
+                    <div className="grid grid-cols-2 gap-3">
+                        <div>
+                            <label className="block text-sm mb-1">Número interior / Depto.</label>
                             <input
                                 name="address_apartment_number"
                                 value={form.address_apartment_number || ""}
@@ -450,8 +447,9 @@ export default function PatientGeneralEditModal({ open, onClose, profile, refres
                                 className="input"
                                 placeholder="4B"
                             />
-                        </InputGroup>
-                        <InputGroup label="Colonia">
+                        </div>
+                        <div>
+                            <label className="block text-sm mb-1">Colonia</label>
                             <input
                                 name="address_neighborhood"
                                 value={form.address_neighborhood || ""}
@@ -459,8 +457,11 @@ export default function PatientGeneralEditModal({ open, onClose, profile, refres
                                 className="input"
                                 placeholder="Centro"
                             />
-                        </InputGroup>
-                        <InputGroup label="Código postal">
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                        <div>
+                            <label className="block text-sm mb-1">Código postal</label>
                             <input
                                 name="address_zip_code"
                                 value={form.address_zip_code || ""}
@@ -468,10 +469,9 @@ export default function PatientGeneralEditModal({ open, onClose, profile, refres
                                 className="input"
                                 placeholder="06000"
                             />
-                        </InputGroup>
-                    </div>
-                    <div className="grid grid-cols-3 gap-4">
-                        <InputGroup label="Ciudad">
+                        </div>
+                        <div>
+                            <label className="block text-sm mb-1">Ciudad</label>
                             <input
                                 name="address_city"
                                 value={form.address_city || ""}
@@ -479,8 +479,11 @@ export default function PatientGeneralEditModal({ open, onClose, profile, refres
                                 className="input"
                                 placeholder="Ciudad de México"
                             />
-                        </InputGroup>
-                        <InputGroup label="Estado">
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                        <div>
+                            <label className="block text-sm mb-1">Estado</label>
                             <input
                                 name="address_state"
                                 value={form.address_state || ""}
@@ -488,8 +491,9 @@ export default function PatientGeneralEditModal({ open, onClose, profile, refres
                                 className="input"
                                 placeholder="CDMX"
                             />
-                        </InputGroup>
-                        <InputGroup label="País">
+                        </div>
+                        <div>
+                            <label className="block text-sm mb-1">País</label>
                             <input
                                 name="address_country"
                                 value={form.address_country || ""}
@@ -497,7 +501,7 @@ export default function PatientGeneralEditModal({ open, onClose, profile, refres
                                 className="input"
                                 placeholder="México"
                             />
-                        </InputGroup>
+                        </div>
                     </div>
                 </div>
 
@@ -515,16 +519,5 @@ export default function PatientGeneralEditModal({ open, onClose, profile, refres
                 confirmVariant="error"
             />
         </Modal>
-    );
-}
-
-function InputGroup({ label, required, children }) {
-    return (
-        <div className="space-y-1.5">
-            <label className={`text-xs font-bold text-slate-500 dark:text-slate-400 ml-1 ${required ? 'after:content-["*"] after:ml-0.5 after:text-red-500' : ''}`}>
-                {label}
-            </label>
-            {children}
-        </div>
     );
 }

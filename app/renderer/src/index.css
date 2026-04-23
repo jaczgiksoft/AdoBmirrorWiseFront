@@ -675,3 +675,7 @@ input[type="number"] {
 .fc-daygrid-day {
     overflow: visible !important;
 }
+
+.react-tailwindcss-datepicker {
+    z-index: 9999 !important;
+}
