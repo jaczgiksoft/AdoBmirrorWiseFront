@@ -8,7 +8,7 @@ export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, process.cwd(), "VITE_");
     const isDev = mode !== "production";
 
-    // 🧩 Ajuste inteligente de la API base:
+    // 🧩 Ajuste inteligente de la API b ase:
     // Si existe VITE_API_URL, úsala.
     // Si no, arma una por defecto basada en VITE_API_PORT.
     const apiUrl =
@@ -17,6 +17,7 @@ export default defineConfig(({ mode }) => {
 
     return {
         root: "app/renderer",
+        envDir: path.resolve(__dirname),
         base: "./", // ✅ rutas relativas compatibles con Electron (file://)
         plugins: [react(), tailwindcss(), svgr()],
 
@@ -55,6 +56,7 @@ export default defineConfig(({ mode }) => {
                 VITE_PORT: JSON.stringify(env.VITE_PORT),
                 VITE_API_PORT: JSON.stringify(env.VITE_API_PORT),
                 VITE_API_URL: apiUrl, // ✅ sin JSON.stringify
+                VITE_API_URL_SOCKET: JSON.stringify(env.VITE_API_URL_SOCKET),
             },
         },
     };

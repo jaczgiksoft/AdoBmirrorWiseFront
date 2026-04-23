@@ -4,24 +4,67 @@ import Datepicker from "react-tailwindcss-datepicker";
 import dayjs from "dayjs";
 import { Calendar } from "lucide-react";
 
-export default function DateInput({ label, value, onChange, popoverDirection = "down", required = false }) {
+/**
+ * UniversalDatePicker - Un componente de selección de fecha/rango con navegación inteligente.
+ * Soporta modo fecha única y modo rango.
+ * Renderiza fuera del contenedor (Portal) para evitar problemas de clipping por overflow.
+ */
+export default function UniversalDatePicker({
+    value,
+    onChange,
+    label,
+    error,
+    placeholder = "Seleccionar fecha...",
+    displayFormat = "YYYY-MM-DD",
+    maxDate = null,
+    minDate = null,
+    inputClassName = "",
+    required = false,
+    popoverDirection = "down",
+    useRange = false,
+    asSingle = true,
+    showShortcuts = false,
+    i18n = "es",
+    ...rest
+}) {
+    // Referencias para el posicionamiento
     const anchorRef = useRef(null);
     const [coords, setCoords] = useState({ top: 0, left: 0, width: 0 });
+
     const [isEditing, setIsEditing] = useState(false);
     const datepickerContainerRef = useRef(null);
-    const [cursorPos, setCursorPos] = useState(null);
 
-    const [dateValue, setDateValue] = useState({
-        startDate: value || null,
-        endDate: value || null
+    // Estado interno para manejar el objeto que requiere react-tailwindcss-datepicker
+    const [dateValue, setDateValue] = useState(() => {
+        if (useRange) {
+            return {
+                startDate: value?.startDate || null,
+                endDate: value?.endDate || null,
+            };
+        }
+        return {
+            startDate: value || null,
+            endDate: value || null,
+        };
     });
 
+    // Estado para mantener la posición del cursor entre re-renders
+    const [cursorPos, setCursorPos] = useState(null);
+
+    // Sincronizar el estado interno cuando cambia la prop value
     useEffect(() => {
-        setDateValue({
-            startDate: value || null,
-            endDate: value || null
-        });
-    }, [value]);
+        if (useRange) {
+            setDateValue({
+                startDate: value?.startDate || null,
+                endDate: value?.endDate || null,
+            });
+        } else {
+            setDateValue({
+                startDate: value || null,
+                endDate: value || null,
+            });
+        }
+    }, [value, useRange]);
 
     // Función para actualizar la posición del componente portaleado
     const updatePosition = () => {
@@ -46,18 +89,28 @@ export default function DateInput({ label, value, onChange, popoverDirection = "
         };
     }, []);
 
-    const handleDateChange = (newValue) => {
+    const handleInternalChange = (newValue) => {
         setDateValue(newValue);
-        const date = newValue?.startDate || "";
-        onChange(date);
+        if (useRange) {
+            if (onChange) onChange(newValue);
+        } else {
+            const date = newValue?.startDate || "";
+            if (onChange) onChange(date);
+        }
     };
 
     const handleKeyDown = (e) => {
+        // La navegación inteligente por teclado solo se activa en modo de fecha única
+        // y con formato YYYY-MM-DD para evitar conflictos con la lógica de rangos.
+        if (useRange || displayFormat !== "YYYY-MM-DD") return;
+
+        // Cerrar modo edición al presionar Enter o Escape
         if (e.key === "Enter" || e.key === "Escape") {
             setIsEditing(false);
             return;
         }
 
+        // Bloqueo de teclas no permitidas (solo números, flechas y controles)
         const isNumber = e.key >= "0" && e.key <= "9";
         const isArrow = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key);
         const isControl = ["Backspace", "Delete", "Tab", "Enter", "Escape"].includes(e.key);
@@ -70,20 +123,28 @@ export default function DateInput({ label, value, onChange, popoverDirection = "
         const input = e.target;
         let pos = input.selectionStart;
 
+        // Si se presiona un número, reemplazar el dígito actual y saltar al siguiente
         if (isNumber) {
             e.preventDefault();
             const val = input.value;
             if (val.length === 10) {
                 const char = e.key;
-                const newValue = val.substring(0, pos) + char + val.substring(pos + 1);
+                const newValueStr = val.substring(0, pos) + char + val.substring(pos + 1);
 
-                handleDateChange({
-                    startDate: newValue,
-                    endDate: newValue,
+                // Validar límites si la fecha es válida
+                const newDayjs = dayjs(newValueStr);
+                if (newDayjs.isValid()) {
+                    if (maxDate && newDayjs.isAfter(dayjs(maxDate))) return;
+                    if (minDate && newDayjs.isBefore(dayjs(minDate))) return;
+                }
+
+                handleInternalChange({
+                    startDate: newValueStr,
+                    endDate: newValueStr,
                 });
 
                 let nextPos = pos + 1;
-                if (nextPos === 4 || nextPos === 7) nextPos++;
+                if (nextPos === 4 || nextPos === 7) nextPos++; // Saltar guion
                 if (nextPos > 9) nextPos = 9;
 
                 setCursorPos(nextPos);
@@ -91,6 +152,7 @@ export default function DateInput({ label, value, onChange, popoverDirection = "
             }
         }
 
+        // Navegación inteligente (flechas laterales)
         if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
             e.preventDefault();
             if (e.key === "ArrowRight") {
@@ -107,6 +169,7 @@ export default function DateInput({ label, value, onChange, popoverDirection = "
             return;
         }
 
+        // Incremento/Decremento (flechas arriba/abajo)
         if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
 
         const val = input.value;
@@ -123,9 +186,14 @@ export default function DateInput({ label, value, onChange, popoverDirection = "
         if (!currentDayjs.isValid()) return;
 
         const newDayjs = currentDayjs.add(amount, segment);
+
+        // Validar límites
+        if (maxDate && newDayjs.isAfter(dayjs(maxDate))) return;
+        if (minDate && newDayjs.isBefore(dayjs(minDate))) return;
+
         const newDateStr = newDayjs.format("YYYY-MM-DD");
 
-        handleDateChange({
+        handleInternalChange({
             startDate: newDateStr,
             endDate: newDateStr,
         });
@@ -134,6 +202,8 @@ export default function DateInput({ label, value, onChange, popoverDirection = "
     };
 
     const handleMouseInteraction = (e) => {
+        if (useRange || displayFormat !== "YYYY-MM-DD") return;
+
         const input = e.target;
         if (input.tagName !== "INPUT") return;
 
@@ -146,8 +216,22 @@ export default function DateInput({ label, value, onChange, popoverDirection = "
         }, 10);
     };
 
+    // Formatear el valor para mostrarlo en el input visual
+    const getFormattedValue = () => {
+        if (useRange) {
+            if (!value?.startDate || !value?.endDate) return "";
+            const start = dayjs(value.startDate).format(displayFormat);
+            const end = dayjs(value.endDate).format(displayFormat);
+            return `${start} ~ ${end}`;
+        }
+        return value ? dayjs(value).format(displayFormat) : "";
+    };
+
+    const formattedValue = getFormattedValue();
+
+    // Efecto para restaurar el foco y la selección (solo modo fecha única inteligente)
     useEffect(() => {
-        if (isEditing && datepickerContainerRef.current) {
+        if (isEditing && datepickerContainerRef.current && !useRange && displayFormat === "YYYY-MM-DD") {
             const input = datepickerContainerRef.current.querySelector('input');
             if (input) {
                 const targetPos = cursorPos !== null ? cursorPos : 0;
@@ -158,10 +242,12 @@ export default function DateInput({ label, value, onChange, popoverDirection = "
                 return () => clearTimeout(timer);
             }
         }
-    }, [isEditing, dateValue, cursorPos]);
+    }, [isEditing, dateValue, cursorPos, useRange, displayFormat]);
 
+    // Manejar clics fuera para cerrar el modo edición
     useEffect(() => {
         if (!isEditing) return;
+
         const handleClickOutside = (e) => {
             if (datepickerContainerRef.current && !datepickerContainerRef.current.contains(e.target)) {
                 if (anchorRef.current && !anchorRef.current.contains(e.target)) {
@@ -169,10 +255,12 @@ export default function DateInput({ label, value, onChange, popoverDirection = "
                 }
             }
         };
+
         document.addEventListener("mousedown", handleClickOutside);
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, [isEditing]);
 
+    // Bloquear el scroll del body cuando estamos en modo edición
     useEffect(() => {
         if (isEditing) {
             const originalStyle = window.getComputedStyle(document.body).overflow;
@@ -183,6 +271,7 @@ export default function DateInput({ label, value, onChange, popoverDirection = "
         }
     }, [isEditing]);
 
+    // Prevenir específicamente que la rueda del ratón actúe sobre toda la ventana
     useEffect(() => {
         if (isEditing) {
             const handleWheel = (e) => e.preventDefault();
@@ -191,38 +280,27 @@ export default function DateInput({ label, value, onChange, popoverDirection = "
         }
     }, [isEditing]);
 
-    const handleActivate = () => {
-        if (!value) {
-            const today = dayjs().format("YYYY-MM-DD");
-            handleDateChange({
-                startDate: today,
-                endDate: today
-            });
-        }
-        setIsEditing(true);
-    };
-
-    const formattedValue = value ? dayjs(value).format("YYYY-MM-DD") : "";
-
     return (
-        <div className="space-y-1 w-full relative">
+        <div className="w-full relative">
             {label && (
-                <label className={`text-[11px] uppercase tracking-wide text-slate-500 dark:text-slate-400 ml-1 ${required ? 'label-required' : ''}`}>
-                    {label}
-                </label>
+                <div className="flex justify-between items-center mb-1">
+                    <label className={`text-sm ${required ? 'label-required' : ''}`}>
+                        {label}
+                    </label>
+                </div>
             )}
 
-            {/* Input Visual (Fuera del Portal): Se muestra cuando NO estamos editando */}
+            {/* Input Visual (Fuera del Portal) */}
             <div ref={anchorRef} className="w-full relative">
                 {!isEditing ? (
                     <div className="relative group">
                         <input
                             readOnly
                             value={formattedValue}
-                            placeholder="Seleccionar fecha..."
-                            className="w-full px-3 py-2.5 rounded-lg border bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 border-slate-300 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all text-sm !cursor-pointer pr-10"
-                            onFocus={handleActivate}
-                            onClick={handleActivate}
+                            placeholder={placeholder}
+                            className={`input w-full !cursor-pointer pr-10 ${error ? "border-error ring-1 ring-error/50" : ""} ${inputClassName}`}
+                            onFocus={() => setIsEditing(true)}
+                            onClick={() => setIsEditing(true)}
                         />
                         <Calendar
                             size={16}
@@ -230,7 +308,7 @@ export default function DateInput({ label, value, onChange, popoverDirection = "
                         />
                     </div>
                 ) : (
-                    <div className="w-full h-[38px]" /> // Mantener el espacio en el layout
+                    <div className="w-full h-[38px]" />
                 )}
             </div>
 
@@ -254,6 +332,12 @@ export default function DateInput({ label, value, onChange, popoverDirection = "
                         onFocus={handleMouseInteraction}
                     >
                         <Datepicker
+                            containerClassName="relative z-[9999]"
+                            useRange={useRange}
+                            asSingle={asSingle}
+                            showShortcuts={showShortcuts}
+                            i18n={i18n}
+                            {...rest}
                             value={{
                                 startDate: dateValue.startDate ? dayjs(dateValue.startDate).toDate() : null,
                                 endDate: dateValue.endDate ? dayjs(dateValue.endDate).toDate() : null
@@ -263,20 +347,18 @@ export default function DateInput({ label, value, onChange, popoverDirection = "
                                     startDate: newValue?.startDate ? dayjs(newValue.startDate).format("YYYY-MM-DD") : null,
                                     endDate: newValue?.endDate ? dayjs(newValue.endDate).format("YYYY-MM-DD") : null
                                 };
-                                handleDateChange(formatted);
+                                handleInternalChange(formatted);
                             }}
-                            useRange={false}
-                            asSingle={true}
-                            displayFormat={"YYYY-MM-DD"}
-                            placeholder="Seleccionar fecha..."
-                            readOnly={false} // Cambiado a false para permitir escritura
-                            i18n={"es"}
-                            containerClassName="relative z-[9999]"
-                            popoverDirection={popoverDirection}
-                            inputClassName="w-full px-3 py-2.5 rounded-lg border bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 border-slate-300 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all text-sm"
+                            displayFormat={displayFormat}
+                            placeholder={placeholder}
+                            readOnly={!(!useRange && displayFormat === "YYYY-MM-DD")} // Solo editable por teclado si es modo inteligente
+                            maxDate={maxDate ? dayjs(maxDate).toDate() : null}
+                            minDate={minDate ? dayjs(minDate).toDate() : null}
                             startFrom={dateValue.startDate && dayjs(dateValue.startDate).isValid()
                                 ? dayjs(dateValue.startDate).toDate()
                                 : new Date()}
+                            popoverDirection={popoverDirection}
+                            inputClassName={`input w-full ${error ? "border-error ring-1 ring-error/50" : ""} ${inputClassName}`}
                         />
                     </div>
                 </div>,
@@ -285,3 +367,22 @@ export default function DateInput({ label, value, onChange, popoverDirection = "
         </div>
     );
 }
+//Para Fecha Única:
+{/* <UniversalDatePicker
+    value={dateValue}
+    onChange={handleDateChange}
+    useRange={false}
+    asSingle={true}
+    displayFormat="YYYY-MM-DD"
+    placeholder="Seleccionar fecha..."
+/> */}
+
+//Para Rango de Fechas:
+{/* <UniversalDatePicker
+    value={dateRange}
+    onChange={setDateRange}
+    useRange={true}
+    showShortcuts={true}
+    displayFormat="DD/MM/YYYY"
+    placeholder="Rango de fechas..."
+/> */}

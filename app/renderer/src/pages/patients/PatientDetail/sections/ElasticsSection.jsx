@@ -693,7 +693,7 @@ export default function ElasticsSection() {
         try {
             const svgElement = svgRef.current;
             const serializer = new XMLSerializer();
-            
+
             // Clone the SVG to manipulate it without affecting the UI
             const clonedSvg = svgElement.cloneNode(true);
             clonedSvg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
@@ -719,7 +719,7 @@ export default function ElasticsSection() {
             }
 
             const svgString = serializer.serializeToString(clonedSvg);
-            
+
             // 2. Render SVG to Canvas
             return new Promise((resolve) => {
                 const canvas = document.createElement('canvas');
@@ -727,7 +727,7 @@ export default function ElasticsSection() {
                 canvas.width = 1400;
                 canvas.height = 500;
                 const ctx = canvas.getContext('2d');
-                
+
                 // Clear background to white (optional, but good for previews)
                 ctx.fillStyle = 'white';
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -739,7 +739,7 @@ export default function ElasticsSection() {
                 img.onload = () => {
                     ctx.drawImage(img, 0, 0);
                     URL.revokeObjectURL(url);
-                    
+
                     canvas.toBlob((blob) => {
                         const file = new File([blob], `odontogram_preview_${Date.now()}.png`, { type: 'image/png' });
                         resolve(file);
