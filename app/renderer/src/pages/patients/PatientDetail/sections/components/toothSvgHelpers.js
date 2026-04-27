@@ -2,47 +2,61 @@
 // Asset Loading & Helpers for Odontogram SVGs
 // ==========================================
 
+const svgCache = new Map();
+const parsedDocCache = new Map();
+const globalParser = new DOMParser();
+const globalSerializer = new XMLSerializer();
+
 // Load all tooth SVGs from all subfolders (original, root-canal, etc.) as image URLs
 export const toothImages = import.meta.glob('@/assets/images/odontogram/**/*.svg', {
-    eager: true,
+
     as: 'url'
 });
 
 // Load the raw SVG string for generating dynamic custom SVGs without CSS conflicts
 export const toothRawSvgs = import.meta.glob('@/assets/images/odontogram/**/*.svg', {
-    eager: true,
+
     query: '?raw',
     import: 'default'
 });
 
-// Helper to get raw SVG strings
-export const getToothRaw = (id, type) => {
-    const specificTypeEntry = Object.entries(toothRawSvgs).find(([path]) =>
-        path.includes(`/odontogram/${type}/tooth-${id}.svg`)
-    );
-    if (specificTypeEntry) return specificTypeEntry[1];
+// ⚡ O(1) Indexing for Paths
+const buildIndex = (globObj) => {
+    const index = new Map();
+    for (const [path, value] of Object.entries(globObj)) {
+        const match = path.match(/\/odontogram\/(.+)\/tooth-(\d+)\.svg/);
+        if (match) {
+            const type = match[1];
+            const id = match[2];
+            index.set(`${id}:${type}`, value);
+        }
+    }
+    return index;
+};
 
-    const originalEntry = Object.entries(toothRawSvgs).find(([path]) =>
-        path.includes(`/odontogram/original/tooth-${id}.svg`)
-    );
-    return originalEntry ? originalEntry[1] : null;
+const rawIndex = buildIndex(toothRawSvgs);
+const srcIndex = buildIndex(toothImages);
+
+// Helper to get raw SVG strings
+export const getToothRaw = async (id, type) => {
+    const loader =
+        rawIndex.get(`${id}:${type}`) ||
+        rawIndex.get(`${id}:original`);
+
+    if (!loader) return null;
+
+    return await loader();
 };
 
 // Helper to get image src by Tooth ID and Type
-export const getToothSrc = (id, type) => {
-    // Try to find the specific type first
-    const specificTypeEntry = Object.entries(toothImages).find(([path]) =>
-        path.includes(`/odontogram/${type}/tooth-${id}.svg`)
-    );
+export const getToothSrc = async (id, type) => {
+    const loader =
+        srcIndex.get(`${id}:${type}`) ||
+        srcIndex.get(`${id}:original`);
 
-    if (specificTypeEntry) return specificTypeEntry[1];
+    if (!loader) return null;
 
-    // Fallback to original if not found
-    const originalEntry = Object.entries(toothImages).find(([path]) =>
-        path.includes(`/odontogram/original/tooth-${id}.svg`)
-    );
-
-    return originalEntry ? originalEntry[1] : null;
+    return await loader();
 };
 
 export const getBaseSvgType = (types) => {
@@ -64,43 +78,106 @@ export const getBaseSvgType = (types) => {
     return types[0];
 };
 
-// Encapsulated function to create a Combined SVG data URL containing BOTH implant and crown
-export const generateCombinedSvgDataUrl = (id, types = []) => {
+// Caches parsed documents to avoid re-parsing identical raw SVGs
+const getParsedDoc = async (id, type) => {
+    const key = `${id}:${type}`;
 
+    if (parsedDocCache.has(key)) {
+        return parsedDocCache.get(key);
+    }
+
+    const raw = await getToothRaw(id, type);
+    if (!raw) return null;
+
+    if (parsedDocCache.size > 30) {
+        const firstKey = parsedDocCache.keys().next().value;
+        parsedDocCache.delete(firstKey);
+    }
+
+    const doc = globalParser.parseFromString(raw, "image/svg+xml");
+    parsedDocCache.set(key, doc);
+
+    return doc;
+};
+
+export const cleanupOdontogramCache = () => {
+    svgCache.forEach(url => {
+        if (url && url.startsWith('blob:')) {
+            URL.revokeObjectURL(url);
+        }
+    });
+    svgCache.clear();
+    parsedDocCache.clear();
+};
+
+const addBlobToCache = (cacheKey, svgString) => {
+    if (svgCache.size > 150) {
+        const firstKey = svgCache.keys().next().value;
+        const url = svgCache.get(firstKey);
+
+        if (url?.startsWith('blob:')) {
+            URL.revokeObjectURL(url);
+        }
+
+        svgCache.delete(firstKey);
+    }
+    const blob = new Blob([svgString], { type: 'image/svg+xml' });
+    const url = URL.createObjectURL(blob);
+    svgCache.set(cacheKey, url);
+    return url;
+};
+
+// Encapsulated function to create a Combined SVG data URL containing BOTH implant and crown
+export const generateCombinedSvgDataUrl = async (id, types = []) => {
     if (!types || types.length === 0) {
         types = ['implant', 'crown'];
     }
 
-    types = [...new Set(types)];
+    types = Array.isArray(types) ? [...new Set(types)].sort() : [];
+
+    // 🔑 KEY DE CACHE
+    const cacheKey = `${id}:${types.join('+')}`;
+
+    if (svgCache.has(cacheKey)) {
+        return svgCache.get(cacheKey);
+    }
 
     try {
-        const parser = new DOMParser();
-        const serializer = new XMLSerializer();
         const docs = {};
 
-        // Parse all requested SVGs
-        types.forEach(type => {
-            const raw = getToothRaw(id, type);
-            if (raw) {
-                docs[type] = parser.parseFromString(raw, "image/svg+xml");
-            }
-        });
+        await Promise.all(
+            types.map(async (type) => {
+                const doc = await getParsedDoc(id, type);
+                if (doc) {
+                    docs[type] = doc;
+                }
+            })
+        );
 
         const baseType = getBaseSvgType(types);
         const baseDoc = docs[baseType];
-        if (!baseDoc) return getToothSrc(id, baseType);
 
-        // 🔥 CLAVE: usar el SVG base real
+        if (!baseDoc) {
+            const fallback = await getToothSrc(id, baseType);
+            if (fallback) {
+                svgCache.set(cacheKey, fallback);
+            }
+            return fallback;
+        }
+
         const newSvg = baseDoc.documentElement.cloneNode(true);
-
-        // Buscar el grupo principal
         const mainGroup = newSvg.querySelector('g');
-        if (!mainGroup) return getToothSrc(id, baseType);
 
-        // Limpiar contenido interno (pero mantener estructura)
+        if (!mainGroup) {
+            const fallback = await getToothSrc(id, baseType);
+            if (fallback) {
+                svgCache.set(cacheKey, fallback);
+            }
+            return fallback;
+        }
+
         mainGroup.innerHTML = '';
 
-        // Helper
         const getEl = (doc, selector) =>
             doc?.querySelector(selector)?.cloneNode(true);
 
@@ -136,25 +213,27 @@ export const generateCombinedSvgDataUrl = (id, types = []) => {
         const hasFissureFull = types.includes('fissure-full');
         const hasFissureCrown = types.includes('fissure-crown');
 
-        // =====================================================
-        // DIRECT ASSET LOADING FOR SPECIFIC COMBINATIONS
-        // =====================================================
+        // ⚡ combinaciones directas (NO calcular)
         if (hasImplant && hasCrown) {
-            return getToothSrc(id, 'combinations/implant+crown');
-        } else if (hasRootCanal && hasFissureCrown) {
-            return getToothSrc(id, 'combinations/root-canal+fissure-crown');
-        } else if (hasRootCanal && hasCrown) {
-            return getToothSrc(id, 'combinations/root-canal+crown');
+            const result = await getToothSrc(id, 'combinations/implant+crown');
+            svgCache.set(cacheKey, result);
+            return result;
         }
 
-        // =====================================================
-        // CONSTRUCCIÓN DINÁMICA DE SVG
-        // =====================================================
+        if (hasRootCanal && hasFissureCrown) {
+            const result = await getToothSrc(id, 'combinations/root-canal+fissure-crown');
+            svgCache.set(cacheKey, result);
+            return result;
+        }
 
-        // 2. crown + fissure-root
-        // root → crown → fil2
+        if (hasRootCanal && hasCrown) {
+            const result = await getToothSrc(id, 'combinations/root-canal+crown');
+            svgCache.set(cacheKey, result);
+            return result;
+        }
+
+        // 🔧 construcción dinámica
         if (hasCrown && hasFissureRoot) {
-
             const root = getEl(docs['fissure-root'], '#root');
             const crownElements = extractCrownElements(docs['crown']);
             const outline = getEl(docs['fissure-root'], '.fil2') ||
@@ -163,29 +242,19 @@ export const generateCombinedSvgDataUrl = (id, types = []) => {
             root && mainGroup.appendChild(root);
             crownElements.forEach(el => mainGroup.appendChild(el));
             outline && mainGroup.appendChild(outline);
-        }
-
-        // =====================================================
-        // crown + fissure-full o fissure-crown
-        // root → crown → outline
-        // =====================================================
-        else if (hasCrown && (hasFissureFull || hasFissureCrown)) {
-
+        } else if (hasCrown && (hasFissureFull || hasFissureCrown)) {
             const fissureType = hasFissureFull ? 'fissure-full' : 'fissure-crown';
 
             const root = getEl(docs[fissureType], '#root') || getEl(docs[fissureType], '#Root');
             const crownElements = extractCrownElements(docs['crown']);
-            const outline = getEl(docs[fissureType], '#outline') || getEl(docs[fissureType], '#Outline') || getEl(docs[fissureType], '.fil2');
+            const outline = getEl(docs[fissureType], '#outline') ||
+                getEl(docs[fissureType], '#Outline') ||
+                getEl(docs[fissureType], '.fil2');
 
             root && mainGroup.appendChild(root);
             crownElements.forEach(el => mainGroup.appendChild(el));
             outline && mainGroup.appendChild(outline);
-        }
-
-        // =====================================================
-        // Fallback
-        // =====================================================
-        else {
+        } else {
             const originalChildren = Array.from(
                 docs[baseType].querySelector('g').children
             );
@@ -195,17 +264,14 @@ export const generateCombinedSvgDataUrl = (id, types = []) => {
             });
         }
 
-        let svgString = serializer.serializeToString(newSvg);
+        let svgString = globalSerializer.serializeToString(newSvg);
         svgString = svgString.replace(/xmlns:xmlns="[^"]+"/g, '');
 
-        const encoded = encodeURIComponent(svgString)
-            .replace(/'/g, "%27")
-            .replace(/"/g, "%22");
-
-        return `data:image/svg+xml;utf8,${encoded}`;
+        // 💾 guardar en cache como Blob URL (mucho más rápido en memoria)
+        return addBlobToCache(cacheKey, svgString);
 
     } catch (err) {
         console.error("Error formatting combined SVG:", err);
-        return getToothSrc(id, types[0] || 'implant');
+        return await getToothSrc(id, types[0] || 'implant');
     }
 };

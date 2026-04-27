@@ -1,5 +1,5 @@
 // src/router/AppRouter.jsx
-import React, { useEffect } from "react";
+import React, { useEffect, lazy, Suspense } from "react";
 import { HashRouter, Routes, Route, Navigate, useNavigate } from "react-router-dom";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useNotificationStore } from "@/store/useNotificationStore";
@@ -29,33 +29,57 @@ import ReferralList from "@/pages/referrals";
 import PositionList from "@/pages/positions";
 import TenantSettings from "@/pages/tenant";
 
-import PatientList from "@/pages/patients/PatientList";
-import PatientDetail from "@/pages/patients/PatientDetail";
+//import PatientList from "@/pages/patients/PatientList";
+//import PatientDetail from "@/pages/patients/PatientDetail";
+const PatientList = lazy(() => import("@/pages/patients/PatientList"));
+const PatientDetail = lazy(() => import("@/pages/patients/PatientDetail"));
+
+const SummarySection = lazy(() => import("@/pages/patients/PatientDetail/sections/SummarySection"));
+const GeneralSection = lazy(() => import("@/pages/patients/PatientDetail/sections/GeneralSection"));
+const ClinicalSection = lazy(() => import("@/pages/patients/PatientDetail/sections/ClinicalSection"));
+const FamilySection = lazy(() => import("@/pages/patients/PatientDetail/sections/FamilySection"));
+const AlertsSection = lazy(() => import("@/pages/patients/PatientDetail/sections/AlertsSection"));
+const AppointmentsSection = lazy(() => import("@/pages/patients/PatientDetail/sections/AppointmentsSection"));
+const PrescriptionsSection = lazy(() => import("@/pages/patients/PatientDetail/sections/PrescriptionsSection"));
+const ContractsSection = lazy(() => import("@/pages/patients/PatientDetail/sections/ContractsSection"));
+const TreatmentPlanSection = lazy(() => import("@/pages/patients/PatientDetail/sections/TreatmentPlanSection"));
+const BudgetsSection = lazy(() => import("@/pages/patients/PatientDetail/sections/BudgetsSection"));
+const HobbiesSection = lazy(() => import("@/pages/patients/PatientDetail/sections/HobbiesSection"));
+const ConversationsSection = lazy(() => import("@/pages/patients/PatientDetail/sections/ConversationsSection"));
+const NotesSection = lazy(() => import("@/pages/patients/PatientDetail/sections/NotesSection"));
+const GallerySection = lazy(() => import("@/pages/patients/PatientDetail/sections/GallerySection"));
+const ExtractionOrdersSection = lazy(() => import("@/pages/patients/PatientDetail/sections/ExtractionOrdersSection"));
+const OdontogramSection = lazy(() => import("@/pages/patients/PatientDetail/sections/OdontogramSection"));
+const ElasticsSection = lazy(() => import("@/pages/patients/PatientDetail/sections/ElasticsSection"));
+const AccountSection = lazy(() => import("@/pages/patients/PatientDetail/sections/AccountSection"));
+const RepresentativesSection = lazy(() => import("@/pages/patients/PatientDetail/sections/RepresentativesSection"));
+const BillingSection = lazy(() => import("@/pages/patients/PatientDetail/sections/BillingSection"));
 
 // Paciente (secciones internas)
-import SummarySection from "@/pages/patients/PatientDetail/sections/SummarySection";
-import GeneralSection from "@/pages/patients/PatientDetail/sections/GeneralSection";
-import ClinicalSection from "@/pages/patients/PatientDetail/sections/ClinicalSection";
-import FamilySection from "@/pages/patients/PatientDetail/sections/FamilySection";
-import AlertsSection from "@/pages/patients/PatientDetail/sections/AlertsSection";
-import AppointmentsSection from "@/pages/patients/PatientDetail/sections/AppointmentsSection";
-import PrescriptionsSection from "@/pages/patients/PatientDetail/sections/PrescriptionsSection";
-import ContractsSection from "@/pages/patients/PatientDetail/sections/ContractsSection";
-import TreatmentPlanSection from "@/pages/patients/PatientDetail/sections/TreatmentPlanSection";
-import BudgetsSection from "@/pages/patients/PatientDetail/sections/BudgetsSection";
-import HobbiesSection from "@/pages/patients/PatientDetail/sections/HobbiesSection";
-import ConversationsSection from "@/pages/patients/PatientDetail/sections/ConversationsSection";
-import NotesSection from "@/pages/patients/PatientDetail/sections/NotesSection";
-import GallerySection from "@/pages/patients/PatientDetail/sections/GallerySection";
-import ExtractionOrdersSection from "@/pages/patients/PatientDetail/sections/ExtractionOrdersSection";
-import OdontogramSection from "@/pages/patients/PatientDetail/sections/OdontogramSection";
-import ElasticsSection from "@/pages/patients/PatientDetail/sections/ElasticsSection";
-import AccountSection from "@/pages/patients/PatientDetail/sections/AccountSection";
+//import SummarySection from "@/pages/patients/PatientDetail/sections/SummarySection";
+//import GeneralSection from "@/pages/patients/PatientDetail/sections/GeneralSection";
+//import ClinicalSection from "@/pages/patients/PatientDetail/sections/ClinicalSection";
+//import FamilySection from "@/pages/patients/PatientDetail/sections/FamilySection";
+//import AlertsSection from "@/pages/patients/PatientDetail/sections/AlertsSection";
+//import AppointmentsSection from "@/pages/patients/PatientDetail/sections/AppointmentsSection";
+//import PrescriptionsSection from "@/pages/patients/PatientDetail/sections/PrescriptionsSection";
+//import ContractsSection from "@/pages/patients/PatientDetail/sections/ContractsSection";
+//import TreatmentPlanSection from "@/pages/patients/PatientDetail/sections/TreatmentPlanSection";
+//import BudgetsSection from "@/pages/patients/PatientDetail/sections/BudgetsSection";
+//import HobbiesSection from "@/pages/patients/PatientDetail/sections/HobbiesSection";
+//import ConversationsSection from "@/pages/patients/PatientDetail/sections/ConversationsSection";
+//import NotesSection from "@/pages/patients/PatientDetail/sections/NotesSection";
+//import GallerySection from "@/pages/patients/PatientDetail/sections/GallerySection";
+//import ExtractionOrdersSection from "@/pages/patients/PatientDetail/sections/ExtractionOrdersSection";
+//import OdontogramSection from "@/pages/patients/PatientDetail/sections/OdontogramSection";
+//import ElasticsSection from "@/pages/patients/PatientDetail/sections/ElasticsSection";
+//import AccountSection from "@/pages/patients/PatientDetail/sections/AccountSection";
+//import RepresentativesSection from "@/pages/patients/PatientDetail/sections/RepresentativesSection";
+//import BillingSection from "@/pages/patients/PatientDetail/sections/BillingSection";
 
 import ToastContainer from "@/components/ui/ToastContainer";
 import { Header, QuickAccessBar } from "@/components/layout";
-import RepresentativesSection from "@/pages/patients/PatientDetail/sections/RepresentativesSection";
-import BillingSection from "@/pages/patients/PatientDetail/sections/BillingSection";
+
 
 import InventoryPage from "@/pages/inventory/InventoryPage";
 import PaymentsPage from "@/modules/payments/pages/PaymentsPage";
@@ -84,24 +108,16 @@ function IpcRouterBridge() {
     useEffect(() => {
         if (!window.electronAPI?.on) return;
 
-        // Limpia listeners previos
-        if (window.electronAPI.removeAllListeners) {
-            window.electronAPI.removeAllListeners("app:open-settings");
-        }
-
-        const handleOpenSettings = () => {
-            const canAccess = user?.permissions?.settings?.read;
-            if (canAccess) navigate("/settings");
-        };
-
-        window.electronAPI.on("app:open-settings", handleOpenSettings);
+        const unsubscribe = window.electronAPI.on(
+            "app:open-settings",
+            () => {
+                const canAccess = user?.permissions?.settings?.read;
+                if (canAccess) navigate("/settings");
+            }
+        );
 
         return () => {
-            if (window.electronAPI.removeListener) {
-                window.electronAPI.removeListener("app:open-settings", handleOpenSettings);
-            } else if (window.electronAPI.removeAllListeners) {
-                window.electronAPI.removeAllListeners("app:open-settings");
-            }
+            unsubscribe?.();
         };
     }, [navigate, user]);
 
@@ -293,7 +309,9 @@ export default function AppRouter() {
                     element={
                         <PrivateRoute>
                             <PrivateLayout>
-                                <PatientList />
+                                <Suspense fallback={<div>Loading...</div>}>
+                                    <PatientList />
+                                </Suspense>
                             </PrivateLayout>
                         </PrivateRoute>
                     }
@@ -303,14 +321,17 @@ export default function AppRouter() {
                     element={
                         <PrivateRoute>
                             <PrivateLayout>
-                                <PatientDetail />
+                                <Suspense fallback={<div>Loading...</div>}>
+                                    <PatientDetail />
+                                </Suspense>
                             </PrivateLayout>
                         </PrivateRoute>
                     }
                 >
-                    {/* REDIRECCIÓN DEFAULT A "Resumen" */}
+                    {/* 🔁 Default */}
                     <Route index element={<Navigate to="summary" replace />} />
 
+                    {/* 🧩 Secciones (WRAPPERS lazy) */}
                     <Route path="summary" element={<SummarySection />} />
                     <Route path="general" element={<GeneralSection />} />
                     <Route path="clinical" element={<ClinicalSection />} />

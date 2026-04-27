@@ -42,10 +42,23 @@ contextBridge.exposeInMainWorld("electronAPI", {
      * 🧠 Listener seguro (solo canales aprobados)
      */
     on(channel, callback) {
-        if (validChannels.includes(channel)) {
-            ipcRenderer.on(channel, (_event, ...args) => callback(...args));
-        } else {
+        if (!validChannels.includes(channel)) {
             console.warn(`❌ Canal IPC no autorizado: ${channel}`);
+            return;
+        }
+
+        const listener = (_event, ...args) => callback(...args);
+
+        ipcRenderer.on(channel, listener);
+
+        // 🔁 DEVUELVE función para limpiar (patrón React-friendly)
+        return () => {
+            ipcRenderer.removeListener(channel, listener);
+        };
+    },
+    removeListener(channel, callback) {
+        if (validChannels.includes(channel)) {
+            ipcRenderer.removeListener(channel, callback);
         }
     },
 

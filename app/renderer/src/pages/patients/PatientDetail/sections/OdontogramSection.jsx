@@ -13,7 +13,7 @@ import { Menu, MenuItem, SubMenu } from '@spaceymonk/react-radial-menu';
 import VoiceSettingsModal from './VoiceSettingsModal';
 import * as odontogramService from '@/services/odontogram.service';
 import { useToastStore } from '@/store/useToastStore';
-
+import { cleanupOdontogramCache } from "./components/toothSvgHelpers";
 // ========================================== 
 // 1. Asset Loading & Helpers
 // ==========================================
@@ -654,17 +654,53 @@ function Tooth({ id, type, hasBracket, isBroken, repairCount = 0, isSelectedBrac
     const activeTypes = isImplantCrown ? ['implant', 'crown'] : (type ? type.split('+') : ['original']);
     const isCombined = activeTypes.length > 1 || isImplantCrown;
     const baseType = activeTypes[0] || 'original';
-    const src = !isCombined ? getToothSrc(id, baseType) : null;
     const containerRef = useRef(null);
     const pressTimer = useRef(null);
+    const [src, setSrc] = useState(null);
+    const [combinedSrc, setCombinedSrc] = useState(null);
 
     // Measure width on mount/update
+    const lastWidthRef = useRef(null);
+
+    useEffect(() => {
+        if (isCombined) return;
+
+        let mounted = true;
+
+        getToothSrc(id, baseType).then((url) => {
+            if (mounted) setSrc(url);
+        });
+
+        return () => {
+            mounted = false;
+        };
+    }, [id, baseType, isCombined]);
+
+    useEffect(() => {
+        if (!isCombined) return;
+
+        let mounted = true;
+
+        generateCombinedSvgDataUrl(id, activeTypes).then((url) => {
+            if (mounted) setCombinedSrc(url);
+        });
+
+        return () => {
+            mounted = false;
+        };
+    }, [id, activeTypes.join('+')]);
+
     useLayoutEffect(() => {
-        if (containerRef.current && onResize) {
-            const { offsetWidth } = containerRef.current;
-            onResize(id, offsetWidth);
-        }
-    }, [id, onResize, src, isCombined]); // Re-measure if src changes (loading different tooth)
+        if (!containerRef.current || !onResize) return;
+
+        const { offsetWidth } = containerRef.current;
+
+        if (lastWidthRef.current === offsetWidth) return;
+
+        lastWidthRef.current = offsetWidth;
+
+        onResize(id, offsetWidth);
+    }, [id, onResize]);
 
     const shouldScale = TEETH_TO_SCALE.includes(id);
 
@@ -713,12 +749,9 @@ function Tooth({ id, type, hasBracket, isBroken, repairCount = 0, isSelectedBrac
             pressTimer.current = null;
         }
     };
-
-    if (!src && !isCombined) {
+    if (!src && !combinedSrc) {
         return (
-            <div className="w-11 h-16 md:w-14 md:h-20 flex items-center justify-center bg-red-100 text-red-500 text-xs rounded border border-red-200">
-                {id}?
-            </div>
+            <div className="w-11 h-16 md:w-14 md:h-20 bg-slate-200 animate-pulse rounded" />
         );
     }
 
@@ -758,7 +791,7 @@ function Tooth({ id, type, hasBracket, isBroken, repairCount = 0, isSelectedBrac
                     z-10
                 `}>
                 <img
-                    src={isCombined ? generateCombinedSvgDataUrl(id, activeTypes) : src}
+                    src={isCombined ? combinedSrc : src}
                     alt={isCombined ? `Tooth Combined ${id}` : `Tooth ${id}`}
                     draggable={false}
                     className={`w-full h-full object-contain drop-shadow-sm transition-transform ${shouldScale ? 'scale-x-95' : ''}`}
@@ -2036,6 +2069,13 @@ export default function OdontogramSection() {
     const [hasVoiceSupport, setHasVoiceSupport] = useState(false);
 
     useEffect(() => {
+        return () => {
+            console.log("🧹 Cleaning odontogram cache...");
+            cleanupOdontogramCache();
+        };
+    }, []);
+
+    useEffect(() => {
         const checkVoices = () => {
             if ('speechSynthesis' in window) {
                 const voices = window.speechSynthesis.getVoices();
@@ -2322,6 +2362,7 @@ export default function OdontogramSection() {
         setHistoryState(prev => {
             if (JSON.stringify(prev.present) === JSON.stringify(newState)) return prev;
             const newPast = [...prev.past, prev.present].slice(-50);
+            //const newPast = []; // TEMP
             return { past: newPast, present: newState, future: [] };
         });
     }, [toothStates, brackets, bracketWires, tads, tadWires, surfaceStates, periodontalData, toothNotes]);

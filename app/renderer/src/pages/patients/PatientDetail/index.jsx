@@ -169,7 +169,10 @@ export default function PatientDetail() {
     return (
         <>
             <PatientDetailLayout sidebar={<PatientSidebar id={id} profile={profile} />}>
-                <Outlet context={{ profile, refreshProfile: loadProfile }} />
+                <Outlet
+                    key={id}
+                    context={{ profile, refreshProfile: loadProfile }}
+                />
             </PatientDetailLayout>
 
             <PatientAlertsModal
