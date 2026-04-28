@@ -40,6 +40,7 @@ export default function GalleryCreator({ onClose, onSave }) {
     // --- CROPPER STATE ---
     const [cropperOpen, setCropperOpen] = useState(false);
     const [pendingImage, setPendingImage] = useState(null);
+    const [pendingFile, setPendingFile] = useState(null);
     const [activeSlot, setActiveSlot] = useState(null); // { type: 'photo' | 'xray', key?: string, cxId?: number }
 
     // --- NOTES EDITOR STATE ---
@@ -61,6 +62,7 @@ export default function GalleryCreator({ onClose, onSave }) {
     // 1. Intercept Upload -> Open Cropper
     const initiateUpload = (file, slotType, slotKey = null, xrayId = null) => {
         if (!file) return;
+        setPendingFile(file);
         const objectUrl = URL.createObjectURL(file);
         setPendingImage(objectUrl);
         setActiveSlot({ type: slotType, key: slotKey, id: xrayId });
@@ -95,6 +97,7 @@ export default function GalleryCreator({ onClose, onSave }) {
     const closeCropper = () => {
         setCropperOpen(false);
         setPendingImage(null);
+        setPendingFile(null);
         setActiveSlot(null);
     };
 
@@ -184,6 +187,7 @@ export default function GalleryCreator({ onClose, onSave }) {
             {cropperOpen && pendingImage && (
                 <CropperModal
                     image={pendingImage}
+                    originalFile={pendingFile}
                     onSave={handleCropperSave}
                     onCancel={closeCropper}
                 />
@@ -502,8 +506,14 @@ function DropzoneCard({ label, image, notes = [], onUpload, onRemove, onOpenNote
                     </div>
 
                     {/* Label Badge */}
-                    <div className="absolute bottom-2 left-2 right-2 px-2 py-1 bg-black/60 backdrop-blur-sm rounded-lg">
-                        <p className="text-xs text-white truncate text-center">{label}</p>
+                    <div className="absolute bottom-2 left-2 right-2 px-2 py-1 bg-black/60 backdrop-blur-sm rounded-lg flex items-center justify-center gap-1.5">
+                        <p className="text-xs text-white truncate">{label}</p>
+                        {notes.length > 0 && (
+                            <div className="flex items-center gap-1 pl-1.5 border-l border-white/20 shrink-0">
+                                <Eye size={10} className="text-cyan-400" />
+                                <span className="text-[10px] font-bold text-white">{notes.length}</span>
+                            </div>
+                        )}
                     </div>
                 </>
             ) : (
@@ -514,8 +524,14 @@ function DropzoneCard({ label, image, notes = [], onUpload, onRemove, onOpenNote
                     `}>
                         {isDragging ? <Upload size={20} /> : <ImageIcon size={20} />}
                     </div>
-                    <p className="text-sm font-medium text-slate-600 dark:text-slate-300">
+                    <p className="text-sm font-medium text-slate-600 dark:text-slate-300 flex items-center gap-1.5">
                         {label}
+                        {notes.length > 0 && (
+                            <span className="flex items-center gap-1 text-cyan-500">
+                                <Eye size={12} strokeWidth={2.5} />
+                                <span className="text-xs font-bold">{notes.length}</span>
+                            </span>
+                        )}
                     </p>
                     <p className="text-xs text-slate-400 mt-1">
                         {required && <span className="text-amber-500 mr-1">*</span>}
@@ -568,7 +584,7 @@ function ImageNotesEditor({ imageObj, onSaveNotes, onClose }) {
 
     const handleImageClick = (e) => {
         if (activeNote) return;
-        
+
         const rect = imageRef.current.getBoundingClientRect();
         const x = ((e.clientX - rect.left) / rect.width) * 100;
         const y = ((e.clientY - rect.top) / rect.height) * 100;
@@ -608,20 +624,20 @@ function ImageNotesEditor({ imageObj, onSaveNotes, onClose }) {
                     <X size={24} />
                 </button>
             </div>
-            
+
             {/* Body */}
             <div className="flex-1 overflow-auto flex items-center justify-center p-8 relative">
                 <div className="relative inline-block max-w-[90vw] max-h-[80vh]">
-                    <img 
+                    <img
                         ref={imageRef}
-                        src={imageObj.url} 
-                        alt="Edición de Notas" 
+                        src={imageObj.url}
+                        alt="Edición de Notas"
                         className="max-h-[80vh] w-auto h-auto object-contain shadow-2xl rounded-xl cursor-crosshair"
                         onClick={handleImageClick}
                         draggable={false}
                         style={{ maxWidth: '100%' }}
                     />
-                    
+
                     {/* Render Notes */}
                     {notes.map(note => (
                         <div
@@ -643,9 +659,9 @@ function ImageNotesEditor({ imageObj, onSaveNotes, onClose }) {
 
                     {/* Active Note Modal/Popover */}
                     {activeNote && (
-                        <NotePopover 
-                            note={activeNote} 
-                            onSave={handleSaveNote} 
+                        <NotePopover
+                            note={activeNote}
+                            onSave={handleSaveNote}
                             onDelete={() => activeNote.id ? handleDeleteNote(activeNote.id) : setActiveNote(null)}
                             onCancel={() => setActiveNote(null)}
                         />
@@ -660,13 +676,13 @@ function ImageNotesEditor({ imageObj, onSaveNotes, onClose }) {
                     Haz clic en cualquier parte de la imagen para agregar una nota.
                 </p>
                 <div className="flex items-center gap-3">
-                    <button 
+                    <button
                         onClick={onClose}
                         className="px-4 py-2 rounded-lg text-sm font-medium text-slate-300 hover:bg-slate-800 transition-colors"
                     >
                         Descartar Cambios
                     </button>
-                    <button 
+                    <button
                         onClick={handleClose}
                         className="px-4 py-2 rounded-lg text-sm font-medium bg-[var(--color-primary)] hover:bg-cyan-400 text-white transition-colors shadow-lg"
                     >
@@ -682,7 +698,7 @@ function NotePopover({ note, onSave, onDelete, onCancel }) {
     const [text, setText] = useState(note.text || '');
 
     return (
-        <div 
+        <div
             className="absolute z-50 bg-white dark:bg-slate-800 rounded-xl shadow-xl w-64 p-4 border border-slate-200 dark:border-slate-700 transform -translate-x-1/2 mt-3 cursor-default"
             style={{ left: `${note.x}%`, top: `${note.y}%` }}
             onClick={e => e.stopPropagation()}
@@ -696,21 +712,21 @@ function NotePopover({ note, onSave, onDelete, onCancel }) {
                 autoFocus
             />
             <div className="flex justify-end gap-2">
-                <button 
+                <button
                     onClick={onCancel}
                     className="px-3 py-1.5 text-xs font-medium text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
                 >
                     Cancelar
                 </button>
                 {note.id && (
-                    <button 
+                    <button
                         onClick={onDelete}
                         className="px-3 py-1.5 text-xs font-medium text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
                     >
                         Quitar
                     </button>
                 )}
-                <button 
+                <button
                     onClick={() => onSave(text)}
                     disabled={!text.trim()}
                     className="px-3 py-1.5 text-xs font-medium bg-[var(--color-primary)] hover:bg-cyan-400 text-white rounded-lg transition-colors disabled:opacity-50"

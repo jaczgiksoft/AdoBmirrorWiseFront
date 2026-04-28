@@ -1,6 +1,6 @@
 // main.js
 require("dotenv").config();
-const { app, BrowserWindow, ipcMain, globalShortcut, shell } = require("electron");
+const { app, BrowserWindow, ipcMain, globalShortcut, shell, screen } = require("electron");
 const path = require("path");
 const keytar = require("keytar");
 const net = require("net");
@@ -32,12 +32,14 @@ async function isPortAvailable(port) {
  * 🪟 Crea la ventana principal de Electron
  */
 async function createWindow() {
+    const { width, height } = screen.getPrimaryDisplay().workAreaSize;
+
     mainWindow = new BrowserWindow({
-        width: 1200,
-        height: 800,
+        width,
+        height,
         minWidth: 1000,
         minHeight: 700,
-        fullscreen: true,
+        fullscreen: false,
         autoHideMenuBar: true,
         frame: true,
         webPreferences: {
@@ -46,7 +48,7 @@ async function createWindow() {
             nodeIntegration: false,
         },
     });
-    //mainWindow.maximize();
+    mainWindow.maximize();
     const isDev = !app.isPackaged;
     const vitePort = process.env.VITE_PORT || 5173;
     const devURL = `http://localhost:${vitePort}`;
