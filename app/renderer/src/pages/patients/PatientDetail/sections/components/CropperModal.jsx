@@ -7,11 +7,18 @@ import {
     RotateCw,
     FlipHorizontal,
     Check,
-    Save
+    Save,
+    Image as ImageIcon,
+    RectangleVertical,
+    RectangleHorizontal,
+    Maximize,
+    Scan,
+    Expand
 } from 'lucide-react';
 
-export default function CropperModal({ image, onSave, onCancel }) {
+export default function CropperModal({ image, originalFile, onSave, onCancel }) {
     const cropperRef = useRef(null);
+    const [aspectRatio, setAspectRatio] = useState(4 / 5);
 
     // --- HANDLERS ---
     const handleRotateLeft = () => {
@@ -30,6 +37,32 @@ export default function CropperModal({ image, onSave, onCancel }) {
             // Check current scaleX (1 or -1) and toggle
             const scaleX = cropper.getData().scaleX || 1;
             cropper.scaleX(-scaleX);
+        }
+    };
+
+    const handleSetAspectRatio = (ratio) => {
+        setAspectRatio(ratio);
+        const cropper = cropperRef.current?.cropper;
+        if (cropper) {
+            cropper.setAspectRatio(ratio);
+        }
+    };
+
+    const handleFullImage = () => {
+        setAspectRatio(null);
+        const cropper = cropperRef.current?.cropper;
+        if (cropper) {
+            cropper.setAspectRatio(null);
+            // Wait a bit for the aspect ratio change to apply before forcing dimensions
+            setTimeout(() => {
+                const imageData = cropper.getImageData();
+                cropper.setCropBoxData({
+                    left: 0,
+                    top: 0,
+                    width: imageData.width,
+                    height: imageData.height
+                });
+            }, 10);
         }
     };
 
@@ -66,8 +99,8 @@ export default function CropperModal({ image, onSave, onCancel }) {
                     <Cropper
                         src={image}
                         style={{ height: '100%', width: '100%', minHeight: '400px' }}
-                        initialAspectRatio={4 / 5}
-                        aspectRatio={4 / 5}
+                        initialAspectRatio={aspectRatio}
+                        aspectRatio={aspectRatio}
                         guides={true}
                         viewMode={1}
                         dragMode="move"
@@ -106,6 +139,28 @@ export default function CropperModal({ image, onSave, onCancel }) {
                         >
                             <FlipHorizontal size={20} />
                         </button>
+                        <div className="w-px h-6 bg-slate-200 dark:bg-slate-700 mx-1" />
+                        <button
+                            onClick={() => handleSetAspectRatio(4 / 5)}
+                            className={`p-2.5 rounded-xl transition-colors ${aspectRatio === 4 / 5 ? 'bg-slate-100 dark:bg-slate-800 text-[var(--color-primary)]' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
+                            title="Proporción Vertical (4:5)"
+                        >
+                            <RectangleVertical size={20} />
+                        </button>
+                        <button
+                            onClick={() => handleSetAspectRatio(5 / 4)}
+                            className={`p-2.5 rounded-xl transition-colors ${aspectRatio === 5 / 4 ? 'bg-slate-100 dark:bg-slate-800 text-[var(--color-primary)]' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
+                            title="Proporción Horizontal (5:4)"
+                        >
+                            <RectangleHorizontal size={20} />
+                        </button>
+                        <button
+                            onClick={handleFullImage}
+                            className={`p-2.5 rounded-xl transition-colors ${aspectRatio === null ? 'bg-slate-100 dark:bg-slate-800 text-[var(--color-primary)]' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
+                            title="Selección Libre"
+                        >
+                            <Scan size={20} />
+                        </button>
                     </div>
 
                     {/* Actions */}
@@ -115,6 +170,22 @@ export default function CropperModal({ image, onSave, onCancel }) {
                             className="px-4 py-2 text-sm font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 transition-colors"
                         >
                             Cancelar
+                        </button>
+                        <button
+                            onClick={() => onSave(originalFile)}
+                            className="
+                                flex items-center gap-2
+                                px-4 py-2
+                                text-sm font-medium
+                                rounded-xl
+                                bg-slate-100 dark:bg-slate-800
+                                text-slate-700 dark:text-slate-200
+                                hover:bg-slate-200 dark:hover:bg-slate-700
+                                transition-all
+                            "
+                        >
+                            <ImageIcon size={16} />
+                            Mantener original
                         </button>
                         <button
                             onClick={handleSave}
