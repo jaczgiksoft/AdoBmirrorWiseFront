@@ -13,6 +13,7 @@ const validChannels = [
     "shortcut:save",
     "system:get-pcname",
     "app:open-kiosk",
+    "app:close-kiosk",
     "app:update-available",
     "app:download-update",
     "app:get-update"
@@ -32,6 +33,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
      */
     exitApp: () => ipcRenderer.invoke("app:exit"),
     openKiosk: () => ipcRenderer.invoke("app:open-kiosk"),
+    closeKiosk: () => ipcRenderer.invoke("app:close-kiosk"),
 
     /**
      * 🧩 Utilidades

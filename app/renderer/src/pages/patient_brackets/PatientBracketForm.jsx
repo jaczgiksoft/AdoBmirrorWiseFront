@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { motion } from "framer-motion";
 import { X, Box, Loader2 } from "lucide-react";
+import BwiseColorPicker from "@/components/inputs/BwiseColorPicker";
 import { useToastStore } from "@/store/useToastStore";
 import { useHotkeys } from "@/hooks/useHotkeys";
 import { ConfirmDialog } from "@/components/feedback";
@@ -33,13 +34,22 @@ export default function PatientBracketForm({ open, onClose, onSaved, itemToEdit 
                     color: itemToEdit.color || "#6366f1",
                 });
             } else {
-                setForm(initialForm);
+                setForm({ ...initialForm, color: getRandomColor() });
             }
             // Pequeño delay para que el modal termine de animarse antes del focus
             const timer = setTimeout(() => firstRef.current?.focus(), 150);
             return () => clearTimeout(timer);
         }
     }, [open, itemToEdit]);
+
+    const getRandomColor = () => {
+        const letters = "0123456789ABCDEF";
+        let color = "#";
+        for (let i = 0; i < 6; i++) {
+            color += letters[Math.floor(Math.random() * 16)];
+        }
+        return color;
+    };
 
     // 🎹 Hotkeys
     useHotkeys(
@@ -210,18 +220,12 @@ export default function PatientBracketForm({ open, onClose, onSaved, itemToEdit 
                         </div>
 
                         {/* Color */}
-                        <div>
-                            <label className="block text-sm font-medium mb-1.5 text-slate-700 dark:text-slate-300">Color Distintivo</label>
-                            <div className="flex items-center gap-4">
-                                <input
-                                    type="color"
-                                    name="color"
-                                    value={form.color}
-                                    onChange={handleChange}
-                                    className="w-12 h-12 rounded-lg border-2 border-slate-200 dark:border-slate-700 cursor-pointer p-1 bg-white dark:bg-slate-800"
-                                />
-                                <span className="text-sm font-mono text-slate-500 uppercase">{form.color}</span>
-                            </div>
+                        <div className="w-28">
+                            <BwiseColorPicker
+                                label="Color"
+                                color={form.color}
+                                onChange={(color) => setForm((f) => ({ ...f, color: color.hex }))}
+                            />
                         </div>
                     </div>
 

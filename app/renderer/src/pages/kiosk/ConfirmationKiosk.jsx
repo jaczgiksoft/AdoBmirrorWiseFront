@@ -56,6 +56,17 @@ export default function ConfirmationKiosk() {
         generateQRToken(parsedTenant?.id);
     }, [navigate]);
 
+    // ⌨️ Escuchar tecla Escape para cerrar
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            if (e.key === "Escape") {
+                window.electronAPI.closeKiosk();
+            }
+        };
+        window.addEventListener("keydown", handleKeyDown);
+        return () => window.removeEventListener("keydown", handleKeyDown);
+    }, []);
+
     const handleNumberClick = (num) => {
         setError(null);
         if (phoneNumber.length < 10) {
@@ -130,6 +141,8 @@ export default function ConfirmationKiosk() {
 
     return (
         <div className="h-screen w-screen bg-slate-900 flex items-center justify-center font-sans overflow-hidden text-slate-100">
+
+
             {/* Background Accent */}
             {/* <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-sky-500/10 blur-[120px] rounded-full -translate-y-1/2 translate-x-1/2" />
             <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-purple-500/10 blur-[120px] rounded-full translate-y-1/2 -translate-x-1/2" /> */}

@@ -200,6 +200,7 @@ export default function ElasticsSection() {
     const [brackets, setBrackets] = useState({}); // New state for brackets
     const [activeChain, setActiveChain] = useState({ segments: [], lastPoint: null, startPoint: null });
     const [instructionToDelete, setInstructionToDelete] = useState(null);
+    const [showConfirmDiscard, setShowConfirmDiscard] = useState(false);
 
     // Estado de dientes cargado desde el odontograma (para reflejar dientes inactivos)
     const [toothStates, setToothStates] = useState({});
@@ -271,6 +272,32 @@ export default function ElasticsSection() {
     useEffect(() => {
         loadGlobalOdontogram();
     }, [loadGlobalOdontogram]);
+
+    // ---------------------------------------------------------
+    // HELPERS
+    // ---------------------------------------------------------
+    const hasChanges = () => {
+        if (isReadOnly) return false;
+
+        const isFormChanged =
+            startDate !== new Date().toISOString().split('T')[0] ||
+            endDate !== '' ||
+            hours !== '' ||
+            notes !== '' ||
+            selectedElasticTypeId !== ELASTIC_TYPES[0].id;
+
+        const isOdontogramChanged = historyIndex > 0;
+
+        return isFormChanged || isOdontogramChanged;
+    };
+
+    const onRequestClose = () => {
+        if (hasChanges()) {
+            setShowConfirmDiscard(true);
+        } else {
+            setIsModalOpen(false);
+        }
+    };
 
 
 
@@ -802,6 +829,7 @@ export default function ElasticsSection() {
         setActiveChain({ segments: [], lastPoint: null, startPoint: null });
         setHistory([{ activeChain: { segments: [], lastPoint: null, startPoint: null }, completedChains: [] }]);
         setHistoryIndex(0);
+        setShowConfirmDiscard(false);
 
         setIsModalOpen(true);
     };
@@ -824,6 +852,7 @@ export default function ElasticsSection() {
         setActiveChain({ segments: [], lastPoint: null, startPoint: null });
         setHistory([{ activeChain: { segments: [], lastPoint: null, startPoint: null }, completedChains: inst.odontogramData?.completedChains || [] }]);
         setHistoryIndex(0);
+        setShowConfirmDiscard(false);
 
         setIsModalOpen(true);
     };
@@ -1060,7 +1089,7 @@ export default function ElasticsSection() {
                                 {isReadOnly ? 'Ver Instrucción de Elásticos' : 'Registrar Nueva Instrucción'}
                             </h3>
                             <button
-                                onClick={() => setIsModalOpen(false)}
+                                onClick={onRequestClose}
                                 className="p-1 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
                             >
                                 <X size={20} />
@@ -1539,7 +1568,7 @@ export default function ElasticsSection() {
                         {/* Modal Footer */}
                         <div className="flex items-center justify-end gap-3 p-4 border-t border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/30 rounded-b-2xl shrink-0">
                             <button
-                                onClick={() => setIsModalOpen(false)}
+                                onClick={onRequestClose}
                                 className="
                                     px-4 py-2 rounded-lg text-sm font-medium
                                     text-slate-600 dark:text-slate-300
@@ -1590,6 +1619,20 @@ export default function ElasticsSection() {
                     setInstructionToDelete(null);
                 }}
                 onCancel={() => setInstructionToDelete(null)}
+            />
+
+            <ConfirmDialog
+                open={showConfirmDiscard}
+                title="¿Descartar cambios?"
+                message="Tienes cambios sin guardar en la instrucción. ¿Estás seguro de que deseas cerrar y perder los cambios?"
+                confirmLabel="Sí, descartar"
+                cancelLabel="Continuar editando"
+                confirmVariant="error"
+                onConfirm={() => {
+                    setShowConfirmDiscard(false);
+                    setIsModalOpen(false);
+                }}
+                onCancel={() => setShowConfirmDiscard(false)}
             />
         </div>
     );

@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { X } from "lucide-react";
-import { ChromePicker } from "react-color";
+import BwiseColorPicker from "@/components/inputs/BwiseColorPicker";
 import { useToastStore } from "@/store/useToastStore";
 import { create, update } from "@/services/service.service";
 import { useHotkeys } from "@/hooks/useHotkeys";
@@ -28,7 +28,6 @@ export default function ServiceForm({ open, onClose, onSaved, serviceToEdit = nu
     const [saving, setSaving] = useState(false);
     const [confirmCancel, setConfirmCancel] = useState(false);
     const [errors, setErrors] = useState({});
-    const [displayColorPicker, setDisplayColorPicker] = useState(false);
 
     const firstRef = useRef(null);
     const isEditing = !!serviceToEdit;
@@ -46,12 +45,21 @@ export default function ServiceForm({ open, onClose, onSaved, serviceToEdit = nu
                     unit_value: serviceToEdit.unit_value || "",
                 });
             } else {
-                setForm(initialForm);
+                setForm({ ...initialForm, color: getRandomColor() });
             }
             // Pequeño timeout para asegurar que el modal renderizó
             setTimeout(() => firstRef.current?.focus(), 50);
         }
     }, [open, serviceToEdit]);
+
+    const getRandomColor = () => {
+        const letters = "0123456789ABCDEF";
+        let color = "#";
+        for (let i = 0; i < 6; i++) {
+            color += letters[Math.floor(Math.random() * 16)];
+        }
+        return color;
+    };
 
     const hasFormChanges = () => {
         return Object.entries(form).some(([k, v]) => {
@@ -234,30 +242,12 @@ export default function ServiceForm({ open, onClose, onSaved, serviceToEdit = nu
                                 />
                                 {errors.name && <span className="text-xs text-error mt-1">{errors.name}</span>}
                             </div>
-                            <div className="w-20 relative">
-                                <label className="block text-sm mb-1 text-center">Color</label>
-                                <div
-                                    className="p-[5px] bg-white rounded shadow-sm cursor-pointer border border-slate-300 dark:border-slate-600 inline-block w-full"
-                                    onClick={() => setDisplayColorPicker(!displayColorPicker)}
-                                >
-                                    <div
-                                        className="w-full h-[26px] rounded-[2px]"
-                                        style={{ background: form.color }}
-                                    />
-                                </div>
-                                {displayColorPicker ? (
-                                    <div className="absolute z-50 top-full mt-2 right-0">
-                                        <div
-                                            className="fixed inset-0"
-                                            onClick={() => setDisplayColorPicker(false)}
-                                        />
-                                        <ChromePicker
-                                            color={form.color}
-                                            onChange={(color) => setForm((f) => ({ ...f, color: color.hex }))}
-                                            disableAlpha={true}
-                                        />
-                                    </div>
-                                ) : null}
+                            <div className="w-28">
+                                <BwiseColorPicker 
+                                    label="Color"
+                                    color={form.color} 
+                                    onChange={(color) => setForm((f) => ({ ...f, color: color.hex }))} 
+                                />
                             </div>
                         </div>
 

@@ -150,7 +150,7 @@ export default function ClinicalSection() {
 
                     <div className="space-y-0.5">
                         <div className="flex items-center gap-2">
-                            <ScanHeart size={28} className="text-primary" />
+                            <ScanHeart size={38} className="text-primary" />
                             <h1 className="text-3xl font-bold text-primary">
                                 Historia clínica del paciente
                             </h1>
@@ -166,9 +166,9 @@ export default function ClinicalSection() {
                     {!isEditing ? (
                         <button
                             onClick={handleEdit}
-                            className="flex items-center gap-2 px-4 py-2 bg-[var(--color-primary)] hover:opacity-90 text-white text-sm font-medium rounded-lg transition-all shadow-sm active:scale-95 cursor-pointer"
+                            className="flex items-center gap-2 px-4 py-2 bg-yellow-400 hover:bg-yellow-500 text-black text-sm font-medium rounded-lg transition-all shadow-sm active:scale-95 cursor-pointer"
                         >
-                            <Pencil size={16} />
+                            <Pencil size={26} />
                             <span>Editar</span>
                         </button>
                     ) : (
@@ -187,7 +187,7 @@ export default function ClinicalSection() {
                                     transition-all duration-150
                                 "
                             >
-                                <RotateCcw size={16} />
+                                <RotateCcw size={26} />
                                 Cancelar
                             </button>
                             <button
@@ -205,7 +205,7 @@ export default function ClinicalSection() {
                                     transition-all duration-150
                                 "
                             >
-                                <Save size={16} />
+                                <Save size={26} />
                                 {isSaving ? "Guardando..." : "Guardar cambios"}
                             </button>
                         </>
@@ -510,7 +510,7 @@ function Section({ title, icon: Icon, action, children }) {
         ">
             <div className="flex items-center justify-between">
                 <h2 className="text-lg font-bold flex items-center gap-2 text-primary">
-                    <Icon size={18} className="opacity-80" />
+                    <Icon size={28} className="opacity-80" />
                     {title}
                 </h2>
                 {action && <div>{action}</div>}
@@ -539,9 +539,9 @@ function Check({ label, value }) {
     return (
         <div className="flex items-center gap-1.5 text-sm">
             {value ? (
-                <CheckCircle2 className="text-green-500" size={16} />
+                <CheckCircle2 className="text-green-500" size={26} />
             ) : (
-                <XCircle className="text-red-500" size={16} />
+                <XCircle className="text-red-500" size={26} />
             )}
             <span className="text-[13px]">{label}</span>
         </div>
@@ -611,7 +611,7 @@ function ChipInput({ label, value, onClick }) {
             `}
         >
             <div className="flex items-center gap-1.5">
-                {value ? <CheckCircle2 size={12} /> : <XCircle size={12} />}
+                {value ? <CheckCircle2 size={22} /> : <XCircle size={22} />}
                 {label}
             </div>
         </button>

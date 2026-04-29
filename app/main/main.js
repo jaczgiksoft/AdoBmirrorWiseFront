@@ -249,6 +249,13 @@ ipcMain.handle("app:exit", async () => {
     app.quit();
 });
 
+ipcMain.handle("app:close-kiosk", async () => {
+    if (kioskWindow && !kioskWindow.isDestroyed()) {
+        console.log("🛑 Cerrando ventana de kiosko...");
+        kioskWindow.close();
+    }
+});
+
 // 📺 Kiosko de Auto-confirmación
 ipcMain.handle("app:open-kiosk", async () => {
     if (kioskWindow && !kioskWindow.isDestroyed()) {

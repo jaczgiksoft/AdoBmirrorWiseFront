@@ -22,6 +22,7 @@ export default function PatientRepresentativeModal({ open, onClose, onSave, repr
     };
 
     const RELATIONSHIP_OPTIONS = [
+        "Padre y Madre",
         "Padre",
         "Madre",
         "Tutor",
