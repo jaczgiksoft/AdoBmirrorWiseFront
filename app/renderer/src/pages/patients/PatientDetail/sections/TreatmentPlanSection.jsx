@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { SketchPicker } from 'react-color';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     ClipboardList,
@@ -36,7 +35,7 @@ import { CSS } from '@dnd-kit/utilities';
 
 import { useHotkeys } from '@/hooks/useHotkeys';
 import { useToastStore } from '@/store/useToastStore';
-import { AutocompleteInput, DateInput } from '@/components/inputs';
+import { AutocompleteInput, AutocompleteTextArea, DateInput, BwiseColorPicker } from '@/components/inputs';
 
 import { useOutletContext } from 'react-router-dom';
 import * as treatmentPlanService from '@/services/treatmentPlan.service';
@@ -392,41 +391,6 @@ function SortableTreatmentItem({ id, treatment, onUpdate, onSelectCatalog, onRem
         isDragging
     } = useSortable({ id });
 
-    const [showColorPicker, setShowColorPicker] = useState(false);
-    const triggerRef = useRef(null);
-    const [coords, setCoords] = useState({ top: 0, left: 0 });
-
-    const updatePickerPosition = () => {
-        if (triggerRef.current) {
-            const rect = triggerRef.current.getBoundingClientRect();
-            setCoords({
-                top: rect.bottom + window.scrollY + 4,
-                left: rect.left + window.scrollX - 100 // Shift left to keep in view
-            });
-        }
-    };
-
-    const handleTogglePicker = (e) => {
-        e.stopPropagation(); // prevent drag start
-        if (!showColorPicker) {
-            updatePickerPosition();
-            setShowColorPicker(true);
-        } else {
-            setShowColorPicker(false);
-        }
-    };
-
-    useEffect(() => {
-        if (showColorPicker) {
-            window.addEventListener('scroll', updatePickerPosition, true);
-            window.addEventListener('resize', updatePickerPosition);
-        }
-        return () => {
-            window.removeEventListener('scroll', updatePickerPosition, true);
-            window.removeEventListener('resize', updatePickerPosition);
-        };
-    }, [showColorPicker]);
-
     const style = {
         transform: CSS.Transform.toString(transform),
         transition,
@@ -456,7 +420,7 @@ function SortableTreatmentItem({ id, treatment, onUpdate, onSelectCatalog, onRem
                 {/* Row 1: Catalog Select & Color */}
                 <div className="flex gap-2 items-center">
                     <div className="flex-1">
-                        <AutocompleteInput
+                        <AutocompleteTextArea
                             options={catalog}
                             value={treatment.title}
                             onChange={(val) => {
@@ -469,49 +433,21 @@ function SortableTreatmentItem({ id, treatment, onUpdate, onSelectCatalog, onRem
                             placeholder="Escribir tratamiento..."
                         />
                     </div>
-                    {/* Color Display (Auto-set) */}
-                    {/* Color Display (Auto-set or Manual) */}
-                    {/* Color Display (Auto-set or Manual) */}
-                    <div ref={triggerRef} className="relative">
-                        <div
-                            className="w-8 h-8 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 cursor-pointer transition-transform hover:scale-105"
-                            style={{ backgroundColor: treatment.color || '#3b82f6' }}
-                            title={`Color asignado: ${treatment.color}`}
-                            onPointerDown={(e) => e.stopPropagation()}
-                            onClick={handleTogglePicker}
+                    {/* Color Picker */}
+                    <div className="w-10 flex-shrink-0">
+                        <BwiseColorPicker
+                            label={null}
+                            color={treatment.color}
+                            onChange={(color) => onUpdate('color', color.hex)}
                         />
-                        {showColorPicker && createPortal(
-                            <div
-                                className="fixed inset-0 z-[9999]"
-                                onClick={() => setShowColorPicker(false)}
-                            >
-                                <div
-                                    className="absolute shadow-xl rounded-lg overflow-hidden animate-in fade-in zoom-in-95 duration-100"
-                                    style={{ top: coords.top, left: coords.left }}
-                                    onClick={(e) => e.stopPropagation()}
-                                    onPointerDown={(e) => e.stopPropagation()}
-                                >
-                                    <SketchPicker
-                                        color={treatment.color || '#3b82f6'}
-                                        onChangeComplete={(color) => onUpdate('color', color.hex)}
-                                        disableAlpha
-                                        presetColors={[
-                                            '#3b82f6', '#ef4444', '#10b981', '#f59e0b',
-                                            '#8b5cf6', '#ec4899', '#6366f1', '#14b8a6', '#f43f5e'
-                                        ]}
-                                    />
-                                </div>
-                            </div>,
-                            document.body
-                        )}
                     </div>
                 </div>
 
                 {/* Row 2: Description */}
-                <input
-                    type="text"
+                <textarea
                     placeholder="Descripción corta..."
-                    className="w-full px-2 py-1.5 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded focus:border-primary outline-none"
+                    rows={2}
+                    className="w-full px-2 py-1.5 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded focus:border-primary outline-none resize-none"
                     value={treatment.description}
                     onChange={e => onUpdate('description', e.target.value)}
                 />
@@ -579,7 +515,7 @@ function TreatmentPlanModal({ isOpen, onClose, onSave, catalog = [] }) {
             id: `new-${Date.now()}`,
             title: '',
             description: '',
-            color: 'blue'
+            color: 'red'
         };
         setTreatments([...treatments, newItem]);
     };
@@ -695,9 +631,10 @@ function TreatmentPlanModal({ isOpen, onClose, onSave, catalog = [] }) {
                                 <input
                                     type="number"
                                     min="1"
+                                    placeholder='0'
                                     className={`w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border ${errors.durationMonths ? "border-error ring-1 ring-error/50" : "border-slate-200 dark:border-slate-700"} rounded-lg text-sm focus:ring-2 focus:ring-primary/50 outline-none`}
                                     value={durationMonths}
-                                    onChange={e => setDurationMonths(parseInt(e.target.value) || 0)}
+                                    onChange={e => setDurationMonths(parseInt(e.target.value) || null)}
                                 />
                                 {errors.durationMonths && <p className="text-error text-[10px] mt-1">{errors.durationMonths}</p>}
                             </div>

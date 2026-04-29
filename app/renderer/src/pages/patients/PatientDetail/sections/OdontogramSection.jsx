@@ -648,6 +648,48 @@ const buildInitialToothStates = () => {
 // 3. Components
 // ==========================================
 
+// Helper component to handle async loading of tooth icons in the radial menu
+function RadialToothIcon({ toothId, typeId, customRotation, label, isCombined, types }) {
+    const [src, setSrc] = useState(null);
+
+    useEffect(() => {
+        let isMounted = true;
+        const load = async () => {
+            try {
+                let url;
+                if (isCombined) {
+                    url = await generateCombinedSvgDataUrl(toothId, types);
+                } else {
+                    url = await getToothSrc(toothId, typeId);
+                }
+                if (isMounted) setSrc(url);
+            } catch (err) {
+                console.error("Error loading radial icon:", err);
+            }
+        };
+        load();
+        return () => { isMounted = false; };
+    }, [toothId, typeId, isCombined, JSON.stringify(types)]);
+
+    if (!src) {
+        return (
+            <div className="w-4/5 h-4/5 flex items-center justify-center">
+                <span className="loading loading-spinner loading-xs text-slate-400"></span>
+            </div>
+        );
+    }
+
+    return (
+        <img
+            src={src}
+            alt={label}
+            draggable={false}
+            style={{ transform: `rotate(${customRotation}deg)` }}
+            className="w-4/5 h-4/5 object-contain drop-shadow-md select-none opacity-90 transition-opacity"
+        />
+    );
+}
+
 // Individual Tooth Component (Frontal) - Unchanged visuals
 function Tooth({ id, type, hasBracket, isBroken, repairCount = 0, isSelectedBracket, isBracketMode, isTadMode, onToothClick, onToothRightClick, currentClinicalAction, onResize, hideLabel, hoveredPreviewType, hasNote, onNoteClick }) {
     const isImplantCrown = type === 'implant-crown';
@@ -3675,12 +3717,11 @@ export default function OdontogramSection() {
                     className={`group relative w-[76px] h-[76px] rounded-full flex items-center justify-center p-1 text-center bg-transparent shadow-none border border-transparent cursor-pointer hover:scale-105 hover:bg-slate-100/10 dark:hover:bg-slate-800/50 transition-transform ${type.color.replace(/bg-[a-z0-9/-]+/g, '').replace(/border-[a-z0-9/-]+/g, '')}`}
                 >
                     {radialState?.toothId && (
-                        <img
-                            src={getToothSrc(radialState.toothId, type.id)}
-                            alt={type.label}
-                            draggable={false}
-                            style={{ transform: `rotate(${customRotation}deg)` }}
-                            className={`w-4/5 h-4/5 object-contain drop-shadow-md select-none opacity-90 transition-opacity`}
+                        <RadialToothIcon
+                            toothId={radialState.toothId}
+                            typeId={type.id}
+                            customRotation={customRotation}
+                            label={type.label}
                         />
                     )}
                 </div>
@@ -3732,8 +3773,6 @@ export default function OdontogramSection() {
             );
         }
 
-        const iconSrc = generateCombinedSvgDataUrl(pendingCombination.toothId, types);
-
         return (
             <MenuItem
                 key={id || (isCombined ? 'combined' : 'replace')}
@@ -3784,15 +3823,13 @@ export default function OdontogramSection() {
                 }}
             >
                 <div className="group relative w-[80px] h-[80px] rounded-full flex flex-col items-center justify-center p-1 text-center bg-transparent shadow-none border border-transparent cursor-pointer hover:scale-105 hover:bg-slate-100/10 dark:hover:bg-slate-800/50 transition-transform">
-                    <img
-                        src={iconSrc}
-                        alt={label}
-                        draggable={false}
-                        style={{ transform: `rotate(${customRotation}deg)` }}
-                        className="w-4/5 h-4/5 object-contain drop-shadow-md select-none opacity-90 transition-opacity"
+                    <RadialToothIcon
+                        toothId={pendingCombination.toothId}
+                        isCombined={true}
+                        types={types}
+                        label={label}
+                        customRotation={customRotation}
                     />
-
-
                 </div>
             </MenuItem>
         );

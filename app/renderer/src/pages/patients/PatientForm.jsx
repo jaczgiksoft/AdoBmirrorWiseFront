@@ -231,7 +231,6 @@ export default function PatientForm({ open, onClose, onCreated, patientType }) {
                 "genre",
                 "birth_date",
                 "phone_number",
-                "email",
             ];
 
             required.forEach((f) => {
@@ -744,7 +743,7 @@ export default function PatientForm({ open, onClose, onCreated, patientType }) {
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm mb-1 label-required">Correo</label>
+                                <label className="block text-sm mb-1">Correo</label>
                                 <input
                                     name="email"
                                     placeholder="correo@ejemplo.com"
