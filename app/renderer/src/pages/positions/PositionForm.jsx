@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, UserCog, CheckCircle2, Loader2 } from "lucide-react";
+import BwiseColorPicker from "@/components/inputs/BwiseColorPicker";
 import { useToastStore } from "@/store/useToastStore";
 import { useHotkeys } from "@/hooks/useHotkeys";
 import { ConfirmDialog } from "@/components/feedback";
@@ -34,11 +35,20 @@ export default function PositionForm({ open, onClose, onSaved, itemToEdit = null
                     isAppointmentEligible: !!itemToEdit.isAppointmentEligible
                 });
             } else {
-                setForm(initialForm);
+                setForm({ ...initialForm, color: getRandomColor() });
             }
             setTimeout(() => firstRef.current?.focus(), 50);
         }
     }, [open, itemToEdit]);
+
+    const getRandomColor = () => {
+        const letters = "0123456789ABCDEF";
+        let color = "#";
+        for (let i = 0; i < 6; i++) {
+            color += letters[Math.floor(Math.random() * 16)];
+        }
+        return color;
+    };
 
     // 🎹 Hotkeys
     useHotkeys(
@@ -72,9 +82,9 @@ export default function PositionForm({ open, onClose, onSaved, itemToEdit = null
 
     const handleChange = (e) => {
         const { name, value, type, checked } = e.target;
-        setForm((f) => ({ 
-            ...f, 
-            [name]: type === 'checkbox' ? checked : value 
+        setForm((f) => ({
+            ...f,
+            [name]: type === 'checkbox' ? checked : value
         }));
 
         if (errors[name]) {
@@ -96,7 +106,7 @@ export default function PositionForm({ open, onClose, onSaved, itemToEdit = null
 
     const handleSubmit = async () => {
         if (saving) return;
-        
+
         const isValid = validateForm();
         if (!isValid) {
             addToast({
@@ -156,7 +166,7 @@ export default function PositionForm({ open, onClose, onSaved, itemToEdit = null
                     {/* Encabezado */}
                     <div className="flex justify-between items-center p-6 border-b border-slate-100 dark:border-slate-700">
                         <div className="flex items-center gap-3">
-                            <div 
+                            <div
                                 className="w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-lg"
                                 style={{ backgroundColor: form.color }}
                             >
@@ -176,7 +186,7 @@ export default function PositionForm({ open, onClose, onSaved, itemToEdit = null
 
                     {/* Formulario */}
                     <div className="p-6 flex flex-col gap-5">
-                        
+
                         {/* Nombre */}
                         <div>
                             <label className="block text-sm font-medium mb-1.5 label-required text-slate-700 dark:text-slate-300">Nombre del Puesto</label>
@@ -206,18 +216,12 @@ export default function PositionForm({ open, onClose, onSaved, itemToEdit = null
 
                         {/* Color */}
                         <div className="flex items-center justify-between gap-4">
-                            <div>
-                                <label className="block text-sm font-medium mb-1.5 text-slate-700 dark:text-slate-300">Color Identificador</label>
-                                <div className="flex items-center gap-3">
-                                    <input
-                                        type="color"
-                                        name="color"
-                                        value={form.color}
-                                        onChange={handleChange}
-                                        className="w-10 h-10 rounded-lg border-2 border-slate-200 dark:border-slate-700 cursor-pointer p-1 bg-white dark:bg-slate-800"
-                                    />
-                                    <span className="text-xs font-mono text-slate-500 uppercase">{form.color}</span>
-                                </div>
+                            <div className="w-28">
+                                <BwiseColorPicker
+                                    label="Color"
+                                    color={form.color}
+                                    onChange={(color) => setForm((f) => ({ ...f, color: color.hex }))}
+                                />
                             </div>
 
                             {/* Is Appointment Eligible */}

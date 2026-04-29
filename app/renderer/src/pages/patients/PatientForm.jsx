@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { motion } from "framer-motion";
-import { X, Upload, TriangleAlert } from "lucide-react";
+import { X, Upload, TriangleAlert, Plus, Loader2 } from "lucide-react";
 import { useToastStore } from "@/store/useToastStore";
 import { createPatient, getNextMedicalRecord } from "@/services/patient.service";
 import { useHotkeys } from "@/hooks/useHotkeys";
@@ -12,7 +12,7 @@ import PatientRepresentativeModal from "./shared/PatientRepresentativeModal";
 import PatientRepresentativeList from "./shared/PatientRepresentativeList";
 import PatientBillingDataModal from "./shared/PatientBillingDataModal";
 import PatientBillingDataList from "./shared/PatientBillingDataList";
-import { getReferrals } from "@/services/referral.service";
+import { getReferrals, createReferral } from "@/services/referral.service";
 import BwiseDatePicker from "@/components/calendar/BwiseDatePicker";
 import UniversalDatePicker from "@/components/inputs/UniversalDatePicker";
 import dayjs from "dayjs";
@@ -73,6 +73,9 @@ export default function PatientForm({ open, onClose, onCreated, patientType }) {
     const [representativeEditingIndex, setRepresentativeEditingIndex] = useState(null);
     const [billingModalOpen, setBillingModalOpen] = useState(false);
     const [billingEditingIndex, setBillingEditingIndex] = useState(null);
+    const [referralModalOpen, setReferralModalOpen] = useState(false);
+    const [newReferralName, setNewReferralName] = useState("");
+    const [savingReferral, setSavingReferral] = useState(false);
     const [referrals, setReferrals] = useState([]);
     const today = new Date().toISOString().split("T")[0];
     const firstRef = useRef(null);
@@ -337,6 +340,49 @@ export default function PatientForm({ open, onClose, onCreated, patientType }) {
         setConfirmCancel(false);
         setStep(1);
         onClose();
+    };
+
+    const handleSaveQuickReferral = async () => {
+        if (!newReferralName.trim()) {
+            addToast({
+                type: "error",
+                title: "Campo requerido",
+                message: "Por favor, ingresa el nombre del referido.",
+            });
+            return;
+        }
+
+        setSavingReferral(true);
+        try {
+            const newReferral = await createReferral({ name: newReferralName });
+
+            // Refrescamos la lista completa desde la API para asegurar sincronía
+            const updatedReferrals = await getReferrals();
+            setReferrals(updatedReferrals);
+
+            // Seleccionamos el nuevo ID automáticamente
+            setForm((f) => ({
+                ...f,
+                referral_id: newReferral.referral.id,
+            }));
+
+            addToast({
+                type: "success",
+                title: "Referidor guardado",
+                message: `"${newReferral.referral.name}" ha sido registrado correctamente.`,
+            });
+
+            setReferralModalOpen(false);
+            setNewReferralName("");
+        } catch (err) {
+            addToast({
+                type: "error",
+                title: "Error al guardar",
+                message: err.message || "No se pudo registrar el referido.",
+            });
+        } finally {
+            setSavingReferral(false);
+        }
     };
 
     const calculateAge = (birthDate) => {
@@ -659,19 +705,29 @@ export default function PatientForm({ open, onClose, onCreated, patientType }) {
                             {/* Referidor */}
                             <div>
                                 <label className="block text-sm mb-1">Referido por</label>
-                                <select
-                                    name="referral_id"
-                                    value={form.referral_id || ""}
-                                    onChange={handleChange}
-                                    className="input"
-                                >
-                                    <option value="">Sin referidor</option>
-                                    {referrals.map(r => (
-                                        <option key={r.id} value={r.id}>
-                                            {r.name}
-                                        </option>
-                                    ))}
-                                </select>
+                                <div className="flex gap-2">
+                                    <select
+                                        name="referral_id"
+                                        value={form.referral_id || ""}
+                                        onChange={handleChange}
+                                        className="input flex-1"
+                                    >
+                                        <option value="">Sin referidor</option>
+                                        {referrals.map(r => (
+                                            <option key={r.id} value={r.id}>
+                                                {r.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                    <button
+                                        type="button"
+                                        onClick={() => setReferralModalOpen(true)}
+                                        className="p-2 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                                        title="Nuevo referidor"
+                                    >
+                                        <Plus size={20} />
+                                    </button>
+                                </div>
                             </div>
                         </div>
 
@@ -1350,6 +1406,67 @@ export default function PatientForm({ open, onClose, onCreated, patientType }) {
                 cancelLabel="Seguir editando"
                 confirmVariant="error"
             />
+            {/* MODAL NUEVO REFERIDOR */}
+            {referralModalOpen && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100]">
+                    <motion.div
+                        initial={{ scale: 0.9, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        className="bg-white dark:bg-secondary rounded-xl border border-slate-300 dark:border-slate-700 p-6 w-[400px] shadow-xl"
+                    >
+                        <div className="flex justify-between items-center mb-4">
+                            <h2 className="text-lg font-semibold text-primary flex items-center gap-2">
+                                <Plus size={20} />
+                                Nuevo Referidor
+                            </h2>
+                            <button
+                                type="button"
+                                onClick={() => setReferralModalOpen(false)}
+                                className="text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
+                            >
+                                <X size={18} />
+                            </button>
+                        </div>
+
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm mb-1 label-required">Nombre</label>
+                                <input
+                                    autoFocus
+                                    className="input"
+                                    placeholder="Ej: Recomendación de paciente"
+                                    value={newReferralName}
+                                    onChange={(e) => setNewReferralName(e.target.value)}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                            e.preventDefault();
+                                            handleSaveQuickReferral();
+                                        }
+                                    }}
+                                />
+                            </div>
+
+                            <div className="flex justify-end gap-3 mt-6">
+                                <button
+                                    type="button"
+                                    onClick={() => setReferralModalOpen(false)}
+                                    className="px-4 py-2 rounded-lg bg-slate-200 text-slate-700 hover:bg-slate-300 dark:bg-slate-700 dark:text-slate-200"
+                                >
+                                    Cancelar
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={handleSaveQuickReferral}
+                                    disabled={savingReferral}
+                                    className="px-4 py-2 rounded-lg bg-primary text-white hover:bg-primary/90 flex items-center gap-2"
+                                >
+                                    {savingReferral ? <Loader2 className="animate-spin" size={18} /> : "Guardar"}
+                                </button>
+                            </div>
+                        </div>
+                    </motion.div>
+                </div>
+            )}
         </>,
         document.body
     );

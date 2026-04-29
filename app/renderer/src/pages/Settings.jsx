@@ -61,7 +61,7 @@ const SETTINGS_MENU = [
         label: "Servicios",
         description: "Gestiona los servicios y tratamientos ofrecidos.",
         path: "/services",
-        category: "Pacientes",
+        category: "Clinica",
     },
     {
         icon: <UserCircle2 size={28} />,
