@@ -35,7 +35,7 @@ import { CSS } from '@dnd-kit/utilities';
 
 import { useHotkeys } from '@/hooks/useHotkeys';
 import { useToastStore } from '@/store/useToastStore';
-import { AutocompleteInput, AutocompleteTextArea, DateInput, BwiseColorPicker } from '@/components/inputs';
+import { AutocompleteInput, AutocompleteTextArea, DateInput, BwiseColorPicker, BwiseRichTextEditor } from '@/components/inputs';
 
 import { useOutletContext } from 'react-router-dom';
 import * as treatmentPlanService from '@/services/treatmentPlan.service';
@@ -369,6 +369,15 @@ function TreatmentPlanCard({ plan, onDelete }) {
                             {(!plan.items || plan.items.length === 0) && (
                                 <p className="text-slate-400 text-xs italic">Sin tratamientos definidos.</p>
                             )}
+                            {plan.notes && (
+                                <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-700/50">
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Notas del Plan</p>
+                                    <div
+                                        className="text-xs text-slate-600 dark:text-slate-300 tiptap-editor-content"
+                                        dangerouslySetInnerHTML={{ __html: plan.notes }}
+                                    />
+                                </div>
+                            )}
                         </div>
                     </motion.div>
                 )}
@@ -471,6 +480,10 @@ function TreatmentPlanModal({ isOpen, onClose, onSave, catalog = [] }) {
     const [startDate, setStartDate] = useState('');
     const [durationMonths, setDurationMonths] = useState(6);
     const [isMain, setIsMain] = useState(false);
+    const [notes, setNotes] = useState({
+        json: null,
+        html: ''
+    });
     const [treatments, setTreatments] = useState([]);
     const [errors, setErrors] = useState({});
 
@@ -489,6 +502,7 @@ function TreatmentPlanModal({ isOpen, onClose, onSave, catalog = [] }) {
             setStartDate(new Date().toISOString().split('T')[0]);
             setDurationMonths(6);
             setIsMain(false);
+            setNotes('');
             setTreatments([]);
             setErrors({});
         }
@@ -506,7 +520,7 @@ function TreatmentPlanModal({ isOpen, onClose, onSave, catalog = [] }) {
                 onClose();
             }
         },
-        [isOpen, title, startDate, durationMonths, isMain, treatments],
+        [isOpen, title, startDate, durationMonths, isMain, notes, treatments],
         isOpen
     );
 
@@ -571,6 +585,8 @@ function TreatmentPlanModal({ isOpen, onClose, onSave, catalog = [] }) {
             start_date: startDate,
             duration_months: durationMonths,
             is_main: isMain,
+            diagnosis_content: notes?.json ? JSON.stringify(notes.json) : null,
+            diagnosis_content_html: notes?.html || '',
             treatments: treatments.filter(t => t.title && t.title.trim() !== '')
         });
     };
@@ -645,6 +661,17 @@ function TreatmentPlanModal({ isOpen, onClose, onSave, catalog = [] }) {
                             <span className="text-sm font-medium text-slate-700 dark:text-slate-200 select-none">
                                 ¿Es el plan principal?
                             </span>
+                        </div>
+
+                        <div>
+                            <label className="block text-xs font-semibold text-slate-500 uppercase mb-1.5">
+                                Notas y Observaciones
+                            </label>
+                            <BwiseRichTextEditor
+                                value={notes?.html}
+                                onChange={setNotes}
+                                placeholder="Agregar detalles adicionales sobre el plan de tratamiento..."
+                            />
                         </div>
                     </div>
 
