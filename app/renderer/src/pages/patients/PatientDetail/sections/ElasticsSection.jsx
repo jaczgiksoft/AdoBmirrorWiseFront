@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useParams } from 'react-router-dom';
-import { Layers, Plus, X, Calendar, Clock, Undo2, Redo2, Trash2, Loader2, LayoutGrid, XCircle } from 'lucide-react';
+import { Layers, Plus, X, Calendar, Clock, Undo2, Redo2, Trash2, Loader2, LayoutGrid, XCircle, Lightbulb, MousePointer2, Keyboard, Info } from 'lucide-react';
 import { DateInput } from '@/components/inputs';
 import { ConfirmDialog } from '@/components/feedback';
 import bracketImg from '@/assets/images/odontogram/bracket.svg';
@@ -207,11 +207,14 @@ export default function ElasticsSection() {
     const [selectedElasticTypeId, setSelectedElasticTypeId] = useState('');
     const [elasticTypes, setElasticTypes] = useState([]);
     const [isElasticModalOpen, setIsElasticModalOpen] = useState(false);
+    const [showLegend, setShowLegend] = useState(false);
 
     const fetchElasticTypes = useCallback(async (autoSelectId = null) => {
         try {
             const data = await elasticTypeService.getAll();
             setElasticTypes(data);
+
+            console.log("autoSelectId", autoSelectId);
 
             if (autoSelectId) {
                 setSelectedElasticTypeId(autoSelectId);
@@ -734,6 +737,21 @@ export default function ElasticsSection() {
         }
     };
 
+    const finishCurrentChain = useCallback(() => {
+        if (activeChain.segments.length > 0) {
+            const finalChain = { ...activeChain, typeId: selectedElasticTypeId };
+            const newCompleted = [...completedChains, finalChain];
+            const newActive = { segments: [], lastPoint: null, startPoint: null };
+            setCompletedChains(newCompleted);
+            setActiveChain(newActive);
+            pushToHistory(newActive, newCompleted);
+        } else if (activeChain.lastPoint) {
+            const newActive = { segments: [], lastPoint: null, startPoint: null };
+            setActiveChain(newActive);
+            pushToHistory(newActive, completedChains);
+        }
+    }, [activeChain, completedChains, selectedElasticTypeId, pushToHistory]);
+
     const handleUndo = useCallback(() => {
         if (historyIndex > 0) {
             const newIndex = historyIndex - 1;
@@ -974,13 +992,21 @@ export default function ElasticsSection() {
                 e.preventDefault();
                 handleRedo();
             }
+            if (e.key === 'Enter' && (activeChain.lastPoint || activeChain.segments.length > 0)) {
+                // Prevent trigger if typing in form fields
+                if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') {
+                    return;
+                }
+                e.preventDefault();
+                finishCurrentChain();
+            }
         };
 
         if (isModalOpen) {
             window.addEventListener('keydown', handleKeyDown);
         }
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [handleUndo, handleRedo, isModalOpen]);
+    }, [handleUndo, handleRedo, isModalOpen, activeChain, finishCurrentChain]);
 
     return (
         <div className="space-y-6 text-slate-800 dark:text-slate-100">
@@ -1179,6 +1205,14 @@ export default function ElasticsSection() {
                                         >
                                             <XCircle size={16} />
                                         </button>
+                                        <div className="w-[1px] h-4 bg-slate-300 dark:bg-slate-600 mx-1"></div>
+                                        <button
+                                            onClick={() => setShowLegend(true)}
+                                            title="Ayuda e Instrucciones"
+                                            className="p-1.5 rounded-md text-amber-500 hover:bg-white dark:hover:bg-slate-700 hover:shadow-sm transition-all active:scale-95"
+                                        >
+                                            <Lightbulb size={16} />
+                                        </button>
                                     </div>
                                 </div>
 
@@ -1340,17 +1374,16 @@ export default function ElasticsSection() {
                                                                         width={tadSize}
                                                                         height={tadSize}
                                                                         style={{ transformOrigin: `${tadHalfSize}px ${tadHalfSize}px`, transform: tooth.isUpper ? 'none' : 'rotate(180deg)' }}
-                                                                        className={`transition-all duration-300 ${
-                                                                            isOrigin 
-                                                                            ? 'drop-shadow-[0_0_15px_rgba(34,197,94,1)] brightness-150 scale-[1.5] animate-pulse' 
-                                                                            : isLast 
-                                                                                ? 'drop-shadow-[0_0_12px_rgba(59,130,246,1)] brightness-125 scale-[1.3]' 
-                                                                                : isPartByChain 
-                                                                                    ? 'drop-shadow-[0_0_5px_rgba(59,130,246,0.8)] brightness-110 scale-110' 
-                                                                                    : isCompleted 
-                                                                                        ? 'opacity-100 drop-shadow-sm brightness-90' 
+                                                                        className={`transition-all duration-300 ${isOrigin
+                                                                            ? 'drop-shadow-[0_0_15px_rgba(34,197,94,1)] brightness-150 scale-[1.5] animate-pulse'
+                                                                            : isLast
+                                                                                ? 'drop-shadow-[0_0_12px_rgba(59,130,246,1)] brightness-125 scale-[1.3]'
+                                                                                : isPartByChain
+                                                                                    ? 'drop-shadow-[0_0_5px_rgba(59,130,246,0.8)] brightness-110 scale-110'
+                                                                                    : isCompleted
+                                                                                        ? 'opacity-100 drop-shadow-sm brightness-90'
                                                                                         : 'opacity-80 hover:opacity-100 hover:scale-110'
-                                                                        }`}
+                                                                            }`}
                                                                     />
                                                                 ) : (
                                                                     actionType === 'tad' && (
@@ -1419,17 +1452,16 @@ export default function ElasticsSection() {
                                                                                     width={sizeW}
                                                                                     height={sizeH}
                                                                                     style={{ transformOrigin: '14px 14px' }}
-                                                                                    className={`transition-all duration-300 ${
-                                                                                        isOrigin 
-                                                                                        ? 'drop-shadow-[0_0_15px_rgba(34,197,94,1)] brightness-150 scale-[1.5] animate-pulse' 
-                                                                                        : isLast 
-                                                                                            ? 'drop-shadow-[0_0_12px_rgba(59,130,246,1)] brightness-125 scale-[1.3]' 
-                                                                                            : isPartByChain 
-                                                                                                ? 'drop-shadow-[0_0_5px_rgba(59,130,246,0.8)] brightness-110 scale-110' 
-                                                                                                : isCompleted 
-                                                                                                    ? 'opacity-100 drop-shadow-sm brightness-90' 
+                                                                                    className={`transition-all duration-300 ${isOrigin
+                                                                                        ? 'drop-shadow-[0_0_15px_rgba(34,197,94,1)] brightness-150 scale-[1.5] animate-pulse'
+                                                                                        : isLast
+                                                                                            ? 'drop-shadow-[0_0_12px_rgba(59,130,246,1)] brightness-125 scale-[1.3]'
+                                                                                            : isPartByChain
+                                                                                                ? 'drop-shadow-[0_0_5px_rgba(59,130,246,0.8)] brightness-110 scale-110'
+                                                                                                : isCompleted
+                                                                                                    ? 'opacity-100 drop-shadow-sm brightness-90'
                                                                                                     : 'opacity-80 hover:opacity-100 hover:scale-105'
-                                                                                    }`}
+                                                                                        }`}
                                                                                 />
                                                                             </g>
                                                                         </g>
@@ -1665,7 +1697,7 @@ export default function ElasticsSection() {
             <ElasticTypeForm
                 open={isElasticModalOpen}
                 onClose={() => setIsElasticModalOpen(false)}
-                onSaved={(newType) => fetchElasticTypes(newType?.id)}
+                onSaved={(newType) => fetchElasticTypes(newType.elastic_type.id)}
             />
 
             <ConfirmDialog
@@ -1706,6 +1738,119 @@ export default function ElasticsSection() {
                 }}
                 onCancel={() => setShowConfirmDiscard(false)}
             />
+
+            {/* Legend / Help Modal */}
+            {showLegend && (
+                <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="
+                        w-full max-w-2xl bg-white dark:bg-secondary
+                        rounded-2xl shadow-2xl
+                        border border-slate-200 dark:border-slate-700
+                        animate-in zoom-in-95 duration-200
+                        flex flex-col overflow-hidden
+                    ">
+                        {/* Header */}
+                        <div className="flex items-center justify-between p-5 border-b border-slate-100 dark:border-slate-700 bg-amber-50/50 dark:bg-amber-950/10">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-amber-100 dark:bg-amber-900/30 rounded-lg text-amber-600 dark:text-amber-400">
+                                    <Lightbulb size={24} />
+                                </div>
+                                <div>
+                                    <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">Guía de Uso de Elásticos</h3>
+                                    <p className="text-sm text-slate-500 dark:text-slate-400">Instrucciones rápidas para el odontograma</p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setShowLegend(false)}
+                                className="p-2 rounded-xl text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        {/* Body */}
+                        <div className="p-6 space-y-6 overflow-y-auto max-h-[70vh]">
+                            {/* Tools Section */}
+                            <div className="space-y-4">
+                                <h4 className="flex items-center gap-2 text-sm font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">
+                                    <MousePointer2 size={16} className="text-primary" />
+                                    Herramientas de Dibujo
+                                </h4>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700/50">
+                                        <p className="text-sm font-bold text-slate-800 dark:text-slate-100 mb-1">Colocar Brackets / TADs</p>
+                                        <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                                            Seleccione la herramienta correspondiente y haga clic sobre el diente (para bracket) o espacio interproximal (para TAD) para agregarlo o quitarlo.
+                                        </p>
+                                    </div>
+                                    <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700/50">
+                                        <p className="text-sm font-bold text-slate-800 dark:text-slate-100 mb-1">Dibujar Elásticos</p>
+                                        <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                                            Con la herramienta de elásticos activa, haga clic en un punto de origen y luego en puntos sucesivos para crear la cadena.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Routing & Types */}
+                            <div className="space-y-4">
+                                <h4 className="flex items-center gap-2 text-sm font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">
+                                    <Info size={16} className="text-primary" />
+                                    Configuración de Ruta
+                                </h4>
+                                <div className="space-y-3">
+                                    <div className="flex items-start gap-3 p-3 rounded-xl bg-primary/5 border border-primary/10">
+                                        <div className="w-6 h-[2px] bg-primary mt-2 shrink-0" />
+                                        <div>
+                                            <p className="text-xs font-bold text-slate-800 dark:text-slate-100">Externo (Línea Continua)</p>
+                                            <p className="text-[11px] text-slate-500 dark:text-slate-400">Representa elásticos que van por la cara externa de los dientes.</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-start gap-3 p-3 rounded-xl bg-primary/5 border border-primary/10">
+                                        <div className="w-6 h-[2px] border-t-2 border-dotted border-primary mt-2 shrink-0" />
+                                        <div>
+                                            <p className="text-xs font-bold text-slate-800 dark:text-slate-100">Interno (Línea Punteada)</p>
+                                            <p className="text-[11px] text-slate-500 dark:text-slate-400">Representa elásticos que van por la cara lingual o palatina.</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Shortcuts */}
+                            <div className="space-y-4 pt-2">
+                                <h4 className="flex items-center gap-2 text-sm font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">
+                                    <Keyboard size={16} className="text-primary" />
+                                    Atajos de Teclado
+                                </h4>
+                                <div className="flex flex-wrap gap-2">
+                                    <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
+                                        <kbd className="px-1.5 py-0.5 text-[10px] font-bold bg-white dark:bg-slate-700 rounded border border-slate-300 dark:border-slate-600 shadow-sm">CTRL + Z</kbd>
+                                        <span className="text-[11px] text-slate-600 dark:text-slate-400">Deshacer</span>
+                                    </div>
+                                    <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
+                                        <kbd className="px-1.5 py-0.5 text-[10px] font-bold bg-white dark:bg-slate-700 rounded border border-slate-300 dark:border-slate-600 shadow-sm">CTRL + Y</kbd>
+                                        <span className="text-[11px] text-slate-600 dark:text-slate-400">Rehacer</span>
+                                    </div>
+                                    <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
+                                        <kbd className="px-1.5 py-0.5 text-[10px] font-bold bg-white dark:bg-slate-700 rounded border border-slate-300 dark:border-slate-600 shadow-sm">ENTER</kbd>
+                                        <span className="text-[11px] text-slate-600 dark:text-slate-400">Finalizar cadena activa</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Footer */}
+                        <div className="p-4 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-700 flex justify-end">
+                            <button
+                                onClick={() => setShowLegend(false)}
+                                className="px-6 py-2 bg-primary hover:bg-primary-dark text-white rounded-xl text-sm font-bold shadow-lg shadow-primary/20 transition-all active:scale-95"
+                            >
+                                Entendido
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
