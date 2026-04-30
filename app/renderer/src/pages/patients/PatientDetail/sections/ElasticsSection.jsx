@@ -153,13 +153,6 @@ export const TOOTH_IMAGE_MICRO_ADJUSTMENTS = {
     38: { offsetX: -16 },
 };
 
-const ELASTIC_TYPES = [
-    { id: 'standard', label: 'Estándar (Azul)', color: '#3b82f6', strokeWidth: '4' },
-    { id: 'heavy', label: 'Heavy (Rojo)', color: '#ef4444', strokeWidth: '5' },
-    { id: 'light', label: 'Ligero (Verde)', color: '#22c55e', strokeWidth: '3' },
-    { id: 'chain', label: 'Cadena (Púrpura)', color: '#a855f7', strokeWidth: '4' },
-    { id: 'rubber', label: 'Goma (Naranja)', color: '#f97316', strokeWidth: '4' },
-];
 const MAX_HISTORY_STATES = 11;
 
 // Organize IDs in display order (Left to Right on screen)
@@ -174,6 +167,8 @@ const LOWER_LEFT = [31, 32, 33, 34, 35, 36, 37, 38];
 const INACTIVE_TYPES = ['extraction', 'missing', 'unerupted'];
 
 import { usePatientElasticsData } from '@/hooks/usePatientElasticsData';
+import * as elasticTypeService from '@/services/elasticType.service';
+import ElasticTypeForm from '@/pages/elastic_types/ElasticTypeForm';
 
 export default function ElasticsSection() {
     // Leer el ID del paciente de la URL para aislar datos en localStorage
@@ -209,7 +204,33 @@ export default function ElasticsSection() {
 
     // completedChains: Array<{ typeId: string, segments: Array<{from, to, config}> }>
     const [completedChains, setCompletedChains] = useState([]);
-    const [selectedElasticTypeId, setSelectedElasticTypeId] = useState(ELASTIC_TYPES[0].id);
+    const [selectedElasticTypeId, setSelectedElasticTypeId] = useState('');
+    const [elasticTypes, setElasticTypes] = useState([]);
+    const [isElasticModalOpen, setIsElasticModalOpen] = useState(false);
+
+    const fetchElasticTypes = useCallback(async (autoSelectId = null) => {
+        try {
+            const data = await elasticTypeService.getAll();
+            setElasticTypes(data);
+
+            if (autoSelectId) {
+                setSelectedElasticTypeId(autoSelectId);
+            } else {
+                setSelectedElasticTypeId(prev => prev ? prev : (data.length > 0 ? data[0].id : ''));
+            }
+        } catch (error) {
+            console.error("Error al cargar los tipos de elásticos:", error);
+        }
+    }, []);
+
+    useEffect(() => {
+        fetchElasticTypes();
+    }, [fetchElasticTypes]);
+
+    const selectedColor = useMemo(() => {
+        const type = elasticTypes.find(t => String(t.id) === String(selectedElasticTypeId));
+        return type?.color || '#3b82f6';
+    }, [elasticTypes, selectedElasticTypeId]);
 
     // History System for Undo/Redo
     const [history, setHistory] = useState([{ activeChain: { segments: [], lastPoint: null, startPoint: null }, completedChains: [] }]);
@@ -286,7 +307,7 @@ export default function ElasticsSection() {
             endDate !== '' ||
             hours !== '' ||
             notes !== '' ||
-            selectedElasticTypeId !== ELASTIC_TYPES[0].id;
+            selectedElasticTypeId !== (elasticTypes.length > 0 ? elasticTypes[0].id : '');
 
         const isOdontogramChanged = historyIndex > 0;
 
@@ -470,10 +491,10 @@ export default function ElasticsSection() {
         // Si es completado y no es el preview temporal, usa su tipo persistido
         // Si es la cadena activa o el preview, usa el tipo seleccionado actualmente
         const effectiveTypeId = (isCompleted && !isPreview) ? chain.typeId : selectedElasticTypeId;
-        const type = ELASTIC_TYPES.find(t => t.id === effectiveTypeId) || ELASTIC_TYPES[0];
+        const type = elasticTypes.find(t => String(t.id) === String(effectiveTypeId)) || elasticTypes[0] || {};
 
-        const color = type.color;
-        const strokeWidth = type.strokeWidth;
+        const color = type.color || '#3b82f6';
+        const strokeWidth = type.strokeWidth || '4';
         const opacity = isPreview ? 0.4 : (isCompleted ? 0.8 : 1);
 
         return (
@@ -801,13 +822,13 @@ export default function ElasticsSection() {
         // Capture the image first
         const imageFile = await captureOdontogramImage();
 
-        const type = ELASTIC_TYPES.find(t => t.id === selectedElasticTypeId);
+        const type = elasticTypes.find(t => String(t.id) === String(selectedElasticTypeId));
 
         const newInstruction = {
             startDate,
             endDate,
             hours: hours ? (isNaN(hours) ? hours : `${hours} horas`) : 'No especificado',
-            type: type ? type.label : selectedElasticTypeId,
+            type: type ? `${type.name} ${type.size ? `- ${type.size}` : ''} ${type.oz ? `${type.oz}oz` : ''}` : selectedElasticTypeId,
             typeId: selectedElasticTypeId,
             notes,
             odontogramData: {
@@ -829,7 +850,7 @@ export default function ElasticsSection() {
         setEndDate('');
         setHours('');
         setNotes('');
-        setSelectedElasticTypeId(ELASTIC_TYPES[0].id);
+        setSelectedElasticTypeId(elasticTypes.length > 0 ? elasticTypes[0].id : '');
 
         // Reset Odontogram to last "global" state
         loadGlobalOdontogram();
@@ -848,7 +869,7 @@ export default function ElasticsSection() {
         setEndDate(inst.endDate || '');
         setHours(inst.hours?.replace(' horas', '') || '');
         setNotes(inst.notes || '');
-        setSelectedElasticTypeId(inst.typeId || ELASTIC_TYPES[0].id);
+        setSelectedElasticTypeId(inst.typeId || (elasticTypes.length > 0 ? elasticTypes[0].id : ''));
 
         // Load Snapshotted Odontogram
         if (inst.odontogramData) {
@@ -1297,9 +1318,9 @@ export default function ElasticsSection() {
 
                                                         const yPos = (tooth.isUpper ? tooth.y + 15 : tooth.y + tooth.height - 35) + archBaseY + offsetY;
 
-                                                        // Logic Identical to Brackets
-                                                        const isActive = activeChain.lastPoint === pairId || activeChain.segments.some(s => s.from === pairId || s.to === pairId);
                                                         const isOrigin = activeChain.startPoint === pairId;
+                                                        const isLast = activeChain.lastPoint === pairId && !isOrigin;
+                                                        const isPartByChain = activeChain.segments.some(s => s.from === pairId || s.to === pairId);
                                                         const isCompleted = completedChains.some(chain => chain.segments.some(s => s.from === pairId || s.to === pairId));
 
                                                         const tadSize = TAD_GLOBAL_CONFIG.size;
@@ -1319,7 +1340,17 @@ export default function ElasticsSection() {
                                                                         width={tadSize}
                                                                         height={tadSize}
                                                                         style={{ transformOrigin: `${tadHalfSize}px ${tadHalfSize}px`, transform: tooth.isUpper ? 'none' : 'rotate(180deg)' }}
-                                                                        className={`transition-all duration-200 ${isOrigin ? 'drop-shadow-[0_0_8px_rgba(34,197,94,0.9)] brightness-125 scale-125' : isActive ? 'drop-shadow-[0_0_5px_rgba(59,130,246,0.9)] brightness-125 scale-110' : isCompleted ? 'opacity-100 drop-shadow-sm brightness-90' : 'opacity-80 hover:opacity-100 hover:scale-110'}`}
+                                                                        className={`transition-all duration-300 ${
+                                                                            isOrigin 
+                                                                            ? 'drop-shadow-[0_0_15px_rgba(34,197,94,1)] brightness-150 scale-[1.5] animate-pulse' 
+                                                                            : isLast 
+                                                                                ? 'drop-shadow-[0_0_12px_rgba(59,130,246,1)] brightness-125 scale-[1.3]' 
+                                                                                : isPartByChain 
+                                                                                    ? 'drop-shadow-[0_0_5px_rgba(59,130,246,0.8)] brightness-110 scale-110' 
+                                                                                    : isCompleted 
+                                                                                        ? 'opacity-100 drop-shadow-sm brightness-90' 
+                                                                                        : 'opacity-80 hover:opacity-100 hover:scale-110'
+                                                                        }`}
                                                                     />
                                                                 ) : (
                                                                     actionType === 'tad' && (
@@ -1337,9 +1368,9 @@ export default function ElasticsSection() {
                                                         // Dynamic positioning relative to tooth size
                                                         const bracketYOffset = tooth.isUpper ? (tooth.height * 0.75) : (tooth.height * 0.15);
                                                         const bracketXOffset = (tooth.width - 28) / 2; // Fixed from 20 to 28 (baseSize)
-                                                        const activeIndex = activeChain.lastPoint === tooth.id || activeChain.startPoint === tooth.id || activeChain.segments.some(s => s.from === tooth.id || s.to === tooth.id);
-                                                        const isActive = activeIndex;
                                                         const isOrigin = activeChain.startPoint === tooth.id;
+                                                        const isLast = activeChain.lastPoint === tooth.id && !isOrigin;
+                                                        const isPartByChain = activeChain.segments.some(s => s.from === tooth.id || s.to === tooth.id);
                                                         const isCompleted = completedChains.some(chain => chain.segments.some(s => s.from === tooth.id || s.to === tooth.id));
 
                                                         // Micro-Adjustments Configuration
@@ -1388,7 +1419,17 @@ export default function ElasticsSection() {
                                                                                     width={sizeW}
                                                                                     height={sizeH}
                                                                                     style={{ transformOrigin: '14px 14px' }}
-                                                                                    className={`transition-all duration-200 ${isOrigin ? 'drop-shadow-[0_0_8px_rgba(34,197,94,0.9)] brightness-125 scale-125' : isActive ? 'drop-shadow-[0_0_5px_rgba(59,130,246,0.9)] brightness-125 scale-110' : isCompleted ? 'opacity-100 drop-shadow-sm brightness-90' : 'opacity-80 hover:opacity-100 hover:scale-105'}`}
+                                                                                    className={`transition-all duration-300 ${
+                                                                                        isOrigin 
+                                                                                        ? 'drop-shadow-[0_0_15px_rgba(34,197,94,1)] brightness-150 scale-[1.5] animate-pulse' 
+                                                                                        : isLast 
+                                                                                            ? 'drop-shadow-[0_0_12px_rgba(59,130,246,1)] brightness-125 scale-[1.3]' 
+                                                                                            : isPartByChain 
+                                                                                                ? 'drop-shadow-[0_0_5px_rgba(59,130,246,0.8)] brightness-110 scale-110' 
+                                                                                                : isCompleted 
+                                                                                                    ? 'opacity-100 drop-shadow-sm brightness-90' 
+                                                                                                    : 'opacity-80 hover:opacity-100 hover:scale-105'
+                                                                                    }`}
                                                                                 />
                                                                             </g>
                                                                         </g>
@@ -1504,27 +1545,43 @@ export default function ElasticsSection() {
                                         <label className="text-xs font-medium text-slate-500 dark:text-slate-400">
                                             Tipo de Elástico
                                         </label>
-                                        <select
-                                            value={selectedElasticTypeId}
-                                            onChange={(e) => setSelectedElasticTypeId(e.target.value)}
-                                            disabled={isReadOnly}
-                                            className="
-                                                w-full px-3 py-2 rounded-lg text-sm
-                                                bg-slate-50 dark:bg-slate-800
-                                                border border-slate-200 dark:border-slate-700
-                                                focus:ring-2 focus:ring-primary/20 focus:border-primary
-                                                outline-none transition-all
-                                                text-slate-700 dark:text-slate-200
-                                                appearance-none cursor-pointer
-                                                disabled:opacity-70 disabled:cursor-default
-                                            "
-                                        >
-                                            {ELASTIC_TYPES.map(type => (
-                                                <option key={type.id} value={type.id}>
-                                                    {type.label}
-                                                </option>
-                                            ))}
-                                        </select>
+                                        <div className="flex items-center gap-2">
+                                            <div
+                                                className="w-9 h-9 rounded-lg border border-slate-200 dark:border-slate-700 shrink-0 shadow-sm transition-all duration-300"
+                                                style={{ backgroundColor: selectedColor }}
+                                                title="Previsualización de color"
+                                            />
+                                            <select
+                                                value={selectedElasticTypeId}
+                                                onChange={(e) => setSelectedElasticTypeId(e.target.value)}
+                                                disabled={isReadOnly || elasticTypes.length === 0}
+                                                className="
+                                                    w-full px-3 py-2 rounded-lg text-sm
+                                                    bg-slate-50 dark:bg-slate-800
+                                                    border border-slate-200 dark:border-slate-700
+                                                    focus:ring-2 focus:ring-primary/20 focus:border-primary
+                                                    outline-none transition-all
+                                                    text-slate-700 dark:text-slate-200
+                                                    appearance-none cursor-pointer
+                                                    disabled:opacity-70 disabled:cursor-default
+                                                "
+                                            >
+                                                {elasticTypes.map(type => (
+                                                    <option key={type.id} value={type.id}>
+                                                        {type.name} {type.size ? `- ${type.size}` : ''} {type.oz ? `${type.oz}oz` : ''}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            {!isReadOnly && (
+                                                <button
+                                                    onClick={() => setIsElasticModalOpen(true)}
+                                                    className="p-2 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-colors shrink-0 flex items-center justify-center border border-slate-200 dark:border-slate-700"
+                                                    title="Crear nuevo tipo de elástico"
+                                                >
+                                                    <Plus size={18} />
+                                                </button>
+                                            )}
+                                        </div>
                                     </div>
                                     <div className="space-y-1.5">
                                         <label className="text-xs font-medium text-slate-500 dark:text-slate-400">
@@ -1603,6 +1660,13 @@ export default function ElasticsSection() {
                     </div>
                 </div>
             )}
+
+            {/* ElasticTypeForm Modal */}
+            <ElasticTypeForm
+                open={isElasticModalOpen}
+                onClose={() => setIsElasticModalOpen(false)}
+                onSaved={(newType) => fetchElasticTypes(newType?.id)}
+            />
 
             <ConfirmDialog
                 open={showConfirmClear}
