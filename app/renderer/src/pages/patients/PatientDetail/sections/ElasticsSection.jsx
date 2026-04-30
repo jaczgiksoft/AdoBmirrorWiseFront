@@ -160,6 +160,7 @@ const ELASTIC_TYPES = [
     { id: 'chain', label: 'Cadena (Púrpura)', color: '#a855f7', strokeWidth: '4' },
     { id: 'rubber', label: 'Goma (Naranja)', color: '#f97316', strokeWidth: '4' },
 ];
+const MAX_HISTORY_STATES = 11;
 
 // Organize IDs in display order (Left to Right on screen)
 // Upper: 18..11 | 21..28
@@ -204,6 +205,7 @@ export default function ElasticsSection() {
 
     // Estado de dientes cargado desde el odontograma (para reflejar dientes inactivos)
     const [toothStates, setToothStates] = useState({});
+    const [toothImages, setToothImages] = useState({});
 
     // completedChains: Array<{ typeId: string, segments: Array<{from, to, config}> }>
     const [completedChains, setCompletedChains] = useState([]);
@@ -343,9 +345,9 @@ export default function ElasticsSection() {
                 const isCombined = activeTypes.length > 1 || isImplantCrown;
                 const baseType = activeTypes[0] || 'original';
 
-                let src = null;
+                let srcPromise = null;
                 // Obtenemos el SVG exacto (simple o combinado)
-                src = !isCombined ? getToothSrc(id, baseType) : generateCombinedSvgDataUrl(id, activeTypes);
+                srcPromise = !isCombined ? getToothSrc(id, baseType) : generateCombinedSvgDataUrl(id, activeTypes);
 
                 teeth.push({
                     id,
@@ -354,7 +356,7 @@ export default function ElasticsSection() {
                     width: dim.width,
                     height: dim.height,
                     isUpper,
-                    src
+                    srcPromise
                 });
                 currentX += dim.width + TOOTH_CONFIG.gap;
             });
@@ -373,40 +375,37 @@ export default function ElasticsSection() {
         return teeth;
     }, [toothStates]);
 
-    // Efecto para precargar las imágenes SVG y manejar el estado de carga
+    // Efecto para precargar y resolver las imágenes SVG
     useEffect(() => {
         let isMounted = true;
 
-        const preloadImages = async () => {
+        const resolveImages = async () => {
             if (!teethData || teethData.length === 0) {
                 if (isMounted) setIsLoading(false);
                 return;
             }
 
             try {
-                const imagePromises = teethData
-                    .filter(tooth => tooth.src)
-                    .map(tooth => {
-                        return new Promise((resolve) => {
-                            const img = new Image();
-                            img.src = tooth.src;
-                            img.onload = resolve;
-                            img.onerror = resolve; // Continuar, para no quedar en loading infinito
-                        });
-                    });
+                // Resolvemos todas las promesas de imágenes en paralelo
+                const imageEntries = await Promise.all(
+                    teethData.map(async (tooth) => {
+                        const resolvedSrc = await tooth.srcPromise;
+                        return [tooth.id, resolvedSrc];
+                    })
+                );
 
-                await Promise.all(imagePromises);
-            } catch (error) {
-                console.error("Error al cargar las imágenes de los dientes:", error);
-            } finally {
                 if (isMounted) {
+                    setToothImages(Object.fromEntries(imageEntries));
                     setIsLoading(false);
                 }
+            } catch (error) {
+                console.error("Error al cargar las imágenes de los dientes:", error);
+                if (isMounted) setIsLoading(false);
             }
         };
 
         setIsLoading(true);
-        preloadImages();
+        resolveImages();
 
         return () => {
             isMounted = false;
@@ -508,9 +507,18 @@ export default function ElasticsSection() {
         setHistory(prev => {
             const newHistory = prev.slice(0, historyIndex + 1);
             newHistory.push({ activeChain: newActiveChain, completedChains: newCompletedChains });
+
+            // Mantener límite de 10 movimientos (11 estados)
+            if (newHistory.length > MAX_HISTORY_STATES) {
+                newHistory.shift();
+            }
             return newHistory;
         });
-        setHistoryIndex(prev => prev + 1);
+
+        setHistoryIndex(prev => {
+            const next = prev + 1;
+            return next >= MAX_HISTORY_STATES ? MAX_HISTORY_STATES - 1 : next;
+        });
     };
 
     const handleTadClick = (pairId) => {
@@ -798,7 +806,7 @@ export default function ElasticsSection() {
         const newInstruction = {
             startDate,
             endDate,
-            hours: hours ? `${hours} horas` : 'No especificado',
+            hours: hours ? (isNaN(hours) ? hours : `${hours} horas`) : 'No especificado',
             type: type ? type.label : selectedElasticTypeId,
             typeId: selectedElasticTypeId,
             notes,
@@ -1212,9 +1220,9 @@ export default function ElasticsSection() {
                                                                 key={`tooth-${tooth.id}`}
                                                                 transform={`translate(${tooth.x}, ${tooth.y})`}
                                                             >
-                                                                {tooth.src ? (
+                                                                {toothImages[tooth.id] ? (
                                                                     <image
-                                                                        href={tooth.src}
+                                                                        href={toothImages[tooth.id]}
                                                                         width={tooth.width}
                                                                         height={tooth.height}
                                                                         className="transition-opacity"
@@ -1523,8 +1531,8 @@ export default function ElasticsSection() {
                                             Horas de uso por día
                                         </label>
                                         <input
-                                            type="number"
-                                            placeholder="Ej. 24"
+                                            type="text"
+                                            placeholder="Ej. 24 o Uso nocturno"
                                             value={hours}
                                             onChange={(e) => setHours(e.target.value)}
                                             readOnly={isReadOnly}

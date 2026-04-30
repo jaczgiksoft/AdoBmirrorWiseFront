@@ -205,9 +205,9 @@ export default function DateInput({ label, value, onChange, popoverDirection = "
     const formattedValue = value ? dayjs(value).format("YYYY-MM-DD") : "";
 
     return (
-        <div className="space-y-1 w-full relative">
+        <div className="w-full relative">
             {label && (
-                <label className={`text-[11px] uppercase tracking-wide text-slate-500 dark:text-slate-400 ml-1 ${required ? 'label-required' : ''}`}>
+                <label className={`block text-xs font-semibold text-slate-500 uppercase mb-1.5 ${required ? 'label-required' : ''}`}>
                     {label}
                 </label>
             )}
@@ -220,7 +220,7 @@ export default function DateInput({ label, value, onChange, popoverDirection = "
                             readOnly
                             value={formattedValue}
                             placeholder="Seleccionar fecha..."
-                            className="w-full px-3 py-2.5 rounded-lg border bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 border-slate-300 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all text-sm !cursor-pointer pr-10"
+                            className="w-full px-3 py-2 rounded-lg border bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 border-slate-300 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all text-sm !cursor-pointer pr-10"
                             onFocus={handleActivate}
                             onClick={handleActivate}
                         />
@@ -230,7 +230,7 @@ export default function DateInput({ label, value, onChange, popoverDirection = "
                         />
                     </div>
                 ) : (
-                    <div className="w-full h-[38px]" /> // Mantener el espacio en el layout
+                    <div className="w-full h-[36px]" /> // Mantener el espacio en el layout
                 )}
             </div>
 
@@ -273,7 +273,7 @@ export default function DateInput({ label, value, onChange, popoverDirection = "
                             i18n={"es"}
                             containerClassName="relative z-[9999]"
                             popoverDirection={popoverDirection}
-                            inputClassName="w-full px-3 py-2.5 rounded-lg border bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 border-slate-300 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all text-sm"
+                            inputClassName="w-full px-3 py-2 rounded-lg border bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 border-slate-300 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all text-sm"
                             startFrom={dateValue.startDate && dayjs(dateValue.startDate).isValid()
                                 ? dayjs(dateValue.startDate).toDate()
                                 : new Date()}

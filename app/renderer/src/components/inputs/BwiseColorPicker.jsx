@@ -60,16 +60,16 @@ export default function BwiseColorPicker({ color, onChange, label = "Color" }) {
                 open={isOpen}
                 onClose={() => setIsOpen(false)}
                 title="Seleccionar Color"
-                widthClass="w-[450px]"
+                widthClass="w-[440px]"
                 closeOnBackdrop={true}
             >
-                <div className="flex flex-col gap-8">
+                <div className="flex flex-col gap-5">
                     {/* Sección de Colores Rápidos */}
                     <div>
-                        <h3 className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-4 uppercase tracking-wider">
+                        <h3 className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-2 uppercase tracking-wider">
                             Colores Rápidos
                         </h3>
-                        <div className="grid grid-cols-6 gap-3">
+                        <div className="grid grid-cols-12 gap-1.5">
                             {quickColors.map((c) => (
                                 <button
                                     key={c}
@@ -78,11 +78,10 @@ export default function BwiseColorPicker({ color, onChange, label = "Color" }) {
                                         onChange({ hex: c });
                                         // No cerramos el modal para permitir ajustar después en el custom picker
                                     }}
-                                    className={`w-12 h-12 rounded-full border-2 transition-all hover:scale-110 active:scale-95 shadow-sm ${
-                                        color?.toUpperCase() === c.toUpperCase()
-                                            ? "border-primary ring-2 ring-primary/20 scale-110"
-                                            : "border-white dark:border-slate-800"
-                                    }`}
+                                    className={`w-7 h-7 rounded-full border transition-all hover:scale-110 active:scale-95 shadow-sm ${color?.toUpperCase() === c.toUpperCase()
+                                        ? "border-primary ring-2 ring-primary/20 scale-110"
+                                        : "border-white dark:border-slate-800"
+                                        }`}
                                     style={{ background: c }}
                                     title={c}
                                 />
@@ -92,21 +91,21 @@ export default function BwiseColorPicker({ color, onChange, label = "Color" }) {
 
                     {/* Sección de Color Personalizado */}
                     <div className="flex flex-col items-center">
-                        <div className="w-full flex justify-between items-center mb-4">
+                        <div className="w-full flex justify-between items-center mb-2">
                             <h3 className="text-sm font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                                 Color Personalizado
                             </h3>
                             <button
                                 type="button"
                                 onClick={handleRandomColor}
-                                className="flex items-center gap-1.5 text-xs font-semibold text-primary hover:text-sky-500 transition-colors bg-primary/5 hover:bg-primary/10 px-3 py-1.5 rounded-full"
+                                className="flex items-center gap-1 text-xs font-semibold text-primary hover:text-sky-500 transition-colors bg-primary/5 hover:bg-primary/10 px-2 py-1 rounded-full"
                             >
-                                <RefreshCw size={14} />
+                                <RefreshCw size={12} />
                                 Color Aleatorio
                             </button>
                         </div>
-                        
-                        <div className="w-full bwise-chrome-picker-container bg-slate-50 dark:bg-slate-900/50 p-6 rounded-2xl border border-slate-200 dark:border-slate-800">
+
+                        <div className="w-full bwise-chrome-picker-container bg-slate-50 dark:bg-slate-900/50 p-4 rounded-2xl border border-slate-200 dark:border-slate-800">
                             <ChromePicker
                                 color={color || "#CCCCCC"}
                                 onChange={onChange}
@@ -118,7 +117,7 @@ export default function BwiseColorPicker({ color, onChange, label = "Color" }) {
                                             boxShadow: "none",
                                             borderRadius: "12px",
                                             background: "transparent",
-                                            transform: "scale(1.1)",
+                                            transform: "scale(1)",
                                             transformOrigin: "center"
                                         },
                                         body: {
@@ -135,7 +134,7 @@ export default function BwiseColorPicker({ color, onChange, label = "Color" }) {
                     <button
                         type="button"
                         onClick={() => setIsOpen(false)}
-                        className="w-full py-3 bg-primary text-white font-bold rounded-xl shadow-lg shadow-primary/20 hover:bg-sky-500 transition-all active:scale-[0.98]"
+                        className="w-full py-2.5 bg-primary text-white font-bold rounded-xl shadow-lg shadow-primary/20 hover:bg-sky-500 transition-all active:scale-[0.98]"
                     >
                         Confirmar Selección
                     </button>

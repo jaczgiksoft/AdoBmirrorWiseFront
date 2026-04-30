@@ -99,6 +99,13 @@ const SETTINGS_MENU = [
         category: "Pacientes",
     },
     {
+        icon: <Activity size={28} />,
+        label: "Tipos de Elásticos",
+        description: "Configura los tamaños y fuerzas de elásticos intermaxilares.",
+        path: "/settings/patient-elastics",
+        category: "Pacientes",
+    },
+    {
         icon: <Layout size={28} />,
         label: "Áreas Clínicas",
         description: "Configura los consultorios y áreas de atención.",

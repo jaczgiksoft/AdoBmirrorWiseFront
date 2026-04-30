@@ -28,6 +28,7 @@ import OccupationList from "@/pages/occupations";
 import ReferralList from "@/pages/referrals";
 import PositionList from "@/pages/positions";
 import TenantSettings from "@/pages/tenant";
+import ElasticTypeList from "@/pages/elastic_types/ElasticTypeList";
 
 //import PatientList from "@/pages/patients/PatientList";
 //import PatientDetail from "@/pages/patients/PatientDetail";
@@ -264,6 +265,17 @@ export default function AppRouter() {
                         <PrivateRoute>
                             <PrivateLayout>
                                 <PositionList />
+                            </PrivateLayout>
+                        </PrivateRoute>
+                    }
+                />
+
+                <Route
+                    path="/settings/patient-elastics"
+                    element={
+                        <PrivateRoute>
+                            <PrivateLayout>
+                                <ElasticTypeList />
                             </PrivateLayout>
                         </PrivateRoute>
                     }
