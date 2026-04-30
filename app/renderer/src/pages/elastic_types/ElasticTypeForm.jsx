@@ -7,14 +7,15 @@ import { useToastStore } from "@/store/useToastStore";
 import { create, update } from "@/services/elasticType.service";
 import { useHotkeys } from "@/hooks/useHotkeys";
 import { ConfirmDialog } from "@/components/feedback";
+import { getRandomHexColor } from "@/utils/helpers";
 
 export default function ElasticTypeForm({ open, onClose, onSaved, elasticToEdit = null }) {
     const { addToast } = useToastStore();
 
     const initialForm = {
         name: "",
-        color: "#CCCCCC",
-        type: "Intraoral",
+        color: getRandomHexColor(),
+        type: "",
         size: "",
         oz: "",
     };
@@ -84,6 +85,13 @@ export default function ElasticTypeForm({ open, onClose, onSaved, elasticToEdit 
                 delete newErr[name];
                 return newErr;
             });
+        }
+    };
+
+    const handleNumericChange = (e) => {
+        const { value } = e.target;
+        if (value === "" || /^[0-9]*\.?[0-9]*$/.test(value)) {
+            handleChange(e);
         }
     };
 
@@ -179,37 +187,33 @@ export default function ElasticTypeForm({ open, onClose, onSaved, elasticToEdit 
                                 {errors.name && <span className="text-xs text-error mt-1">{errors.name}</span>}
                             </div>
                             <div className="w-28">
-                                <BwiseColorPicker 
+                                <BwiseColorPicker
                                     label="Color"
-                                    color={form.color} 
-                                    onChange={(color) => setForm((f) => ({ ...f, color: color.hex }))} 
+                                    color={form.color}
+                                    onChange={(color) => setForm((f) => ({ ...f, color: color.hex }))}
                                 />
                             </div>
                         </div>
 
                         <div>
                             <label className="block text-sm mb-1">Tipo de elástico</label>
-                            <select
+                            <input
                                 name="type"
                                 value={form.type}
                                 onChange={handleChange}
                                 className="input"
-                            >
-                                <option value="Intraoral">Intraoral</option>
-                                <option value="Extraoral">Extraoral</option>
-                                <option value="Separadores">Separadores</option>
-                                <option value="Cadeneta">Cadeneta</option>
-                            </select>
+                                placeholder="Ej. Medium, Heavy"
+                            />
                         </div>
 
                         <div className="grid grid-cols-2 gap-3">
                             <div>
-                                <label className="block text-sm mb-1 label-required">Tamaño (ej. 1/4")</label>
+                                <label className="block text-sm mb-1 label-required">Tamaño</label>
                                 <input
                                     name="size"
-                                    placeholder='Ej. 1/4"'
+                                    placeholder="Ej. 3.5"
                                     value={form.size}
-                                    onChange={handleChange}
+                                    onChange={handleNumericChange}
                                     className={`input ${errors.size ? "border-error ring-1 ring-error/50" : ""}`}
                                 />
                                 {errors.size && <span className="text-xs text-error mt-1">{errors.size}</span>}
@@ -218,7 +222,7 @@ export default function ElasticTypeForm({ open, onClose, onSaved, elasticToEdit 
                                 <label className="block text-sm mb-1 label-required">Fuerza (oz)</label>
                                 <input
                                     name="oz"
-                                    placeholder="Ej. 3.5oz"
+                                    placeholder="Ej. 1/4"
                                     value={form.oz}
                                     onChange={handleChange}
                                     className={`input ${errors.oz ? "border-error ring-1 ring-error/50" : ""}`}
