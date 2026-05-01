@@ -178,6 +178,8 @@ export default function ElasticsSection() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const [isReadOnly, setIsReadOnly] = useState(false);
+    const [editingId, setEditingId] = useState(null);
+    const [isSaving, setIsSaving] = useState(false);
 
     // Form states
     const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
@@ -185,7 +187,7 @@ export default function ElasticsSection() {
     const [hours, setHours] = useState('');
     const [notes, setNotes] = useState('');
 
-    const { instructions, saveInstruction, deleteInstruction, isLoading: isInstructionsLoading } = usePatientElasticsData(patientId);
+    const { instructions, saveInstruction, updateInstruction, deleteInstruction, isLoading: isInstructionsLoading } = usePatientElasticsData(patientId);
 
     // Sequential Selection State
     // Segment-based State
@@ -836,6 +838,7 @@ export default function ElasticsSection() {
 
     const handleSaveInstruction = async () => {
         if (isReadOnly) return;
+        setIsSaving(true);
 
         // Capture the image first
         const imageFile = await captureOdontogramImage();
@@ -856,7 +859,14 @@ export default function ElasticsSection() {
             }
         };
 
-        const success = await saveInstruction(newInstruction, imageFile);
+        let success = false;
+        if (editingId) {
+            success = await updateInstruction(editingId, newInstruction, imageFile);
+        } else {
+            success = await saveInstruction(newInstruction, imageFile);
+        }
+        
+        setIsSaving(false);
         if (success) {
             setIsModalOpen(false);
         }
@@ -864,6 +874,7 @@ export default function ElasticsSection() {
 
     const handleOpenNew = () => {
         setIsReadOnly(false);
+        setEditingId(null);
         setStartDate(new Date().toISOString().split('T')[0]);
         setEndDate('');
         setHours('');
@@ -882,7 +893,8 @@ export default function ElasticsSection() {
     };
 
     const handleOpenView = (inst) => {
-        setIsReadOnly(true);
+        setIsReadOnly(false);
+        setEditingId(inst.id);
         setStartDate(inst.startDate || '');
         setEndDate(inst.endDate || '');
         setHours(inst.hours?.replace(' horas', '') || '');
@@ -1666,28 +1678,35 @@ export default function ElasticsSection() {
                         <div className="flex items-center justify-end gap-3 p-4 border-t border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/30 rounded-b-2xl shrink-0">
                             <button
                                 onClick={onRequestClose}
+                                disabled={isSaving}
                                 className="
                                     px-4 py-2 rounded-lg text-sm font-medium
                                     text-slate-600 dark:text-slate-300
                                     hover:bg-slate-100 dark:hover:bg-slate-700
                                     transition-colors
+                                    disabled:opacity-50
                                 "
                             >
                                 Cancelar
                             </button>
-                            {!isReadOnly && (
-                                <button
-                                    onClick={handleSaveInstruction}
-                                    className="
-                                        px-4 py-2 rounded-lg text-sm font-medium
-                                        bg-primary text-white 
-                                        hover:brightness-110 active:scale-95
-                                        transition-all shadow-sm
-                                    "
-                                >
-                                    Guardar Instrucción
-                                </button>
-                            )}
+                            <button
+                                onClick={handleSaveInstruction}
+                                disabled={isSaving}
+                                className={`
+                                    flex items-center gap-2
+                                    px-4 py-2 rounded-lg text-sm font-medium
+                                    transition-all shadow-sm
+                                    disabled:opacity-70 disabled:cursor-not-allowed
+                                    ${editingId 
+                                        ? 'bg-yellow-400 text-black hover:bg-yellow-500' 
+                                        : 'bg-primary text-white hover:brightness-110'
+                                    }
+                                    active:scale-95
+                                `}
+                            >
+                                {isSaving && <Loader2 className="w-4 h-4 animate-spin" />}
+                                {editingId ? 'Editar' : 'Guardar Instrucción'}
+                            </button>
                         </div>
                     </div>
                 </div>

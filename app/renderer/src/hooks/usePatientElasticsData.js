@@ -113,9 +113,53 @@ export function usePatientElasticsData(patientId) {
         }
     };
 
+    const updateInstruction = async (id, updatedInstruction, imageFile) => {
+        try {
+            const formData = new FormData();
+            formData.append('patient_id', patientId);
+            formData.append('start_date', updatedInstruction.startDate);
+            if (updatedInstruction.endDate) {
+                formData.append('end_date', updatedInstruction.endDate);
+            }
+            formData.append('hours', updatedInstruction.hours);
+            formData.append('notes', updatedInstruction.notes);
+            formData.append('upper_elastic', updatedInstruction.typeId);
+            formData.append('lower_elastic', updatedInstruction.type);
+            
+            formData.append('odontogram_data', JSON.stringify(updatedInstruction.odontogramData));
+
+            if (imageFile) {
+                formData.append('preview_image', imageFile);
+            }
+
+            const response = await patientElasticService.updateElastic(id, formData);
+            
+            if (response.success) {
+                await loadInstructions();
+                
+                addToast({
+                    title: "Éxito",
+                    message: "Instrucción actualizada correctamente.",
+                    type: "success"
+                });
+                return true;
+            }
+            return false;
+        } catch (err) {
+            console.error("Error al actualizar instrucción:", err);
+            addToast({
+                title: "Error",
+                message: "No se pudo actualizar la instrucción.",
+                type: "error"
+            });
+            return false;
+        }
+    };
+
     return {
         instructions,
         saveInstruction,
+        updateInstruction,
         deleteInstruction,
         isLoading,
         error,
