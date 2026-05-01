@@ -41,3 +41,18 @@ export const deleteElastic = async (id) => {
         throw error.response?.data || error;
     }
 };
+
+/**
+ * Update an existing elastic instruction.
+ * @param {string} id - Instruction UUID
+ * @param {Object} data - Elastic instruction data
+ * @returns {Promise<Object>}
+ */
+export const updateElastic = async (id, data) => {
+    try {
+        const response = await api.put(`/patient-elastics/${id}`, data);
+        return response.data;
+    } catch (error) {
+        throw error.response?.data || error;
+    }
+};
