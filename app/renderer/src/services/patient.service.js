@@ -101,6 +101,7 @@ export async function createPatient(payload) {
             }
 
             // 🔹 VALORES NORMALES
+            if (value === "" && key === "email") continue;
             formData.append(key, value ?? "");
         }
 
@@ -154,6 +155,7 @@ export async function updatePatient(id, payload) {
             }
 
             // 🔹 VALORES NORMALES
+            if (value === "" && key === "email") continue;
             formData.append(key, value ?? "");
         }
 
@@ -234,7 +236,7 @@ export async function updatePatientGeneral(id, payload) {
             // Only append if it's not null to avoid sending the string "null" 
             // also skip empty strings for ID fields to pass isInt() validation
             if (value === null) continue;
-            if (value === "" && (key.endsWith("_id") || key === "referral_id")) continue;
+            if (value === "" && (key.endsWith("_id") || key === "referral_id" || key === "email")) continue;
 
             formData.append(key, value ?? "");
         }
