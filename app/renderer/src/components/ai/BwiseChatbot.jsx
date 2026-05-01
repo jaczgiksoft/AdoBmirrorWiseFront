@@ -2,10 +2,11 @@ import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Bot, Send, X, User, Trash2, Loader2, List, Table as TableIcon } from "lucide-react";
 import api from "@/services/api";
+import aiService from "@/services/ai.service";
 
 /**
- * BwiseChatbot - Asistente IA para soporte operativo interno.
- * Conecta con el endpoint /api/ai_agent/chat/operational
+ * BwiseChatbot - Asistente IA para soporte operativo y clínico.
+ * Conecta con el endpoint /api/chat-assistant/ask
  */
 export default function BwiseChatbot({ isOpen, onClose }) {
     const [messages, setMessages] = useState([
@@ -35,18 +36,12 @@ export default function BwiseChatbot({ isOpen, onClose }) {
         setLoading(true);
 
         try {
-            const response = await api.post("/ai-agent/chat/operational", {
-                message: userMessage,
-            });
+            const result = await aiService.ask(userMessage, messages);
 
-            if (response.data?.success) {
-                setMessages((prev) => [
-                    ...prev,
-                    { role: "assistant", content: response.data.data.content },
-                ]);
-            } else {
-                throw new Error("Error en la respuesta de la IA");
-            }
+            setMessages((prev) => [
+                ...prev,
+                { role: "assistant", content: result.reply },
+            ]);
         } catch (error) {
             console.error("Chatbot Error:", error);
             setMessages((prev) => [
@@ -184,6 +179,11 @@ export default function BwiseChatbot({ isOpen, onClose }) {
                                     placeholder="Escribe tu consulta operativa..."
                                     className="flex-1 bg-slate-100 dark:bg-slate-800 border-none rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-primary/50 dark:text-white transition-all"
                                     disabled={loading}
+                                    onKeyDown={(e) => {
+                                        if (e.key === "Enter" && !e.shiftKey) {
+                                            handleSend(e);
+                                        }
+                                    }}
                                 />
                                 <button
                                     type="submit"
