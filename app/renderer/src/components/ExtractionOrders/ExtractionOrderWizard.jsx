@@ -1,125 +1,62 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, ArrowLeft, ArrowRight, Save, CheckCircle2 } from 'lucide-react';
+import { X, ArrowRight, Save, CheckCircle2 } from 'lucide-react';
 
 import { ConfirmDialog } from '@/components/feedback';
 import OdontogramStep from './Steps/OdontogramStep';
 import RadiographsStep from './Steps/RadiographsStep';
 import AdditionalDataStep from './Steps/AdditionalDataStep';
-import * as odontogramService from '@/services/odontogram.service';
 import { useToastStore } from '@/store/useToastStore';
+import useExtractionWizard from '@/hooks/useExtractionWizard';
 
-const ExtractionOrderWizard = ({ isOpen, onClose, onSave, mode = 'create', initialData = null, clinicalMode, patientId }) => {
-    const [step, setStep] = useState(1);
-    const [teethStatus, setTeethStatus] = useState({});
-    const [files, setFiles] = useState([]);
-    const [formData, setFormData] = useState({});
+const ExtractionOrderWizard = ({
+    isOpen,
+    onClose,
+    onSave,
+    mode = 'create',
+    initialData = null,
+    clinicalMode,
+    patientId
+}) => {
 
-    // State for Reset Confirmation
-    const [showResetConfirm, setShowResetConfirm] = useState(false);
-    const [isOdontogramLoading, setIsOdontogramLoading] = useState(false);
     const { addToast } = useToastStore();
 
-    useEffect(() => {
-        const loadInitialData = async () => {
-            if (isOpen) {
-                setStep(1);
-                setShowResetConfirm(false);
-
-                if (mode === 'edit' && initialData) {
-                    setTeethStatus(initialData.teethStatus || {});
-                    setFiles(initialData.files || []);
-                    setFormData(initialData.formData || {});
-                } else if (mode === 'create' && patientId) {
-                    // Cargar el estado actual del odontograma maestro
-                    try {
-                        setIsOdontogramLoading(true);
-                        const response = await odontogramService.getOdontogramByPatientId(patientId);
-                        const odontogram = response.data;
-
-                        if (odontogram && odontogram.details) {
-                            const initialTeethStatus = {};
-                            odontogram.details.forEach(detail => {
-                                let status = detail.status || {};
-                                if (typeof status === 'string') {
-                                    try { status = JSON.parse(status); } catch (e) { status = {}; }
-                                }
-
-                                let caras = detail.caras || {};
-                                if (typeof caras === 'string') {
-                                    try { caras = JSON.parse(caras); } catch (e) { caras = {}; }
-                                }
-
-                                const isExtraction = status.toothState === 'missing' || status.toothState === 'extraction';
-
-                                // Mapear a la estructura que usa este wizard
-                                initialTeethStatus[detail.tooth_id] = {
-                                    north: caras.north || null,
-                                    south: caras.south || null,
-                                    east: caras.east || null,
-                                    west: caras.west || null,
-                                    center: caras.center || null,
-                                    extraction: isExtraction
-                                };
-                            });
-                            setTeethStatus(initialTeethStatus);
-                        } else {
-                            setTeethStatus({});
-                        }
-                    } catch (error) {
-                        console.error("Error loading master odontogram:", error);
-                        addToast({
-                            type: 'error',
-                            title: 'Error',
-                            message: 'No se pudo precargar el odontograma actual.'
-                        });
-                        setTeethStatus({});
-                    } finally {
-                        setIsOdontogramLoading(false);
-                    }
-                    setFiles([]);
-                    setFormData({});
-                } else {
-                    setTeethStatus({});
-                    setFiles([]);
-                    setFormData({});
-                }
-            }
-        };
-
-        loadInitialData();
-    }, [isOpen, mode, initialData, patientId]);
-
-    // Validation Logic
-    const hasSelection = Object.values(teethStatus).some(t => t && (t.extraction || Object.values(t).some(v => v !== null && v !== false)));
-    const canProceed = step === 1 ? hasSelection : true;
-
-    const handleNext = () => {
-        if (step < 3 && canProceed) setStep(step + 1);
-    };
-
-    const handleBack = () => {
-        if (step > 1) setStep(step - 1);
-    };
-
-    const handleFinish = () => {
-        onSave({ teethStatus, files, formData });
-        onClose();
-    };
-
-    const handleResetConfirm = () => {
-        setTeethStatus({});
-        setShowResetConfirm(false);
-    };
-
+    const {
+        step,
+        teethStatus,
+        setTeethStatus,
+        files,
+        setFiles,
+        formData,
+        setFormData,
+        isLoading,
+        showResetConfirm,
+        setShowResetConfirm,
+        canProceed,
+        handleNext,
+        handleBack,
+        handleFinish,
+        handleResetConfirm
+    } = useExtractionWizard({
+        isOpen,
+        mode,
+        initialData,
+        patientId,
+        clinicalMode,
+        addToast,
+        onSave,
+        onClose
+    });
     const renderStep = () => {
         switch (step) {
             case 1:
                 return (
                     <OdontogramStep
                         teethStatus={teethStatus}
-                        onStatusChange={(id, status) => setTeethStatus(prev => ({ ...prev, [id]: status }))}
+                        onStatusChange={(id, status) =>
+                            setTeethStatus(prev => ({ ...prev, [id]: status }))
+                        }
                         onResetRequest={() => setShowResetConfirm(true)}
                         clinicalMode={clinicalMode}
                     />
@@ -127,13 +64,18 @@ const ExtractionOrderWizard = ({ isOpen, onClose, onSave, mode = 'create', initi
             case 2:
                 return <RadiographsStep files={files} setFiles={setFiles} />;
             case 3:
-                return <AdditionalDataStep data={formData} onChange={setFormData} />;
+                return (
+                    <AdditionalDataStep
+                        data={formData}
+                        onChange={setFormData}
+                        clinicalMode={clinicalMode}
+                    />
+                );
             default:
                 return null;
         }
     };
 
-    // Helper to get title based on mode + clinicalMode
     const getTitle = () => {
         if (mode === 'edit') {
             return clinicalMode === 'extraction'
@@ -163,13 +105,13 @@ const ExtractionOrderWizard = ({ isOpen, onClose, onSave, mode = 'create', initi
                                     <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100">
                                         {getTitle()}
                                     </h2>
-                                    <p className="text-slate-500 text-xs font-medium mt-0.5 uppercase tracking-wide">Paso {step} de 3</p>
+                                    <p className="text-slate-500 text-xs font-medium mt-0.5 uppercase tracking-wide">
+                                        Paso {step} de 3
+                                    </p>
                                 </div>
 
                                 <div className="flex items-center gap-10">
-                                    {/* Stepper */}
                                     <WizardSteps currentStep={step} />
-
                                     <div className="w-px h-8 bg-slate-200 dark:bg-slate-700"></div>
 
                                     <button
@@ -184,7 +126,13 @@ const ExtractionOrderWizard = ({ isOpen, onClose, onSave, mode = 'create', initi
                             {/* Content */}
                             <div className="flex-1 p-0 overflow-hidden bg-slate-50 dark:bg-slate-900/50 relative">
                                 <div className="absolute inset-0 p-6 overflow-y-auto">
-                                    {renderStep()}
+                                    {isLoading ? (
+                                        <div className="flex justify-center items-center h-full text-slate-400">
+                                            Cargando odontograma...
+                                        </div>
+                                    ) : (
+                                        renderStep()
+                                    )}
                                 </div>
                             </div>
 
@@ -202,7 +150,10 @@ const ExtractionOrderWizard = ({ isOpen, onClose, onSave, mode = 'create', initi
                                         <button
                                             onClick={handleNext}
                                             disabled={!canProceed}
-                                            className={`px-6 py-2 rounded-lg font-bold text-white shadow-md shadow-primary/20 transition-all hover:-translate-y-0.5 active:scale-95 flex items-center gap-2 ${canProceed ? 'bg-primary hover:bg-primary/90' : 'bg-slate-300 dark:bg-slate-700 cursor-not-allowed text-slate-500'}`}
+                                            className={`px-6 py-2 rounded-lg font-bold text-white shadow-md shadow-primary/20 transition-all hover:-translate-y-0.5 active:scale-95 flex items-center gap-2 ${canProceed
+                                                ? 'bg-primary hover:bg-primary/90'
+                                                : 'bg-slate-300 dark:bg-slate-700 cursor-not-allowed text-slate-500'
+                                                }`}
                                         >
                                             Siguiente
                                             <ArrowRight size={18} />
@@ -223,7 +174,7 @@ const ExtractionOrderWizard = ({ isOpen, onClose, onSave, mode = 'create', initi
                 )}
             </AnimatePresence>
 
-            {/* RESET CONFIRMATION DIALOG */}
+            {/* RESET CONFIRMATION */}
             <ConfirmDialog
                 open={showResetConfirm}
                 title="¿Limpiar odontograma?"
@@ -248,10 +199,8 @@ function WizardSteps({ currentStep }) {
 
     return (
         <div className="relative flex items-center justify-between w-[330px]">
-            {/* Background Rail */}
             <div className="absolute left-0 top-1/2 -translate-y-1/2 w-full h-[2px] bg-slate-100 dark:bg-slate-800 z-0" />
 
-            {/* Active Progress Rail */}
             <div
                 className="absolute left-0 top-1/2 -translate-y-1/2 h-[2px] bg-primary z-0 transition-all duration-500 ease-out"
                 style={{ width: `${((currentStep - 1) / (steps.length - 1)) * 100}%` }}
@@ -263,16 +212,15 @@ function WizardSteps({ currentStep }) {
                 const isCompleted = stepNum < currentStep;
 
                 return (
-                    <div key={step.label} className="relative z-10 flex flex-col items-center group">
-                        {/* Circle Marker */}
+                    <div key={step.label} className="relative z-10 flex flex-col items-center">
                         <div
                             className={`
                                 w-7 h-7 rounded-full flex items-center justify-center border-2 transition-all duration-300
                                 ${isCompleted
-                                    ? 'bg-primary border-primary text-white scale-100'
+                                    ? 'bg-primary border-primary text-white'
                                     : isActive
-                                        ? 'bg-white dark:bg-slate-900 border-primary text-primary scale-110 shadow-sm ring-2 ring-primary/10'
-                                        : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-300 scale-90'
+                                        ? 'bg-white dark:bg-slate-900 border-primary text-primary scale-110'
+                                        : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-300'
                                 }
                             `}
                         >
@@ -283,10 +231,9 @@ function WizardSteps({ currentStep }) {
                             )}
                         </div>
 
-                        {/* Label */}
                         <span
                             className={`
-                                absolute top-9 text-[9px] font-bold tracking-wider whitespace-nowrap transition-colors duration-300
+                                absolute top-9 text-[9px] font-bold tracking-wider whitespace-nowrap
                                 ${isActive || isCompleted
                                     ? 'text-primary'
                                     : 'text-slate-400 dark:text-slate-600'
