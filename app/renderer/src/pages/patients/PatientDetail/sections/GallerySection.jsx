@@ -16,7 +16,13 @@ import {
 import GalleryViewer from './components/GalleryViewer';
 
 export default function GallerySection() {
-    const { openViewer, openCreator, refreshTrigger } = useContext(PatientLayoutContext);
+    const {
+        openViewer,
+        openCreator,
+        refreshTrigger,
+        updateViewerCollections,
+        setIsRefreshingGallery
+    } = useContext(PatientLayoutContext);
     const { id: patientId } = useParams();
 
     // --- STATE ---
@@ -30,31 +36,34 @@ export default function GallerySection() {
     const [sortBy, setSortBy] = useState('created_desc'); // created_desc, created_asc, updated_desc, updated_asc
 
     // --- DATA FETCHING ---
-    const loadGallery = async () => {
+    const loadGallery = async (isBackground = false) => {
         try {
-            setLoading(true);
+            if (!isBackground) setLoading(true);
+            else setIsRefreshingGallery(true);
+
             const data = await patientGalleryService.getFolders(patientId);
 
             // Mapeamos los datos del backend al formato que espera el componente
+            const timestamp = Date.now();
             const mappedCollections = data.map(folder => {
                 const photoMap = {};
                 const x_rays = [];
 
                 folder.images.forEach(img => {
-                    const fullUrl = `${API_BASE}/${img.file_path}`;
+                    const fullUrl = `${API_BASE}/${img.file_path}?t=${timestamp}`;
                     const slotKey = MANDATORY_KEYS.find(k => img.file_name.includes(k));
-                    
+
                     let notes = [];
                     if (img.notes) {
                         try {
                             notes = typeof img.notes === 'string' ? JSON.parse(img.notes) : img.notes;
-                        } catch(e){}
+                        } catch (e) { }
                     }
 
                     if (slotKey) {
-                        photoMap[slotKey] = { url: fullUrl, notes };
+                        photoMap[slotKey] = { id: img.id, url: fullUrl, notes };
                     } else {
-                        x_rays.push({ url: fullUrl, notes });
+                        x_rays.push({ id: img.id, url: fullUrl, notes });
                     }
                 });
 
@@ -70,17 +79,21 @@ export default function GallerySection() {
 
 
             setCollections(mappedCollections);
+            // Sincronizar con el visor si está abierto
+            updateViewerCollections(mappedCollections);
         } catch (err) {
             console.error('Error cargando galería:', err);
             setError('No se pudo cargar la galería fotográfica.');
         } finally {
             setLoading(false);
+            setIsRefreshingGallery(false);
         }
     };
 
     useEffect(() => {
         if (patientId) {
-            loadGallery();
+            // Si el refreshTrigger > 0, es un refresh de fondo
+            loadGallery(refreshTrigger > 0);
         }
     }, [patientId, refreshTrigger]);
 
@@ -195,7 +208,7 @@ export default function GallerySection() {
                             return (
                                 <div
                                     key={collection.id}
-                                    onDoubleClick={() => handleOpenViewer(collection)}
+                                    onClick={() => handleOpenViewer(collection)}
                                     className="
                                         group relative
                                         flex flex-col items-center justify-center
