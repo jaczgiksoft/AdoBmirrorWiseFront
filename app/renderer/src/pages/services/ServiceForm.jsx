@@ -243,10 +243,10 @@ export default function ServiceForm({ open, onClose, onSaved, serviceToEdit = nu
                                 {errors.name && <span className="text-xs text-error mt-1">{errors.name}</span>}
                             </div>
                             <div className="w-28">
-                                <BwiseColorPicker 
+                                <BwiseColorPicker
                                     label="Color"
-                                    color={form.color} 
-                                    onChange={(color) => setForm((f) => ({ ...f, color: color.hex }))} 
+                                    color={form.color}
+                                    onChange={(color) => setForm((f) => ({ ...f, color: color.hex }))}
                                 />
                             </div>
                         </div>

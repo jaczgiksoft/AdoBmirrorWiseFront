@@ -62,6 +62,8 @@ export default function BwiseColorPicker({ color, onChange, label = "Color" }) {
                 title="Seleccionar Color"
                 widthClass="w-[440px]"
                 closeOnBackdrop={true}
+                titleColorClass="text-primary"
+                containerClass="bg-white dark:bg-secondary"
             >
                 <div className="flex flex-col gap-5">
                     {/* Sección de Colores Rápidos */}
@@ -134,7 +136,7 @@ export default function BwiseColorPicker({ color, onChange, label = "Color" }) {
                     <button
                         type="button"
                         onClick={() => setIsOpen(false)}
-                        className="w-full py-2.5 bg-primary text-white font-bold rounded-xl shadow-lg shadow-primary/20 hover:bg-sky-500 transition-all active:scale-[0.98]"
+                        className="w-full py-2 rounded-lg bg-primary text-white font-semibold shadow-lg shadow-sky-500/20 hover:bg-sky-500 transition-all active:scale-[0.98] text-sm"
                     >
                         Confirmar Selección
                     </button>
