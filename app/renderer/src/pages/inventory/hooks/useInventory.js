@@ -76,8 +76,8 @@ export function useInventory() {
             formData.append('current_stock', newItem.quantity || 0);
             formData.append('purchase_price', newItem.purchasePrice || 0);
             formData.append('sale_price', newItem.salePrice || 0);
-            formData.append('lot_number', newItem.lotNumber || '');
-            formData.append('expiry_date', newItem.expiryDate || '');
+            if (newItem.lotNumber) formData.append('lot_number', newItem.lotNumber);
+            if (newItem.expiryDate) formData.append('expiry_date', newItem.expiryDate);
             
             if (newItem.image instanceof File) {
                 formData.append('image', newItem.image);
@@ -106,8 +106,8 @@ export function useInventory() {
             formData.append('current_stock', updatedData.quantity || 0);
             formData.append('purchase_price', updatedData.purchasePrice || 0);
             formData.append('sale_price', updatedData.salePrice || 0);
-            formData.append('lot_number', updatedData.lotNumber || '');
-            formData.append('expiry_date', updatedData.expiryDate || '');
+            if (updatedData.lotNumber) formData.append('lot_number', updatedData.lotNumber);
+            if (updatedData.expiryDate) formData.append('expiry_date', updatedData.expiryDate);
             
             if (updatedData.image instanceof File) {
                 formData.append('image', updatedData.image);
