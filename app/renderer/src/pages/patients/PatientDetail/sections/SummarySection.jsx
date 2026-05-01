@@ -279,10 +279,10 @@ export default function SummarySection() {
                     icon={FileText}
                 >
                     <div className="space-y-4 text-sm mt-2">
-                        <Bar label="Cotización normal" amount="$12,000" percent={70} color="bg-blue-500" />
-                        <Bar label="Cotización extra" amount="$4,500" percent={25} color="bg-purple-500" />
-                        <Bar label="Pago inicial" amount="$5,000" percent={35} color="bg-green-500" />
-                        <Bar label="Total del plan" amount="$16,500" percent={100} color="bg-primary" />
+                        <Bar label="Cotización normal" amount="$0" percent={0} color="bg-blue-500" />
+                        <Bar label="Cotización extra" amount="$0" percent={0} color="bg-purple-500" />
+                        <Bar label="Pago inicial" amount="$0" percent={0} color="bg-green-500" />
+                        <Bar label="Total del plan" amount="$0" percent={0} color="bg-primary" />
                     </div>
                 </Section>
 
@@ -292,17 +292,17 @@ export default function SummarySection() {
 
                         <div className="flex justify-between">
                             <p className="text-xs uppercase text-slate-500">Total del plan</p>
-                            <p className="font-semibold">$16,500</p>
+                            <p className="font-semibold">$0</p>
                         </div>
 
                         <div className="flex justify-between">
                             <p className="text-xs uppercase text-slate-500">Pagado</p>
-                            <p className="font-semibold text-green-600">$5,000</p>
+                            <p className="font-semibold text-green-600">$0</p>
                         </div>
 
                         <div className="flex justify-between">
                             <p className="text-xs uppercase text-slate-500">Pendiente</p>
-                            <p className="font-semibold text-red-600">$11,500</p>
+                            <p className="font-semibold text-red-600">$0</p>
                         </div>
 
                         <div className="mt-3">

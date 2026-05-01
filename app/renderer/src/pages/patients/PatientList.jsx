@@ -90,7 +90,7 @@ export default function PatientList() {
                 start,
                 length: limit,
                 searchValue: debouncedSearch,
-                orderColumn: "last_name",
+                orderColumn: "first_name",
                 orderDir: "ASC",
                 ...filters,
             });
@@ -262,7 +262,7 @@ export default function PatientList() {
                     <div className="flex items-center gap-2 flex-wrap">
                         {QUICK_FILTERS.map((f) => {
                             const isActive = selectedQuickFilters.includes(f.id);
-                            
+
                             const colorBase = f.color.replace("bg-", "");
                             const activeBg = `bg-${colorBase}/10`;
                             const activeBorder = `border-${colorBase}`;
@@ -290,17 +290,16 @@ export default function PatientList() {
 
                         <motion.button
                             initial={false}
-                            animate={{ 
+                            animate={{
                                 opacity: selectedQuickFilters.length === QUICK_FILTERS.length ? 0.4 : 1,
                                 pointerEvents: selectedQuickFilters.length === QUICK_FILTERS.length ? "none" : "auto"
                             }}
                             whileHover={selectedQuickFilters.length < QUICK_FILTERS.length ? { scale: 1.05 } : {}}
                             onClick={() => setSelectedQuickFilters(QUICK_FILTERS.map(f => f.id))}
-                            className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-colors ${
-                                selectedQuickFilters.length < QUICK_FILTERS.length 
-                                ? "text-slate-400 hover:text-primary cursor-pointer" 
-                                : "text-slate-300 dark:text-slate-600 cursor-default"
-                            }`}
+                            className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-colors ${selectedQuickFilters.length < QUICK_FILTERS.length
+                                    ? "text-slate-400 hover:text-primary cursor-pointer"
+                                    : "text-slate-300 dark:text-slate-600 cursor-default"
+                                }`}
                             title="Seleccionar todos los filtros"
                         >
                             <Filter size={14} />
@@ -470,7 +469,7 @@ export default function PatientList() {
                                         {/* Datos */}
                                         <div className="text-center mb-4">
                                             <p className="text-base font-semibold text-cyan-600 dark:text-cyan-400 truncate max-w-[160px] mx-auto">
-                                                {p.first_name} {p.last_name}
+                                                {p.first_name} {p.last_name} {p.middle_name || ""}
                                             </p>
                                             <p className="text-xs text-slate-500 dark:text-slate-400">
                                                 MRN: {p.medical_record_number}

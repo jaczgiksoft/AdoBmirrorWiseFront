@@ -53,7 +53,7 @@ const COLORS = ['#22c55e', '#ef4444', '#3b82f6', '#f59e0b', '#a855f7'];
 export default function FiltroList() {
     const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState("clinica");
-    
+
     // Filtros para Desempeño Clínico
     const [filters, setFilters] = useState({
         startDate: dayjs().subtract(30, 'day').format('YYYY-MM-DD'),
@@ -113,20 +113,20 @@ export default function FiltroList() {
                         >
                             {/* Filtros Superiores */}
                             <div className="bg-white dark:bg-secondary p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-                                <DateInput 
-                                    label="Desde" 
-                                    value={filters.startDate} 
-                                    onChange={(val) => handleFilterChange('startDate', val)} 
+                                <DateInput
+                                    label="Desde"
+                                    value={filters.startDate}
+                                    onChange={(val) => handleFilterChange('startDate', val)}
                                 />
-                                <DateInput 
-                                    label="Hasta" 
-                                    value={filters.endDate} 
-                                    onChange={(val) => handleFilterChange('endDate', val)} 
+                                <DateInput
+                                    label="Hasta"
+                                    value={filters.endDate}
+                                    onChange={(val) => handleFilterChange('endDate', val)}
                                 />
-                                
+
                                 <div className="space-y-1">
                                     <label className="text-[11px] uppercase tracking-wide text-slate-500 dark:text-slate-400 ml-1">Personal / Doctor</label>
-                                    <select 
+                                    <select
                                         className="w-full px-3 py-2.5 rounded-lg border bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 border-slate-300 dark:border-slate-700 text-sm focus:ring-2 focus:ring-primary/50"
                                         value={filters.doctorId}
                                         onChange={(e) => handleFilterChange('doctorId', e.target.value)}
@@ -140,7 +140,7 @@ export default function FiltroList() {
 
                                 <div className="space-y-1">
                                     <label className="text-[11px] uppercase tracking-wide text-slate-500 dark:text-slate-400 ml-1">Tipo de Servicio</label>
-                                    <select 
+                                    <select
                                         className="w-full px-3 py-2.5 rounded-lg border bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 border-slate-300 dark:border-slate-700 text-sm focus:ring-2 focus:ring-primary/50"
                                         value={filters.serviceId}
                                         onChange={(e) => handleFilterChange('serviceId', e.target.value)}
@@ -161,45 +161,45 @@ export default function FiltroList() {
                                 <>
                                     {/* KPI Cards */}
                                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                                        <KPICard 
-                                            label="% Citas Bien" 
-                                            value={`${dashboardData.kpis.successRate}%`} 
-                                            icon={UserCheck} 
-                                            color="text-emerald-500" 
-                                            bg="bg-emerald-500/10" 
+                                        <KPICard
+                                            label="% Citas en tiempo"
+                                            value={`${dashboardData.kpis.successRate}%`}
+                                            icon={UserCheck}
+                                            color="text-emerald-500"
+                                            bg="bg-emerald-500/10"
                                         />
-                                        <KPICard 
-                                            label="Total de Retrasos" 
-                                            value={dashboardData.kpis.totalDelays} 
-                                            icon={Clock} 
-                                            color="text-rose-500" 
-                                            bg="bg-rose-500/10" 
+                                        <KPICard
+                                            label="Citas fuera de tiempo"
+                                            value={dashboardData.kpis.totalDelays}
+                                            icon={Clock}
+                                            color="text-rose-500"
+                                            bg="bg-rose-500/10"
                                         />
-                                        <KPICard 
-                                            label="Doctor del Mes" 
-                                            value={dashboardData.kpis.topDoctor} 
-                                            icon={Zap} 
-                                            color="text-amber-500" 
-                                            bg="bg-amber-500/10" 
+                                        <KPICard
+                                            label="Doctor del Mes"
+                                            value={dashboardData.kpis.topDoctor}
+                                            icon={Zap}
+                                            color="text-amber-500"
+                                            bg="bg-amber-500/10"
                                         />
-                                        <KPICard 
-                                            label="vs. Mes Anterior" 
-                                            value={`+${dashboardData.kpis.comparison}%`} 
-                                            icon={TrendingUp} 
-                                            color="text-blue-500" 
-                                            bg="bg-blue-500/10" 
+                                        <KPICard
+                                            label="Comparativa mes anterior"
+                                            value={`+${dashboardData.kpis.comparison}%`}
+                                            icon={TrendingUp}
+                                            color="text-blue-500"
+                                            bg="bg-blue-500/10"
                                         />
                                     </div>
 
                                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                                         {/* Chart: Desempeño Individual */}
-                                        <ChartContainer title="Desempeño Individual por Empleado" icon={BarChart2}>
+                                        <ChartContainer title="Desempeño individual por tiempos" icon={BarChart2}>
                                             <ResponsiveContainer width="100%" height={300}>
                                                 <BarChart data={dashboardData.charts.barData}>
                                                     <CartesianGrid strokeDasharray="3 3" vertical={false} />
                                                     <XAxis dataKey="name" fontSize={12} />
                                                     <YAxis fontSize={12} />
-                                                    <Tooltip 
+                                                    <Tooltip
                                                         contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
                                                     />
                                                     <Legend />
@@ -210,13 +210,13 @@ export default function FiltroList() {
                                         </ChartContainer>
 
                                         {/* Chart: Evolución General */}
-                                        <ChartContainer title="Evolución del Desempeño (% Éxito)" icon={Activity}>
+                                        <ChartContainer title="Evolución de desempeño diario individual(% Éxito)" icon={Activity}>
                                             <ResponsiveContainer width="100%" height={300}>
                                                 <AreaChart data={dashboardData.charts.areaData}>
                                                     <defs>
                                                         <linearGradient id="colorRate" x1="0" y1="0" x2="0" y2="1">
-                                                            <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
-                                                            <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                                                            <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
+                                                            <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
                                                         </linearGradient>
                                                     </defs>
                                                     <CartesianGrid strokeDasharray="3 3" vertical={false} />
@@ -429,7 +429,7 @@ function KPICard({ label, value, icon: Icon, color, bg }) {
 
 function ChartContainer({ title, icon: Icon, children }) {
     return (
-        <motion.div 
+        <motion.div
             initial={{ opacity: 0, scale: 0.98 }}
             animate={{ opacity: 1, scale: 1 }}
             className="bg-white dark:bg-secondary rounded-2xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm"

@@ -1,6 +1,6 @@
 import React, { useState, createContext } from "react";
 import { useNavigate } from "react-router-dom";
-import { X } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import GalleryViewer from "./sections/components/GalleryViewer";
 import GalleryCreator from "./sections/components/GalleryCreator";
 
@@ -92,7 +92,7 @@ export default function PatientDetailLayout({ sidebar, children }) {
                             onClick={() => navigate('/patients')}
                             className="flex items-center gap-2 text-slate-600 dark:text-slate-300 hover:text-primary"
                         >
-                            <X size={18} />
+                            <ArrowLeft size={18} />
                             <span className="font-medium">Volver al listado</span>
                         </button>
                     </div>
