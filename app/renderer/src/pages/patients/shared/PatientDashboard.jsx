@@ -31,20 +31,22 @@ export default function PatientDashboard({ patients = [] }) {
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.3 }}
             className="
-                rounded-xl p-3
+                rounded-xl px-3 py-0
                 bg-white border-slate-300
                 dark:bg-secondary dark:border-slate-700
-                flex flex-col gap-4
+                flex flex-col gap-1 
             "
         >
             {/* Título compacto */}
-            <h2 className="text-sm font-semibold text-cyan-600 dark:text-primary text-center">
+            <h2 className=" text-[25px] font-semibold text-cyan-600 dark:text-primary text-center">
                 Resumen de pacientes
             </h2>
 
             {/* Métricas pequeñas */}
-            <div className="flex justify-around text-center">
-                <Metric label="Total" value={total} color={winner.color} />
+            <div className="flex justify-around text-center text-[25px]">
+                <div className="text-[25px]">
+                    <Metric label="Total" value={total} color={winner.color} size='25px' />
+                </div>
                 <Metric label="Tratamiento" value={activos} color="#4CAF50" />
                 <Metric label="Activos (%)" value={`${activePct}%`} color="#4CAF50" />
             </div>
@@ -70,11 +72,11 @@ export default function PatientDashboard({ patients = [] }) {
 
                 {/* Número total */}
                 <div className="absolute text-center">
-                    <p className="text-[10px] text-slate-500 dark:text-slate-400">
+                    <p className="text-[13px] text-slate-500 dark:text-slate-400">
                         Total
                     </p>
                     <p
-                        className="text-lg font-bold"
+                        className="text-[23px] font-bold"
                         style={{ color: winner.color }}
                     >
                         {total}
@@ -101,11 +103,11 @@ export default function PatientDashboard({ patients = [] }) {
 function Metric({ label, value, color }) {
     return (
         <div className="flex flex-col items-center">
-            <p className="text-[11px] text-slate-500 dark:text-slate-400">
+            <p className="text-[14px] text-slate-500 dark:text-slate-400">
                 {label}
             </p>
             <p
-                className="text-xl font-bold leading-none"
+                className="text-[25px] font-bold leading-none"
                 style={{ color }}
             >
                 {value}
@@ -130,13 +132,13 @@ function LegendItem({ label, value, color }) {
                     className="w-3 h-3 rounded-full"
                     style={{ backgroundColor: color }}
                 />
-                <span className="text-xs text-slate-700 dark:text-slate-300">
+                <span className="text-[15px] text-slate-700 dark:text-slate-300">
                     {label}
                 </span>
             </div>
 
             <span
-                className="text-xs font-semibold"
+                className="text-[15px] font-semibold"
                 style={{ color }}
             >
                 {value}

@@ -301,7 +301,7 @@ export default function PatientForm({ open, onClose, onCreated, patientType }) {
             }
 
             if (form.photo_file) {
-                payload.photo_file = form.photo_file; 
+                payload.photo_file = form.photo_file;
             }
 
             delete payload.photo_preview;
@@ -599,6 +599,9 @@ export default function PatientForm({ open, onClose, onCreated, patientType }) {
                             <div>
                                 <label className="block text-sm mb-1 label-required">Nombre</label>
                                 <input
+                                    style={{
+                                        textTransform: "capitalize"
+                                    }}
                                     name="first_name"
                                     placeholder="Ej: Juan"
                                     value={form.first_name}
@@ -609,6 +612,9 @@ export default function PatientForm({ open, onClose, onCreated, patientType }) {
                             <div>
                                 <label className="block text-sm mb-1 label-required">Apellido paterno</label>
                                 <input
+                                    style={{
+                                        textTransform: "capitalize"
+                                    }}
                                     name="last_name"
                                     placeholder="Ej: Hernández"
                                     value={form.last_name}
@@ -623,6 +629,9 @@ export default function PatientForm({ open, onClose, onCreated, patientType }) {
                             <div>
                                 <label className="block text-sm mb-1">Apellido materno</label>
                                 <input
+                                    style={{
+                                        textTransform: "capitalize"
+                                    }}
                                     name="middle_name"
                                     placeholder="Ej: Gómez"
                                     value={form.middle_name}
@@ -633,6 +642,9 @@ export default function PatientForm({ open, onClose, onCreated, patientType }) {
                             <div>
                                 <label className="block text-sm mb-1">Apodo</label>
                                 <input
+                                    style={{
+                                        textTransform: "capitalize"
+                                    }}
                                     name="nickname"
                                     placeholder="Ej: Juanito"
                                     value={form.nickname}
