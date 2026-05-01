@@ -21,6 +21,8 @@ export default function Modal({
     footer,
     widthClass = "w-[520px]",
     closeOnBackdrop = false,
+    titleColorClass = "text-slate-900 dark:text-white",
+    containerClass = "bg-white dark:bg-dark",
 }) {
     // Prevent scrolling on body when modal is open
     useEffect(() => {
@@ -65,12 +67,12 @@ export default function Modal({
                         animate={{ scale: 1, opacity: 1, y: 0 }}
                         exit={{ scale: 0.95, opacity: 0, y: 10 }}
                         transition={{ duration: 0.2 }}
-                        className={`bg-white dark:bg-dark rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 max-h-[90vh] overflow-hidden ${widthClass} flex flex-col`}
+                        className={`${containerClass} rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 max-h-[90vh] overflow-hidden ${widthClass} flex flex-col`}
                     >
                         {/* Header */}
                         {title && (
                             <div className="flex justify-between items-center p-6 border-b border-slate-200 dark:border-slate-800 shrink-0">
-                                <h2 className="text-xl font-bold text-slate-900 dark:text-white">{title}</h2>
+                                <h2 className={`text-xl font-bold ${titleColorClass}`}>{title}</h2>
                                 {onClose && (
                                     <button
                                         onClick={onClose}
