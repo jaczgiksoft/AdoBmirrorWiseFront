@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Bell, LogOut, User, Sun, Moon } from "lucide-react";
+import { Bell, LogOut, User, Sun, Moon, Bot } from "lucide-react";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useNotificationStore } from "@/store/useNotificationStore";
 import { NotificationPanel, ConfirmDialog } from "@/components/feedback";
+import BwiseChatbot from "@/components/ai/BwiseChatbot";
 import { useToastStore } from "@/store/useToastStore";
 import { useAppUpdate } from "@/hooks/useAppUpdate";
 import { API_BASE } from "@/utils/apiBase";
@@ -37,6 +38,8 @@ export default function Header() {
     const [hoverTheme, setHoverTheme] = useState(false);
     const [downloading, setDownloading] = useState(false);
     const [dismissed, setDismissed] = useState(false);
+    const [showChatbot, setShowChatbot] = useState(false);
+    const [hoverChat, setHoverChat] = useState(false);
 
     const handleUpdate = async () => {
         try {
@@ -279,6 +282,50 @@ export default function Header() {
                         </button>
                     </div>
 
+                    {/* AI ASSISTANT */}
+                    <div className="relative">
+                        <button
+                            onMouseEnter={() => setHoverChat(true)}
+                            onMouseLeave={() => setHoverChat(false)}
+                            onClick={() => setShowChatbot(true)}
+                            className="
+                                relative transition cursor-pointer p-[2px]
+                                text-slate-600 hover:text-primary
+                                dark:text-slate-400 dark:hover:text-primary
+                            "
+                        >
+                            <motion.div
+                                whileHover={{
+                                    scale: [1, 1.2, 1],
+                                    transition: { duration: 1, repeat: Infinity, repeatType: "loop" },
+                                }}
+                            >
+                                <Bot size={21} />
+                            </motion.div>
+
+                            {/* TOOLTIP */}
+                            <AnimatePresence>
+                                {hoverChat && (
+                                    <motion.div
+                                        initial={{ opacity: 0, y: 5 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        exit={{ opacity: 0, y: 5 }}
+                                        transition={{ duration: 0.15 }}
+                                        className="
+                                            absolute right-8 top-1/2 -translate-y-1/2
+                                            bg-white text-slate-700
+                                            dark:bg-slate-800 dark:text-white
+                                            text-[10px] px-2 py-1 rounded-lg shadow-lg
+                                            whitespace-nowrap z-50
+                                        "
+                                    >
+                                        Asistente BWISE
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+                        </button>
+                    </div>
+
                     {/* THEME SWITCH */}
                     <div className="relative">
                         <button
@@ -402,6 +449,12 @@ export default function Header() {
                 confirmLabel="Cerrar sesión"
                 cancelLabel="Cancelar"
                 confirmVariant="error"
+            />
+
+            {/* AI CHATBOT DRAWER */}
+            <BwiseChatbot 
+                isOpen={showChatbot} 
+                onClose={() => setShowChatbot(false)} 
             />
         </div>
     );
