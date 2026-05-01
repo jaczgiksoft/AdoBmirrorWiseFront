@@ -9,10 +9,15 @@ import {
     Image as ImageIcon,
     CheckCircle2,
     Search,
-    SquareSplitHorizontal
+    SquareSplitHorizontal,
+    Loader2
 } from 'lucide-react';
 import ImageLightbox from './ImageLightbox';
 import AdvancedImageViewer from './AdvancedImageViewer';
+import ImageEditorModal from './ImageEditorModal';
+import patientGalleryService from '@/services/patientGallery.service';
+import { PatientLayoutContext } from '../../PatientDetailLayout';
+import { useContext } from 'react';
 
 
 const MANDATORY_KEYS = [
@@ -28,10 +33,12 @@ const MANDATORY_KEYS = [
 
 export default function GalleryViewer({ collections, initialCollectionId, onClose }) {
     // --- STATE ---
-    const [currentIndex, setCurrentIndex] = useState(() => {
-        const idx = collections.findIndex(c => c.id === initialCollectionId);
+    const [activeId, setActiveId] = useState(initialCollectionId);
+    
+    const currentIndex = useMemo(() => {
+        const idx = collections.findIndex(c => c.id === activeId);
         return idx >= 0 ? idx : 0;
-    });
+    }, [collections, activeId]);
 
     const [lightboxIndex, setLightboxIndex] = useState(null);
     const [sidebarSearch, setSidebarSearch] = useState('');
@@ -41,6 +48,8 @@ export default function GalleryViewer({ collections, initialCollectionId, onClos
     const [isComparisonMode, setIsComparisonMode] = useState(false);
     const [selectedImages, setSelectedImages] = useState([]);
     const [showAdvancedViewer, setShowAdvancedViewer] = useState(false);
+    const [editingImage, setEditingImage] = useState(null); // { id, url, label }
+    const { triggerRefresh, isRefreshingGallery } = useContext(PatientLayoutContext);
 
     // Toggle logic for comparison
     const toggleComparisonMode = () => {
@@ -88,7 +97,7 @@ export default function GalleryViewer({ collections, initialCollectionId, onClos
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [currentIndex, lightboxIndex, onClose]);
+    }, [activeId, currentIndex, lightboxIndex, onClose]);
 
     // Scroll active item into view in sidebar
     useEffect(() => {
@@ -164,7 +173,7 @@ export default function GalleryViewer({ collections, initialCollectionId, onClos
     // --- ACTIONS ---
     const handleNext = () => {
         if (currentIndex < collections.length - 1) {
-            setCurrentIndex(prev => prev + 1);
+            setActiveId(collections[currentIndex + 1].id);
             setActiveCategory('ALL'); // Reset filter on change? Or keep it? Keeping logic simple for now.
             setActiveSpecific(null);
         }
@@ -172,7 +181,7 @@ export default function GalleryViewer({ collections, initialCollectionId, onClos
 
     const handlePrev = () => {
         if (currentIndex > 0) {
-            setCurrentIndex(prev => prev - 1);
+            setActiveId(collections[currentIndex - 1].id);
             setActiveCategory('ALL');
             setActiveSpecific(null);
         }
@@ -223,11 +232,17 @@ export default function GalleryViewer({ collections, initialCollectionId, onClos
             <div className="flex items-center justify-between px-6 py-3 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm z-10 transition-colors">
 
                 {/* Left: Empty or Title (Back button moved to sidebar) */}
-                <div className="flex items-center gap-2 text-slate-800 dark:text-slate-100">
+                <div className="flex items-center gap-3 text-slate-800 dark:text-slate-100">
                     <Folder size={20} className="text-primary" />
                     <h2 className="text-lg font-bold">
                         {currentCollection.name}
                     </h2>
+                    {isRefreshingGallery && (
+                        <div className="flex items-center gap-2 px-2 py-0.5 bg-primary/10 text-primary rounded-full animate-in fade-in zoom-in duration-300">
+                            <Loader2 size={12} className="animate-spin" />
+                            <span className="text-[10px] font-bold uppercase tracking-wider">Actualizando...</span>
+                        </div>
+                    )}
                 </div>
 
                 {/* Right: Actions */}
@@ -344,7 +359,7 @@ export default function GalleryViewer({ collections, initialCollectionId, onClos
                                     <button
                                         key={collection.id}
                                         data-index={originalIndex}
-                                        onClick={() => setCurrentIndex(originalIndex)}
+                                        onClick={() => setActiveId(collection.id)}
                                         className={`
                                             w-full flex items-start gap-3 p-3 rounded-xl text-left transition-all
                                             ${isActive
@@ -462,6 +477,11 @@ export default function GalleryViewer({ collections, initialCollectionId, onClos
                                                         openLightbox(currentCollection.photos[key].url);
                                                     }
                                                 }}
+                                                onEdit={() => setEditingImage({
+                                                    id: currentCollection.photos[key].id,
+                                                    url: currentCollection.photos[key].url,
+                                                    label: label
+                                                })}
                                                 isSelectable={isComparisonMode}
                                                 isSelected={selectedImages.some(i => i.url === currentCollection.photos[key].url)}
                                             />
@@ -485,7 +505,7 @@ export default function GalleryViewer({ collections, initialCollectionId, onClos
                                 </h3>
                                 {currentCollection.photos.x_rays?.length > 0 ? (
                                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                        {currentCollection.photos.x_rays.map((url, idx) => {
+                                        {currentCollection.photos.x_rays.map((xray, idx) => {
                                             if (!isXrayVisible(idx)) return null;
                                             return (
                                                 <ImageCard
@@ -499,6 +519,11 @@ export default function GalleryViewer({ collections, initialCollectionId, onClos
                                                             openLightbox(xray.url);
                                                         }
                                                     }}
+                                                    onEdit={() => setEditingImage({
+                                                        id: xray.id,
+                                                        url: xray.url,
+                                                        label: `Radiografía ${idx + 1}`
+                                                    })}
                                                     isSelectable={isComparisonMode}
                                                     isSelected={selectedImages.some(i => i.url === xray.url)}
                                                 />
@@ -539,11 +564,33 @@ export default function GalleryViewer({ collections, initialCollectionId, onClos
                 />
             )}
 
+            {/* --- IMAGE EDITOR (PINTURA) --- */}
+            {editingImage && (
+                <ImageEditorModal
+                    imageSrc={editingImage.url}
+                    imageName={editingImage.label}
+                    onClose={() => setEditingImage(null)}
+                    onSave={async (destFile) => {
+                        try {
+                            const formData = new FormData();
+                            formData.append('photo', destFile, 'edited_image.jpg'); // or destFile.name if it has one
+                            await patientGalleryService.updateImage(editingImage.id, formData);
+                            setEditingImage(null);
+                            triggerRefresh(); // Recargar imágenes
+                        } catch (err) {
+                            console.error('Error guardando imagen editada:', err);
+                            // ideally show a toast notification here
+                        }
+                    }}
+                />
+            )}
+
+
         </div>
     );
 }
 
-function ImageCard({ label, src, onPreview, isSelectable, isSelected }) {
+function ImageCard({ label, src, onPreview, onEdit, isSelectable, isSelected }) {
 
     return (
         <div
@@ -566,20 +613,34 @@ function ImageCard({ label, src, onPreview, isSelectable, isSelected }) {
                         <div
                             className="
                                 absolute inset-0 bg-black/0 group-hover:bg-black/20 
-                                transition-colors flex items-center justify-center
-                                opacity-0 group-hover:opacity-100 cursor-pointer
+                                transition-colors flex items-center justify-center gap-3
+                                opacity-0 group-hover:opacity-100
                             "
-                            onClick={onPreview}
                         >
                             {isSelectable ? (
                                 <div className={`
-                                    w-8 h-8 rounded-full flex items-center justify-center transition-all
+                                    w-8 h-8 rounded-full flex items-center justify-center transition-all cursor-pointer
                                     ${isSelected ? 'bg-primary text-white scale-110' : 'bg-white/20 hover:bg-white/40 border-2 border-white'}
-                                `}>
+                                `} onClick={onPreview}>
                                     {isSelected ? <CheckCircle2 size={18} /> : null}
                                 </div>
                             ) : (
-                                <Maximize2 className="text-white drop-shadow-md" size={24} />
+                                <>
+                                    <button 
+                                        className="w-10 h-10 rounded-full bg-white/20 hover:bg-primary hover:text-white border-2 border-white text-white flex items-center justify-center transition-all drop-shadow-md"
+                                        onClick={(e) => { e.stopPropagation(); onPreview(); }}
+                                        title="Expandir"
+                                    >
+                                        <Maximize2 size={18} />
+                                    </button>
+                                    <button 
+                                        className="w-10 h-10 rounded-full bg-white/20 hover:bg-amber-500 hover:text-white border-2 border-white text-white flex items-center justify-center transition-all drop-shadow-md"
+                                        onClick={(e) => { e.stopPropagation(); onEdit && onEdit(); }}
+                                        title="Editar (Pintura)"
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
+                                    </button>
+                                </>
                             )}
                         </div>
                     </>

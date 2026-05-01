@@ -11,7 +11,10 @@ export const PatientLayoutContext = createContext({
     openCreator: () => { },
     closeCreator: () => { },
     refreshTrigger: 0,
-    triggerRefresh: () => { }
+    triggerRefresh: () => { },
+    updateViewerCollections: () => { },
+    isRefreshingGallery: false,
+    setIsRefreshingGallery: () => { }
 });
 
 export default function PatientDetailLayout({ sidebar, children }) {
@@ -25,8 +28,13 @@ export default function PatientDetailLayout({ sidebar, children }) {
 
     // Refresh trigger for components
     const [refreshTrigger, setRefreshTrigger] = useState(0);
+    const [isRefreshingGallery, setIsRefreshingGallery] = useState(false);
 
     const triggerRefresh = () => setRefreshTrigger(prev => prev + 1);
+
+    const updateViewerCollections = (newCollections) => {
+        setViewerState(prev => prev ? { ...prev, collections: newCollections } : null);
+    };
 
 
     const openViewer = (collectionId, collections) => {
@@ -51,7 +59,17 @@ export default function PatientDetailLayout({ sidebar, children }) {
     };
 
     return (
-        <PatientLayoutContext.Provider value={{ openViewer, closeViewer, openCreator, closeCreator, refreshTrigger, triggerRefresh }}>
+        <PatientLayoutContext.Provider value={{ 
+            openViewer, 
+            closeViewer, 
+            openCreator, 
+            closeCreator, 
+            refreshTrigger, 
+            triggerRefresh,
+            updateViewerCollections,
+            isRefreshingGallery,
+            setIsRefreshingGallery
+        }}>
             <div className="flex relative bg-slate-100 dark:bg-dark h-full">
 
                 {/* SIDEBAR (FIJO) */}
