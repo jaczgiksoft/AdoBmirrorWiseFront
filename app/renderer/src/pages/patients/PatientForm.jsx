@@ -292,8 +292,16 @@ export default function PatientForm({ open, onClose, onCreated, patientType }) {
             let payload = { ...form };
             delete payload.confirm_password;
 
+            // Limpiar email si está vacío para evitar errores de validación
+            if (payload.email) {
+                payload.email = payload.email.trim();
+            }
+            if (!payload.email) {
+                delete payload.email;
+            }
+
             if (form.photo_file) {
-                payload.photo_file = form.photo_file; // archivo real para FormData
+                payload.photo_file = form.photo_file; 
             }
 
             delete payload.photo_preview;

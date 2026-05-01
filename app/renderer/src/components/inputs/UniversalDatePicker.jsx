@@ -29,7 +29,7 @@ export default function UniversalDatePicker({
 }) {
     // Referencias para el posicionamiento
     const anchorRef = useRef(null);
-    const [coords, setCoords] = useState({ top: 0, left: 0, width: 0 });
+    const [coords, setCoords] = useState({ top: 0, left: 0, width: 0, direction: "down" });
 
     const [isEditing, setIsEditing] = useState(false);
     const datepickerContainerRef = useRef(null);
@@ -70,10 +70,17 @@ export default function UniversalDatePicker({
     const updatePosition = () => {
         if (anchorRef.current) {
             const rect = anchorRef.current.getBoundingClientRect();
+            const spaceBelow = window.innerHeight - rect.bottom;
+            const spaceAbove = rect.top;
+
+            // Si hay menos de 380px abajo y hay más espacio arriba, abrir hacia arriba
+            const calculatedDirection = (spaceBelow < 380 && spaceAbove > spaceBelow) ? "up" : "down";
+
             setCoords({
                 top: rect.top,
                 left: rect.left,
-                width: rect.width
+                width: rect.width,
+                direction: popoverDirection !== "down" ? popoverDirection : calculatedDirection
             });
         }
     };
@@ -87,7 +94,7 @@ export default function UniversalDatePicker({
             window.removeEventListener("scroll", updatePosition, true);
             window.removeEventListener("resize", updatePosition);
         };
-    }, []);
+    }, [isEditing]);
 
     const handleInternalChange = (newValue) => {
         setDateValue(newValue);
@@ -357,7 +364,7 @@ export default function UniversalDatePicker({
                             startFrom={dateValue.startDate && dayjs(dateValue.startDate).isValid()
                                 ? dayjs(dateValue.startDate).toDate()
                                 : new Date()}
-                            popoverDirection={popoverDirection}
+                            popoverDirection={coords.direction}
                             inputClassName={`input w-full ${error ? "border-error ring-1 ring-error/50" : ""} ${inputClassName}`}
                         />
                     </div>
