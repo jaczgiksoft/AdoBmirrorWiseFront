@@ -5,7 +5,7 @@ import CalendarMonthView from "./CalendarMonthView";
 import CalendarDayView from "./CalendarDayView";
 
 export default function ClinicCalendar({ appointments, onEditAppointment, monthEventContent, onDateClick, onMoreClick, onEventClick, onEventEdit }) {
-    const [view, setView] = useState("month"); // 'month' | 'day'
+    const [view, setView] = useState("day"); // 'month' | 'day'
     const [currentDate, setCurrentDate] = useState(new Date());
     const [resources, setResources] = useState([]);
     const calendarRef = useRef(null);

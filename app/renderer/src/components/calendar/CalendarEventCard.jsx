@@ -6,7 +6,7 @@ import {
     CheckCircle2,
     XCircle,
     CalendarClock,
-    Timer, Eye
+    Timer, Eye, FileText
 } from "lucide-react";
 export default function CalendarEventCard({ event }) {
     const { extendedProps } = event;
@@ -27,9 +27,9 @@ export default function CalendarEventCard({ event }) {
     // 🎯 STATUS COLOR (barra lateral)
     const statusColorMap = {
         pendiente: "#FACC15",
-        confirmada: "#22C55E",
-        en_espera: "#22C55E",
-        en_tratamiento: "#22C55E",
+        confirmada: "#10B981",
+        en_espera: "#10B981",
+        en_tratamiento: "#10B981",
         finalizada: "#3B82F6",
         cancelada: "#EF4444"
     };
@@ -91,229 +91,292 @@ export default function CalendarEventCard({ event }) {
 
     if (isMicro) {
         return (
-            <div
-                className="
-                w-full h-full px-2
-                flex items-center
-                text-[11px] font-medium text-white
-                truncate
-            "
-                style={{
-                    backgroundColor: accentColor,
-                    borderLeft: `3px solid ${statusColor}`
-                }}
-            >
-                {patient.first_name} {patient.last_name}
+            <div className="relative group w-full h-full">
+                <div
+                    className="
+                    w-full h-full px-2
+                    flex items-center
+                    text-[11px] font-medium text-white
+                    truncate overflow-hidden
+                "
+                    style={{
+                        backgroundColor: accentColor,
+                        borderLeft: `3px solid ${statusColor}`
+                    }}
+                >
+                    {patient.first_name} {patient.last_name}
+                    {extendedProps.notes && <FileText size={10} className="ml-1.5 text-yellow-300 shrink-0" />}
+                </div>
+
+                {/* TOOLTIP */}
+                <div className="
+                    pointer-events-none absolute z-[100] left-1/2 -translate-x-1/2 bottom-full mb-2
+                    opacity-0 group-hover:opacity-100 transition-all duration-200 translate-y-1 group-hover:translate-y-0
+                ">
+                    <div className="
+                        bg-white dark:bg-slate-800
+                        text-slate-800 dark:text-slate-100
+                        text-xs rounded-lg shadow-xl border border-slate-200 dark:border-slate-700
+                        p-3 min-w-[200px]
+                    ">
+                        <div className="font-bold text-sm mb-1">{patient.first_name} {patient.last_name}</div>
+                        <div className="flex items-center gap-2 text-[11px] text-slate-500 dark:text-slate-400">
+                            <Clock3 size={12} />
+                            <span>
+                                {new Date(event.start).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - 
+                                {new Date(event.end).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                        </div>
+                        <div className="flex items-center gap-2 text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                            <Activity size={12} />
+                            <span>{extendedProps.services?.[0]?.name || 'Consulta'}</span>
+                        </div>
+                    </div>
+                </div>
             </div>
         );
     }
 
     return (
-        <div
-            className="
-                relative w-full h-full rounded-xl overflow-hidden
-                flex flex-col justify-between
-                px-3 py-2
-                transition-all duration-200
-                hover:shadow-2xl hover:z-20
-                cursor-pointer
-            "
-            style={{
-                background: `linear-gradient(135deg, ${accentColor}, ${accentColor}CC)`
-            }}
-        >
-            {/* 🔵 STATUS STRIP */}
+        <div className="relative group w-full h-full">
             <div
-                className="absolute left-0 top-0 h-full w-1.5"
-                style={{ backgroundColor: statusColor }}
-            />
+                className="
+                    relative w-full h-full rounded-xl overflow-hidden
+                    flex flex-col justify-between
+                    px-3 py-2
+                    transition-all duration-200
+                    hover:shadow-2xl hover:z-20
+                    cursor-pointer
+                "
+                style={{
+                    background: `linear-gradient(135deg, ${accentColor}, ${accentColor}CC)`
+                }}
+            >
+                {/* 🔵 STATUS STRIP */}
+                <div
+                    className="absolute left-0 top-0 h-full w-1.5"
+                    style={{ backgroundColor: statusColor }}
+                />
 
-            {/* 🧾 HEADER */}
-            <div className="flex items-start justify-between gap-2">
-                <div className="flex items-center gap-2 min-w-0">
+                {/* 🧾 HEADER */}
+                <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
 
-                    {!isTiny && (
-                        patient?.photo_url ? (
-                            <img
-                                src={`${API_BASE}/${patient.photo_url}`}
-                                className="w-12 h-12 rounded-full object-cover border-2 border-white/40"
-                            />
-                        ) : (
-                            <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-xs font-bold text-white">
-                                {patient?.first_name?.[0] || "?"}
-                            </div>
-                        )
-                    )}
-
-                    <div className="min-w-0">
-                        <p className="text-sm font-semibold text-white truncate">
-                            {patient.first_name} {patient.last_name}
-                        </p>
-
-                        <p className="text-[11px] text-white/80 truncate">
-                            {extendedProps.services?.[0]?.name}
-                        </p>
-                    </div>
-                </div>
-
-                {!isTiny && (
-                    <div className="flex flex-col items-end gap-1">
-
-                        {/* 🕒 Hora + 👁 */}
-                        <div className="flex items-center gap-1">
-                            <span className="text-[10px] bg-black/20 px-2 py-0.5 rounded text-white/90">
-                                {new Date(event.start).toLocaleTimeString([], {
-                                    hour: "2-digit",
-                                    minute: "2-digit"
-                                })}
-                            </span>
-
-                            {/* 👁 Indicador de notas */}
-                            <div className="flex items-center bg-black/20 px-1.5 py-0.5 rounded">
-                                <Eye size={14} className="text-yellow-300 drop-shadow-[0_0_4px_rgba(253,224,71,0.8)]" />
-                            </div>
-                        </div>
-
-                        {/* Estado SOLO en COMPACT */}
-                        {isCompact && (
-                            <span
-                                className="text-[10px] bg-black/20 px-2 py-0.5 rounded text-white/90 flex items-center gap-1"
-                                style={{
-                                    backgroundColor: accentColor + "33",
-                                    backdropFilter: "blur(4px)"
-                                }}
-                            >
-                                <ActiveIcon size={10} />
-                                {activeConfig.label}
-                            </span>
+                        {!isTiny && (
+                            patient?.photo_url ? (
+                                <img
+                                    src={`${API_BASE}/${patient.photo_url}`}
+                                    className="w-12 h-12 rounded-full object-cover border-2 border-white/40"
+                                />
+                            ) : (
+                                <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-xs font-bold text-white">
+                                    {patient?.first_name?.[0] || "?"}
+                                </div>
+                            )
                         )}
 
-                    </div>
-                )}
-            </div>
+                        <div className="min-w-0">
+                            <p className="text-sm font-semibold text-white truncate">
+                                {patient.first_name} {patient.last_name}
+                            </p>
 
-            {/* 🧭 STATUS TIMELINE INTELIGENTE */}
-            <div className="mt-3 flex justify-center">
-
-                {/* 🔴 TINY MODE */}
-                {isTiny && (
-                    <div className="flex items-center gap-2 text-[11px] text-white">
-
-                        <div
-                            className="w-5 h-5 rounded-full flex items-center justify-center text-white calendar-active-glow"
-                            style={{ backgroundColor: accentColor }}
-                        >
-                            <ActiveIcon size={10} />
+                            <p className="text-[11px] text-white/80 truncate">
+                                {extendedProps.services?.[0]?.name}
+                            </p>
                         </div>
-
-                        <span className="opacity-90">
-                            {activeConfig.label}
-                        </span>
                     </div>
-                )}
 
-                {/* 🟢 FULL MODE */}
-                {isFull && (
-                    <div className="flex items-center gap-6">
+                    {!isTiny && (
+                        <div className="flex flex-col items-end gap-1">
 
-                        {statusFlow.map((s, index) => {
-                            const config = statusConfig[s];
-                            const Icon = config.icon;
+                            {/* 🕒 Hora + 👁 */}
+                            <div className="flex items-center gap-1">
+                                <span className="text-[10px] bg-black/20 px-2 py-0.5 rounded text-white/90">
+                                    {new Date(event.start).toLocaleTimeString([], {
+                                        hour: "2-digit",
+                                        minute: "2-digit"
+                                    })}
+                                </span>
 
-                            const isActive = index === currentStatusIndex;
-                            const isCompleted = index < currentStatusIndex;
-
-                            return (
-                                <div key={s} className="relative flex flex-col items-center group">
-
-                                    {/* 🔵 CIRCLE */}
-                                    <div className="relative flex items-center justify-center">
-
-                                        {isActive && status !== "finalizada" && (
-                                            <span
-                                                className="calendar-ripple"
-                                                style={{
-                                                    color: accentColor,
-                                                    animationDuration:
-                                                        status === "en_tratamiento" ? "0.9s" :
-                                                            status === "en_espera" ? "2.8s" :
-                                                                status === "confirmada" ? "2s" :
-                                                                    "0s"
-                                                }}
-                                            />
-                                        )}
-
-                                        <div
-                                            className={`
-                    w-7 h-7 rounded-full flex items-center justify-center
-                    transition-all duration-300
-                    ${isActive
-                                                    ? "text-white calendar-active-glow"
-                                                    : isCompleted
-                                                        ? "bg-white/90 text-black"
-                                                        : "bg-white/20 text-white/60"}
-                `}
-                                            style={isActive ? { backgroundColor: accentColor } : {}}
-                                        >
-                                            <Icon size={14} />
-                                        </div>
+                                {/* 📝 Indicador de notas (solo si existen) */}
+                                {extendedProps.notes && (
+                                    <div className="flex items-center bg-black/20 px-1.5 py-0.5 rounded" title="Ver notas">
+                                        <FileText size={14} className="text-yellow-300 drop-shadow-[0_0_4px_rgba(253,224,71,0.8)]" />
                                     </div>
+                                )}
+                            </div>
 
-                                    {/* 🟢 LABEL ACTIVO */}
-                                    {isActive && (
-                                        <span className="absolute -bottom-5 text-[9px] font-semibold text-white whitespace-nowrap">
-                                            {config.label}
-                                        </span>
-                                    )}
+                            {/* Estado SOLO en COMPACT */}
+                            {isCompact && (
+                                <span
+                                    className="text-[10px] bg-black/20 px-2 py-0.5 rounded text-white/90 flex items-center gap-1"
+                                    style={{
+                                        backgroundColor: accentColor + "33",
+                                        backdropFilter: "blur(4px)"
+                                    }}
+                                >
+                                    <ActiveIcon size={10} />
+                                    {activeConfig.label}
+                                </span>
+                            )}
 
-                                    {/* 💬 TOOLTIP (hover en TODO el step) */}
-                                    {!isActive && (
-                                        <div
-                                            className="
-                    absolute -top-7 left-1/2 -translate-x-1/2
-                    px-2 py-1 rounded-md text-[10px]
-                    bg-black/80 text-white whitespace-nowrap
-                    opacity-0 group-hover:opacity-100
-                    transition-all duration-200
-                    scale-95 group-hover:scale-100
-                    pointer-events-none
-                "
-                                        >
-                                            {config.label}
-                                        </div>
-                                    )}
+                        </div>
+                    )}
+                </div>
 
-                                    {/* ➖ LINE */}
-                                    {index < statusFlow.length - 1 && (
-                                        <div className="absolute top-1/2 -translate-y-1/2 left-full flex items-center">
+                {/* 🧭 STATUS TIMELINE INTELIGENTE */}
+                <div className="mt-3 flex justify-center">
+
+                    {/* 🔴 TINY MODE */}
+                    {isTiny && (
+                        <div className="flex items-center gap-2 text-[11px] text-white">
+
+                            <div
+                                className="w-5 h-5 rounded-full flex items-center justify-center text-white calendar-active-glow"
+                                style={{ backgroundColor: accentColor }}
+                            >
+                                <ActiveIcon size={10} />
+                            </div>
+
+                            <span className="opacity-90">
+                                {activeConfig.label}
+                            </span>
+                        </div>
+                    )}
+
+                    {/* 🟢 FULL MODE */}
+                    {isFull && (
+                        <div className="flex items-center gap-6">
+
+                            {statusFlow.map((s, index) => {
+                                const config = statusConfig[s];
+                                const Icon = config.icon;
+
+                                const isActive = index === currentStatusIndex;
+                                const isCompleted = index < currentStatusIndex;
+
+                                return (
+                                    <div key={s} className="relative flex flex-col items-center group">
+
+                                        {/* 🔵 CIRCLE */}
+                                        <div className="relative flex items-center justify-center">
+
+                                            {isActive && status !== "finalizada" && (
+                                                <span
+                                                    className="calendar-ripple"
+                                                    style={{
+                                                        color: accentColor,
+                                                        animationDuration:
+                                                            status === "en_tratamiento" ? "0.9s" :
+                                                                status === "en_espera" ? "2.8s" :
+                                                                    status === "confirmada" ? "2s" :
+                                                                        "0s"
+                                                    }}
+                                                />
+                                            )}
+
                                             <div
                                                 className={`
-                        calendar-line ${isCompact ? "w-3" : "w-6"}
-                        ${isCompleted
-                                                        ? "bg-white"
-                                                        : "bg-white/20"}
+                        w-7 h-7 rounded-full flex items-center justify-center
+                        transition-all duration-300
+                        ${isActive
+                                                        ? "text-white calendar-active-glow"
+                                                        : isCompleted
+                                                            ? "bg-white/90 text-black"
+                                                            : "bg-white/20 text-white/60"}
                     `}
-                                            />
+                                                style={isActive ? { backgroundColor: accentColor } : {}}
+                                            >
+                                                <Icon size={14} />
+                                            </div>
                                         </div>
-                                    )}
 
-                                </div>
-                            );
-                        })}
+                                        {/* 🟢 LABEL ACTIVO */}
+                                        {isActive && (
+                                            <span className="absolute -bottom-5 text-[9px] font-semibold text-white whitespace-nowrap">
+                                                {config.label}
+                                            </span>
+                                        )}
 
-                    </div>
-                )}
+                                        {/* 💬 TOOLTIP (hover en TODO el step) */}
+                                        {!isActive && (
+                                            <div
+                                                className="
+                        absolute -top-7 left-1/2 -translate-x-1/2
+                        px-2 py-1 rounded-md text-[10px]
+                        bg-black/80 text-white whitespace-nowrap
+                        opacity-0 group-hover:opacity-100
+                        transition-all duration-200
+                        scale-95 group-hover:scale-100
+                        pointer-events-none
+                    "
+                                            >
+                                                {config.label}
+                                            </div>
+                                        )}
+
+                                        {/* ➖ LINE */}
+                                        {index < statusFlow.length - 1 && (
+                                            <div className="absolute top-1/2 -translate-y-1/2 left-full flex items-center">
+                                                <div
+                                                    className={`
+                            calendar-line ${isCompact ? "w-3" : "w-6"}
+                            ${isCompleted
+                                                            ? "bg-white"
+                                                            : "bg-white/20"}
+                        `}
+                                                />
+                                            </div>
+                                        )}
+
+                                    </div>
+                                );
+                            })}
+
+                        </div>
+                    )}
+                </div>
+
+                {/* 👇 FOOTER */}
+                <div className="flex items-center justify-between mt-2">
+                    <span className="text-[10px] text-white/80 truncate">
+                        Dr. {employee.first_name}
+                    </span>
+
+                    <span className="text-[10px] text-white/60 truncate">
+                        {clinic_area.name}
+                    </span>
+                </div>
             </div>
 
-            {/* 👇 FOOTER */}
-            <div className="flex items-center justify-between mt-2">
-                <span className="text-[10px] text-white/80 truncate">
-                    Dr. {employee.first_name}
-                </span>
-
-                <span className="text-[10px] text-white/60 truncate">
-                    {clinic_area.name}
-                </span>
+            {/* TOOLTIP GENERAL DE LA CARD */}
+            <div className="
+                pointer-events-none absolute z-[100] left-1/2 -translate-x-1/2 bottom-full mb-2
+                opacity-0 group-hover:opacity-100 transition-all duration-200 translate-y-1 group-hover:translate-y-0
+            ">
+                <div className="
+                    bg-white dark:bg-slate-800
+                    text-slate-800 dark:text-slate-100
+                    text-xs rounded-lg shadow-xl border border-slate-200 dark:border-slate-700
+                    p-3 min-w-[200px]
+                ">
+                    <div className="font-bold text-sm mb-1">{patient.first_name} {patient.last_name}</div>
+                    <div className="flex items-center gap-2 text-[11px] text-slate-500 dark:text-slate-400">
+                        <Clock3 size={12} />
+                        <span>
+                            {new Date(event.start).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - 
+                            {new Date(event.end).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                    </div>
+                    <div className="flex items-center gap-2 text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                        <Activity size={12} />
+                        <span>{extendedProps.services?.[0]?.name || 'Consulta'}</span>
+                    </div>
+                    <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-700/50 flex flex-col gap-1">
+                         <div className="text-[10px] text-slate-400">Doctor: <span className="text-slate-600 dark:text-slate-300 font-medium">Dr. {employee.first_name} {employee.last_name}</span></div>
+                         <div className="text-[10px] text-slate-400">Área: <span className="text-slate-600 dark:text-slate-300 font-medium">{clinic_area.name}</span></div>
+                    </div>
+                </div>
             </div>
         </div>
     );

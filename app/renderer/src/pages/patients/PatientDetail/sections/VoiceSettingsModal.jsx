@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 export default function VoiceSettingsModal({ isOpen, onClose, onSettingsChange }) {
     const [voices, setVoices] = useState([]);
     const [selectedVoiceURI, setSelectedVoiceURI] = useState('');
-    const [isMuted, setIsMuted] = useState(false);
+    const [isMuted, setIsMuted] = useState(true);
     const [isTesting, setIsTesting] = useState(false);
 
     // Initialize speech synthesis and load voices

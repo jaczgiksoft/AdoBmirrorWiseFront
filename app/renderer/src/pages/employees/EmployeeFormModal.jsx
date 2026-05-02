@@ -1,12 +1,13 @@
 import { useState, useEffect, useRef } from "react";
 import { useToastStore } from "@/store/useToastStore";
-import { X, UploadCloud, Briefcase, Shield, CheckCircle2, Eye, EyeOff, User } from "lucide-react";
+import { X, UploadCloud, Briefcase, Shield, CheckCircle2, Eye, EyeOff, User, Plus } from "lucide-react";
 import { Modal } from "@/components/ui";
 import { ConfirmDialog } from "@/components/feedback";
 import { getRoles } from "@/services/role.service";
 import { getPositions } from "@/services/position.service";
 import { createEmployee, updateEmployee } from "@/services/employee.service";
 import { createUser, updateUser } from "@/services/user.service";
+import PositionForm from "../positions/PositionForm";
 
 const initialForm = {
     first_name: "",
@@ -24,7 +25,7 @@ const initialForm = {
     password: "",
 };
 
-export default function EmployeeFormModal({ open, onClose, employee, onSuccess }) {
+export default function EmployeeFormModal({ open, onClose, employee, onSuccess, hideUserAccountSection = false }) {
     const { addToast } = useToastStore();
     const [form, setForm] = useState(initialForm);
     const [errors, setErrors] = useState({});
@@ -32,11 +33,12 @@ export default function EmployeeFormModal({ open, onClose, employee, onSuccess }
     const [confirmCancel, setConfirmCancel] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
-    
+
     const [rolesList, setRolesList] = useState([]);
     const [positionsList, setPositionsList] = useState([]);
     const [isLoadingCatalogs, setIsLoadingCatalogs] = useState(false);
-    
+    const [showPositionForm, setShowPositionForm] = useState(false);
+
     const firstRef = useRef(null);
 
     // Initial load
@@ -61,13 +63,16 @@ export default function EmployeeFormModal({ open, onClose, employee, onSuccess }
                 });
                 setPreview(employee.profile_image);
             } else {
-                setForm(initialForm);
+                setForm({
+                    ...initialForm,
+                    is_appointment_eligible: hideUserAccountSection ? true : initialForm.is_appointment_eligible
+                });
                 setPreview(null);
             }
             setShowPassword(false);
             setTimeout(() => firstRef.current?.focus(), 100);
         }
-    }, [open, employee]);
+    }, [open, employee, hideUserAccountSection]);
 
     const fetchCatalogs = async () => {
         setIsLoadingCatalogs(true);
@@ -87,6 +92,16 @@ export default function EmployeeFormModal({ open, onClose, employee, onSuccess }
             });
         } finally {
             setIsLoadingCatalogs(false);
+        }
+    };
+
+    const handlePositionSaved = async (newPosition) => {
+        await fetchCatalogs();
+        if (newPosition?.id) {
+            setForm(prev => ({
+                ...prev,
+                positionIds: Array.from(new Set([...(prev.positionIds || []), newPosition.id]))
+            }));
         }
     };
 
@@ -156,16 +171,16 @@ export default function EmployeeFormModal({ open, onClose, employee, onSuccess }
             const updated = current.includes(id)
                 ? current.filter(pid => pid !== id)
                 : [...current, id];
-            
+
             // Clear positionIds error if any
             if (updated.length > 0 && errors.positionIds) {
                 setErrors(e => {
-                    const next = {...e};
+                    const next = { ...e };
                     delete next.positionIds;
                     return next;
                 });
             }
-            
+
             return { ...prev, positionIds: updated };
         });
     };
@@ -215,11 +230,12 @@ export default function EmployeeFormModal({ open, onClose, employee, onSuccess }
                 profile_image: form.profile_image
             };
 
+            let savedEmployee = employee;
             if (employeeId) {
-                await updateEmployee(employeeId, employeeData);
+                savedEmployee = await updateEmployee(employeeId, employeeData);
             } else {
-                const newEmp = await createEmployee(employeeData);
-                employeeId = newEmp.id;
+                savedEmployee = await createEmployee(employeeData);
+                employeeId = savedEmployee.id;
             }
 
             // User account logic
@@ -246,7 +262,7 @@ export default function EmployeeFormModal({ open, onClose, employee, onSuccess }
                 title: employee ? "Empleado actualizado" : "Empleado creado",
                 message: `El empleado ${form.first_name} ${form.last_name} fue guardado correctamente.`,
             });
-            onSuccess();
+            onSuccess(savedEmployee);
             handleExit();
         } catch (err) {
             console.error("Error validando guardado:", err);
@@ -283,7 +299,7 @@ export default function EmployeeFormModal({ open, onClose, employee, onSuccess }
                 widthClass="w-[540px]"
             >
                 <form className="flex flex-col gap-5" onSubmit={(e) => e.preventDefault()}>
-                    
+
                     {/* Sección: Datos Personales */}
                     <div className="grid grid-cols-2 gap-4">
                         <div>
@@ -298,10 +314,10 @@ export default function EmployeeFormModal({ open, onClose, employee, onSuccess }
                             />
                         </div>
                         <div>
-                            <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Apellido paterno <span className="text-rose-500">*</span></label>
+                            <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Apellidos <span className="text-rose-500">*</span></label>
                             <input
                                 name="last_name"
-                                placeholder="Apellido paterno"
+                                placeholder="Apellidos"
                                 value={form.last_name}
                                 onChange={handleChange}
                                 className={`w-full px-4 py-2 bg-slate-50 dark:bg-secondary rounded-lg border border-slate-300 dark:border-slate-700 outline-none focus:ring-2 focus:ring-primary text-slate-900 dark:text-white transition ${errors.last_name ? "border-rose-500 ring-1 ring-rose-500/50" : ""}`}
@@ -368,10 +384,20 @@ export default function EmployeeFormModal({ open, onClose, employee, onSuccess }
 
                     {/* Sección: Puestos (Multi-selección) */}
                     <div className="flex flex-col gap-2">
-                        <label className="flex items-center gap-1.5 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                            <Briefcase size={12} className="text-primary" />
-                            Puestos de Trabajo <span className="text-rose-500">*</span>
-                        </label>
+                        <div className="flex items-center justify-between">
+                            <label className="flex items-center gap-1.5 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                                <Briefcase size={12} className="text-primary" />
+                                Puestos de Trabajo <span className="text-rose-500">*</span>
+                            </label>
+                            <button
+                                type="button"
+                                onClick={() => setShowPositionForm(true)}
+                                className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded text-primary transition-colors cursor-pointer group"
+                                title="Crear nuevo puesto"
+                            >
+                                <Plus size={14} className="group-hover:scale-110 transition-transform" />
+                            </button>
+                        </div>
                         <div className={`grid grid-cols-2 gap-2 p-3 bg-slate-50 dark:bg-slate-900/40 rounded-xl border transition ${errors.positionIds ? "border-rose-500" : "border-slate-200 dark:border-slate-800"}`}>
                             {positionsList.map(pos => {
                                 const isSelected = form.positionIds.includes(pos.id);
@@ -380,11 +406,10 @@ export default function EmployeeFormModal({ open, onClose, employee, onSuccess }
                                         key={pos.id}
                                         type="button"
                                         onClick={() => handlePositionToggle(pos.id)}
-                                        className={`flex items-center justify-between px-3 py-2 rounded-lg border text-xs font-medium transition-all ${
-                                            isSelected 
-                                            ? "bg-primary/10 border-primary text-primary shadow-sm ring-1 ring-primary/20" 
+                                        className={`flex items-center justify-between px-3 py-2 rounded-lg border text-xs font-medium transition-all ${isSelected
+                                            ? "bg-primary/10 border-primary text-primary shadow-sm ring-1 ring-primary/20"
                                             : "bg-white dark:bg-secondary border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-slate-400 dark:hover:border-slate-500"
-                                        }`}
+                                            }`}
                                     >
                                         <span className="truncate mr-2">{pos.name}</span>
                                         {isSelected && <CheckCircle2 size={14} />}
@@ -399,7 +424,7 @@ export default function EmployeeFormModal({ open, onClose, employee, onSuccess }
                     </div>
 
                     {/* Imagen de Perfil e Interacción */}
-                    <div className="grid grid-cols-[120px_1fr] gap-4 items-center">
+                    <div className={hideUserAccountSection ? "flex justify-center" : "grid grid-cols-[120px_1fr] gap-4 items-center"}>
                         <div className="relative group w-24 h-24 mx-auto">
                             <div className="w-full h-full rounded-2xl overflow-hidden border-2 border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 flex items-center justify-center shadow-inner">
                                 {preview ? (
@@ -413,90 +438,96 @@ export default function EmployeeFormModal({ open, onClose, employee, onSuccess }
                                 <input type="file" name="profile_image" accept="image/*" onChange={handleChange} className="hidden" />
                             </label>
                         </div>
-                        
-                        <div className="flex flex-col gap-3">
-                            <div className="flex items-center gap-3 p-3 bg-sky-500/5 rounded-xl border border-sky-500/10">
-                                <input
-                                    type="checkbox"
-                                    id="is_appointment_eligible"
-                                    name="is_appointment_eligible"
-                                    checked={form.is_appointment_eligible}
-                                    onChange={handleChange}
-                                    className="w-4 h-4 rounded border-slate-400 bg-white dark:bg-secondary text-primary accent-primary cursor-pointer transition-transform active:scale-90"
-                                />
-                                <label htmlFor="is_appointment_eligible" className="text-xs font-medium text-slate-700 dark:text-slate-300 cursor-pointer select-none">
-                                    Atiende pacientes y es elegible para citas agendadas.
-                                </label>
-                            </div>
-                        </div>
-                    </div>
 
-                    {/* Divider */}
-                    <div className="border-t border-slate-200 dark:border-slate-800 -mx-5 px-5 my-2"></div>
-
-                    {/* Sección: Cuenta de Usuario */}
-                    <div>
-                        <div className="flex items-center gap-3 mb-4">
-                            <div className="p-2 bg-emerald-500/10 text-emerald-500 rounded-lg">
-                                <User size={18} />
-                            </div>
-                            <div>
-                                <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100">Cuenta de Usuario</h3>
-                                <p className="text-xs text-slate-500">Permitir que este empleado inicie sesión en el sistema.</p>
-                            </div>
-                            <div className="ml-auto">
-                                <label className="relative inline-flex items-center cursor-pointer">
-                                    <input 
-                                        type="checkbox" 
-                                        name="create_user_account" 
-                                        className="sr-only peer" 
-                                        checked={form.create_user_account}
-                                        onChange={handleChange}
-                                    />
-                                    <div className="w-11 h-6 bg-slate-200 dark:bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
-                                </label>
-                            </div>
-                        </div>
-
-                        {form.create_user_account && (
-                            <div className="grid grid-cols-2 gap-4 p-4 bg-emerald-50 dark:bg-emerald-500/5 rounded-xl border border-emerald-500/20">
-                                <div>
-                                    <label className="block text-[11px] font-bold text-emerald-700 dark:text-emerald-500 uppercase tracking-wider mb-1.5">Usuario <span className="text-rose-500">*</span></label>
+                        {!hideUserAccountSection && (
+                            <div className="flex flex-col gap-3">
+                                <div className="flex items-center gap-3 p-3 bg-sky-500/5 rounded-xl border border-sky-500/10">
                                     <input
-                                        name="username"
-                                        placeholder="Nombre de usuario"
-                                        value={form.username}
+                                        type="checkbox"
+                                        id="is_appointment_eligible"
+                                        name="is_appointment_eligible"
+                                        checked={form.is_appointment_eligible}
                                         onChange={handleChange}
-                                        autoComplete="off"
-                                        className={`w-full px-4 py-2 bg-white dark:bg-secondary rounded-lg border border-emerald-200 dark:border-emerald-500/30 outline-none focus:ring-2 focus:ring-emerald-500 text-slate-900 dark:text-white transition ${errors.username ? "border-rose-500 ring-1 ring-rose-500/50" : ""}`}
+                                        className="w-4 h-4 rounded border-slate-400 bg-white dark:bg-secondary text-primary accent-primary cursor-pointer transition-transform active:scale-90"
                                     />
-                                    {errors.username && <span className="text-[10px] text-rose-500 block mt-1">{errors.username}</span>}
-                                </div>
-                                <div className="relative">
-                                    <label className="block text-[11px] font-bold text-emerald-700 dark:text-emerald-500 uppercase tracking-wider mb-1.5">
-                                        Contraseña {(!employee?.user) && <span className="text-rose-500">*</span>}
+                                    <label htmlFor="is_appointment_eligible" className="text-xs font-medium text-slate-700 dark:text-slate-300 cursor-pointer select-none">
+                                        Atiende pacientes y es elegible para citas agendadas.
                                     </label>
-                                    <input
-                                        type={showPassword ? "text" : "password"}
-                                        name="password"
-                                        placeholder={employee?.user ? "(Dejar en blanco si no cambia)" : "Contraseña..."}
-                                        value={form.password}
-                                        onChange={handleChange}
-                                        autoComplete="new-password"
-                                        className={`w-full pl-4 pr-10 py-2 bg-white dark:bg-secondary rounded-lg border border-emerald-200 dark:border-emerald-500/30 outline-none focus:ring-2 focus:ring-emerald-500 text-slate-900 dark:text-white transition ${errors.password ? "border-rose-500 ring-1 ring-rose-500/50" : ""}`}
-                                    />
-                                    <button
-                                        type="button"
-                                        onClick={() => setShowPassword(!showPassword)}
-                                        className="absolute right-3 top-[28px] text-slate-400 hover:text-emerald-500 cursor-pointer"
-                                    >
-                                        {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                                    </button>
-                                    {errors.password && <span className="text-[10px] text-rose-500 block mt-1">{errors.password}</span>}
                                 </div>
                             </div>
                         )}
                     </div>
+
+                    {/* Divider */}
+                    {!hideUserAccountSection && (
+                        <>
+                            <div className="border-t border-slate-200 dark:border-slate-800 -mx-5 px-5 my-2"></div>
+
+                            {/* Sección: Cuenta de Usuario */}
+                            <div>
+                                <div className="flex items-center gap-3 mb-4">
+                                    <div className="p-2 bg-emerald-500/10 text-emerald-500 rounded-lg">
+                                        <User size={18} />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100">Cuenta de Usuario</h3>
+                                        <p className="text-xs text-slate-500">Permitir que este empleado inicie sesión en el sistema.</p>
+                                    </div>
+                                    <div className="ml-auto">
+                                        <label className="relative inline-flex items-center cursor-pointer">
+                                            <input
+                                                type="checkbox"
+                                                name="create_user_account"
+                                                className="sr-only peer"
+                                                checked={form.create_user_account}
+                                                onChange={handleChange}
+                                            />
+                                            <div className="w-11 h-6 bg-slate-200 dark:bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
+                                        </label>
+                                    </div>
+                                </div>
+
+                                {form.create_user_account && (
+                                    <div className="grid grid-cols-2 gap-4 p-4 bg-emerald-50 dark:bg-emerald-500/5 rounded-xl border border-emerald-500/20">
+                                        <div>
+                                            <label className="block text-[11px] font-bold text-emerald-700 dark:text-emerald-500 uppercase tracking-wider mb-1.5">Usuario <span className="text-rose-500">*</span></label>
+                                            <input
+                                                name="username"
+                                                placeholder="Nombre de usuario"
+                                                value={form.username}
+                                                onChange={handleChange}
+                                                autoComplete="off"
+                                                className={`w-full px-4 py-2 bg-white dark:bg-secondary rounded-lg border border-emerald-200 dark:border-emerald-500/30 outline-none focus:ring-2 focus:ring-emerald-500 text-slate-900 dark:text-white transition ${errors.username ? "border-rose-500 ring-1 ring-rose-500/50" : ""}`}
+                                            />
+                                            {errors.username && <span className="text-[10px] text-rose-500 block mt-1">{errors.username}</span>}
+                                        </div>
+                                        <div className="relative">
+                                            <label className="block text-[11px] font-bold text-emerald-700 dark:text-emerald-500 uppercase tracking-wider mb-1.5">
+                                                Contraseña {(!employee?.user) && <span className="text-rose-500">*</span>}
+                                            </label>
+                                            <input
+                                                type={showPassword ? "text" : "password"}
+                                                name="password"
+                                                placeholder={employee?.user ? "(Dejar en blanco si no cambia)" : "Contraseña..."}
+                                                value={form.password}
+                                                onChange={handleChange}
+                                                autoComplete="new-password"
+                                                className={`w-full pl-4 pr-10 py-2 bg-white dark:bg-secondary rounded-lg border border-emerald-200 dark:border-emerald-500/30 outline-none focus:ring-2 focus:ring-emerald-500 text-slate-900 dark:text-white transition ${errors.password ? "border-rose-500 ring-1 ring-rose-500/50" : ""}`}
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowPassword(!showPassword)}
+                                                className="absolute right-3 top-[28px] text-slate-400 hover:text-emerald-500 cursor-pointer"
+                                            >
+                                                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                                            </button>
+                                            {errors.password && <span className="text-[10px] text-rose-500 block mt-1">{errors.password}</span>}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </>
+                    )}
 
                     {/* Botones de Acción */}
                     <div className="flex justify-end gap-3 mt-4 pt-5 border-t border-slate-200 dark:border-slate-800">
@@ -528,6 +559,11 @@ export default function EmployeeFormModal({ open, onClose, employee, onSuccess }
                 confirmLabel="Salir sin guardar"
                 cancelLabel="Seguir editando"
                 confirmVariant="error"
+            />
+            <PositionForm
+                open={showPositionForm}
+                onClose={() => setShowPositionForm(false)}
+                onSaved={handlePositionSaved}
             />
         </>
     );

@@ -1926,7 +1926,7 @@ function ActionPanel({
     const [hoveredAction, setHoveredAction] = useState(null);
 
     return (
-        <div className="bg-white dark:bg-[var(--color-secondary)] p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm mt-6 flex flex-col md:flex-row items-center justify-between gap-4">
+        <div className="bg-white/80 dark:bg-slate-800/90 backdrop-blur-md p-4 rounded-2xl border border-slate-200/50 dark:border-slate-700/50 shadow-2xl flex flex-col md:flex-row items-center justify-between gap-4 transition-all duration-300 border-t border-l border-white/20">
             {/* General Actions */}
             <div className="flex items-center gap-4 w-full md:w-auto overflow-x-auto pb-1 md:pb-0">
                 <label className="text-sm font-medium text-slate-600 dark:text-slate-300 whitespace-nowrap hidden md:block">
@@ -2107,7 +2107,7 @@ export default function OdontogramSection() {
     const [activeNoteTooth, setActiveNoteTooth] = useState(null);
 
     const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false);
-    const [voiceSettings, setVoiceSettings] = useState({ isMuted: false, selectedVoiceURI: '' });
+    const [voiceSettings, setVoiceSettings] = useState({ isMuted: true, selectedVoiceURI: '' });
     const [hasVoiceSupport, setHasVoiceSupport] = useState(false);
 
     useEffect(() => {
@@ -2140,7 +2140,7 @@ export default function OdontogramSection() {
             try {
                 const settings = JSON.parse(savedSettingsStr);
                 setVoiceSettings({
-                    isMuted: settings.isMuted || false,
+                    isMuted: settings.isMuted ?? true,
                     selectedVoiceURI: settings.selectedVoiceURI || ''
                 });
             } catch (e) {
@@ -4261,27 +4261,31 @@ export default function OdontogramSection() {
                 </div>
             </div>
 
-            {/* 3. Actions Section */}
-            <ActionPanel
-                isBracketMode={isBracketMode}
-                setBracketMode={setBracketMode}
-                isTadMode={isTadMode}
-                setTadMode={setTadMode}
-                isPeriodontalMode={isPeriodontalMode}
-                setPeriodontalMode={setPeriodontalMode}
-                onApplyAll={handleApplyAllBrackets}
-                selectedToothType={selectedToothType}
-                setSelectedToothType={setSelectedToothType}
-                onReset={() => {
-                    console.log("[DEBUG] onReset triggered");
-                    setIsResetDialogOpen(true);
-                }}
-                onOpenVoiceSettings={() => setIsVoiceModalOpen(true)}
-                hasVoiceSupport={hasVoiceSupport}
-                onSaveToElastics={handleSaveOdontogram}
-                savedToElastics={savedToElastics}
-                isLoading={isLoading}
-            />
+            {/* 3. Actions Section (Floating Sticky Bar) */}
+            <div className="sticky bottom-6 z-50 mt-10 px-4 w-full pointer-events-none">
+                <div className="max-w-screen-2xl mx-auto pointer-events-auto">
+                    <ActionPanel
+                        isBracketMode={isBracketMode}
+                        setBracketMode={setBracketMode}
+                        isTadMode={isTadMode}
+                        setTadMode={setTadMode}
+                        isPeriodontalMode={isPeriodontalMode}
+                        setPeriodontalMode={setPeriodontalMode}
+                        onApplyAll={handleApplyAllBrackets}
+                        selectedToothType={selectedToothType}
+                        setSelectedToothType={setSelectedToothType}
+                        onReset={() => {
+                            console.log("[DEBUG] onReset triggered");
+                            setIsResetDialogOpen(true);
+                        }}
+                        onOpenVoiceSettings={() => setIsVoiceModalOpen(true)}
+                        hasVoiceSupport={hasVoiceSupport}
+                        onSaveToElastics={handleSaveOdontogram}
+                        savedToElastics={savedToElastics}
+                        isLoading={isLoading}
+                    />
+                </div>
+            </div>
 
             <ClinicalActionModal
                 isOpen={!!selectedSurface}

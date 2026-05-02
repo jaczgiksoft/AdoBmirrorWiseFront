@@ -1,9 +1,10 @@
 import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
     X, Calendar, Clock, User, Stethoscope, FileText, Edit2, ArrowRight,
     AlertCircle, CheckCircle, Activity, Lock, Phone, Mail, CreditCard,
-    History, MapPin, Star, Receipt, BadgeCheck, Loader2
+    History, MapPin, Star, Receipt, BadgeCheck, Loader2, Info
 } from "lucide-react";
 import { API_BASE } from "@/utils/apiBase";
 import PatientEvaluationModal from "./PatientEvaluationModal";
@@ -15,6 +16,7 @@ import { useToastStore } from "@/store/useToastStore";
 
 export default function AppointmentDetailModal({ appointment, open, onClose, onEdit, onSuccess }) {
     // 1. Hooks (MUST be top level and unconditional)
+    const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState('details');
     const [evaluations, setEvaluations] = useState([]);
     const [showEvaluationModal, setShowEvaluationModal] = useState(false);
@@ -609,6 +611,17 @@ export default function AppointmentDetailModal({ appointment, open, onClose, onE
                                     >
                                         <Star size={18} className={hasEvaluation ? "" : "text-amber-400"} />
                                         {hasEvaluation ? "Paciente calificado" : "Calificar px"}
+                                    </button>
+
+                                    <button
+                                        onClick={() => {
+                                            onClose();
+                                            navigate(`/patients/${appointment.patient?.id}`);
+                                        }}
+                                        className="flex items-center gap-2 px-6 py-3 rounded-xl font-bold bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 shadow-sm transition active:scale-95"
+                                    >
+                                        <Info size={18} className="text-primary" />
+                                        Más información
                                     </button>
 
                                     {isEditable ? (
