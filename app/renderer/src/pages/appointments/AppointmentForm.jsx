@@ -104,6 +104,9 @@ const adaptProcessFromApi = (apiProcess) => {
     };
 };
 
+import ServiceForm from "@/pages/services/ServiceForm";
+import EmployeeFormModal from "@/pages/employees/EmployeeFormModal";
+
 export default function AppointmentForm({ open, onClose, onSaved, itemToEdit = null }) {
     const { addToast } = useToastStore();
     const isEditing = !!itemToEdit;
@@ -142,6 +145,8 @@ export default function AppointmentForm({ open, onClose, onSaved, itemToEdit = n
     // Services Logic
     const [selectedServiceIds, setSelectedServiceIds] = useState([]);
     const [serviceSearch, setServiceSearch] = useState("");
+    const [showServiceForm, setShowServiceForm] = useState(false);
+    const [showEmployeeForm, setShowEmployeeForm] = useState(false);
 
     // --- PROCESS LOGIC STATS ---
     const [availableSteps, setAvailableSteps] = useState([]);
@@ -179,11 +184,15 @@ export default function AppointmentForm({ open, onClose, onSaved, itemToEdit = n
         setHasChanges(false);
 
         async function initData() {
+            async function fetchServices() {
+                try { const s = await getAllServices(); setServices(Array.isArray(s) ? s : []); } catch (e) { }
+            }
+
             // 1. Fetch Dictionaries (Parallel-ish)
             try { const p = await getPatients(); setPatients(Array.isArray(p) ? p : []); } catch (e) { }
             try { const c = await getClinicAreas(); setClinicAreas(Array.isArray(c) ? c : (c?.data || [])); } catch (e) { }
             try { const d = await getDoctors(); setDoctors(Array.isArray(d) ? d : []); } catch (e) { }
-            try { const s = await getAllServices(); setServices(Array.isArray(s) ? s : []); } catch (e) { }
+            await fetchServices();
             try { const st = await getAllSteps(); setAvailableSteps(Array.isArray(st) ? st : []); } catch (e) { }
 
             // 2. Fetch Processes
@@ -343,6 +352,36 @@ export default function AppointmentForm({ open, onClose, onSaved, itemToEdit = n
         setSelectedServiceIds([]);
         const pDuration = selectedProcessId ? calculateProcessDuration(selectedProcessId) : 0;
         setForm(prev => ({ ...prev, total_amount: 0, duration_minutes: pDuration, units: 0, end_time: addMinutes(prev.start_time, pDuration) }));
+    };
+
+    const handleServiceCreated = async (newService) => {
+        // Refresh the services list
+        try {
+            const s = await getAllServices();
+            const servicesList = Array.isArray(s) ? s : [];
+            setServices(servicesList);
+
+            // Automatically select the new service
+            if (newService && newService.id) {
+                toggleService(newService.id);
+            }
+        } catch (e) {
+            console.error("Failed to refresh services", e);
+        }
+    };
+
+    const handleEmployeeCreated = async (newEmployee) => {
+        try {
+            const d = await getDoctors();
+            const doctorsList = Array.isArray(d) ? d : [];
+            setDoctors(doctorsList);
+
+            if (newEmployee && newEmployee.data.id) {
+                setForm(prev => ({ ...prev, employee_id: String(newEmployee.data.id) }));
+            }
+        } catch (e) {
+            console.error("Failed to refresh doctors", e);
+        }
     };
 
 
@@ -524,7 +563,18 @@ export default function AppointmentForm({ open, onClose, onSaved, itemToEdit = n
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
-    const handleNext = () => { if (step === 1 && !validateStep1()) return; setStep(prev => prev + 1); };
+    const validateStep2 = () => {
+        if (selectedServiceIds.length === 0) {
+            addToast({ type: 'error', title: 'Error', message: 'Debe seleccionar al menos un servicio para continuar.' });
+            return false;
+        }
+        return true;
+    };
+    const handleNext = () => {
+        if (step === 1 && !validateStep1()) return;
+        if (step === 2 && !validateStep2()) return;
+        setStep(prev => prev + 1);
+    };
     const handleBack = () => setStep(prev => Math.max(1, prev - 1));
 
     const handleSubmit = async () => {
@@ -671,7 +721,23 @@ export default function AppointmentForm({ open, onClose, onSaved, itemToEdit = n
                                     {errors.patient_id && <span className="text-error text-xs">{errors.patient_id}</span>}
                                 </div>
                                 <div><label className="label-required block text-sm mb-1 dark:text-slate-200">Área Clínica</label><select name="clinic_area_id" value={form.clinic_area_id} onChange={handleChange} className={`input ${errors.clinic_area_id ? "border-error" : ""}`}><option value="">Seleccionar área...</option>{clinicAreas.length > 0 ? clinicAreas.map(c => <option key={c.id} value={c.id}>{c.name}</option>) : <option value="1">Unidad 1</option>}</select></div>
-                                <div><label className="label-required block text-sm mb-1 dark:text-slate-200">Doctor</label><select name="employee_id" value={form.employee_id} onChange={handleChange} className={`input ${errors.employee_id ? "border-error" : ""}`}><option value="">Seleccionar doctor...</option>{doctors.map(d => <option key={d.id} value={d.id}>{d.first_name} {d.last_name}</option>)}</select></div>
+                                <div>
+                                    <label className="label-required block text-sm mb-1 dark:text-slate-200">Doctor</label>
+                                    <div className="flex gap-2">
+                                        <select name="employee_id" value={form.employee_id} onChange={handleChange} className={`input ${errors.employee_id ? "border-error" : ""}`}>
+                                            <option value="">Seleccionar doctor...</option>
+                                            {doctors.map(d => <option key={d.id} value={d.id}>{d.first_name} {d.last_name}</option>)}
+                                        </select>
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowEmployeeForm(true)}
+                                            className="p-2.5 bg-primary/10 text-primary hover:bg-primary hover:text-white rounded-lg transition-all border border-primary/20 shrink-0 shadow-sm"
+                                            title="Nuevo Doctor"
+                                        >
+                                            <Plus size={20} />
+                                        </button>
+                                    </div>
+                                </div>
                                 <DateInput
                                     label="Fecha"
                                     value={form.date}
@@ -705,7 +771,25 @@ export default function AppointmentForm({ open, onClose, onSaved, itemToEdit = n
                         {step === 2 && ( /* ... Step 2 Content ... */
                             <div className="flex flex-col h-full">
                                 <div className="mb-3 flex gap-2">
-                                    <input type="text" placeholder="Buscar servicio..." value={serviceSearch} onChange={e => setServiceSearch(e.target.value)} className="input flex-1" />
+                                    <div className="relative flex-1">
+                                        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+                                            <Search size={16} />
+                                        </div>
+                                        <input
+                                            type="text"
+                                            placeholder="Buscar servicio..."
+                                            value={serviceSearch}
+                                            onChange={e => setServiceSearch(e.target.value)}
+                                            className="input pl-10"
+                                        />
+                                    </div>
+                                    <button
+                                        onClick={() => setShowServiceForm(true)}
+                                        className="p-2.5 bg-primary/10 text-primary hover:bg-primary hover:text-white rounded-lg transition-all border border-primary/20 shrink-0 shadow-sm"
+                                        title="Nuevo Servicio"
+                                    >
+                                        <Plus size={20} />
+                                    </button>
                                     {selectedServiceIds.length > 0 && <button onClick={handleClearServices} className="px-3 py-2 text-xs font-medium text-slate-500 hover:text-slate-700 bg-slate-200 hover:bg-slate-300 dark:text-slate-400 dark:hover:text-white dark:bg-slate-700 dark:hover:bg-slate-600 rounded-lg transition shrink-0">Limpiar</button>}
                                 </div>
                                 <div className="flex-1 overflow-y-auto custom-scrollbar grid grid-cols-2 gap-2 content-start min-h-[300px]">
@@ -996,7 +1080,20 @@ export default function AppointmentForm({ open, onClose, onSaved, itemToEdit = n
                 )}
             </AnimatePresence>
 
+            <ServiceForm
+                open={showServiceForm}
+                onClose={() => setShowServiceForm(false)}
+                onSaved={handleServiceCreated}
+            />
+
             <ConfirmDialog open={confirmCancel} title="Cancelar" message="¿Salir sin guardar el progreso?" onConfirm={handleExit} onCancel={() => setConfirmCancel(false)} />
+
+            <EmployeeFormModal
+                open={showEmployeeForm}
+                onClose={() => setShowEmployeeForm(false)}
+                onSuccess={handleEmployeeCreated}
+                hideUserAccountSection={true}
+            />
         </>,
         document.body
     );

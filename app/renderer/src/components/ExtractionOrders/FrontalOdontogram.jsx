@@ -32,15 +32,28 @@ function FrontalTooth({ id, isPendingExtraction, globalState, hasBracket, hasTad
     // OR if it's already extracted/missing in global state
     const isActuallyExtracted = isPendingExtraction || INACTIVE_TYPES.includes(baseType);
     
-    const src = useMemo(() => {
-        if (isPendingExtraction) return getToothSrc(id, 'extraction');
-        if (isCombined) return generateCombinedSvgDataUrl(id, activeTypes);
-        return getToothSrc(id, baseType);
-    }, [id, isPendingExtraction, isCombined, baseType, activeTypes]);
+    const [src, setSrc] = useState(null);
+
+    useEffect(() => {
+        let isMounted = true;
+        const loadSrc = async () => {
+            let result;
+            if (isPendingExtraction) {
+                result = await getToothSrc(id, 'extraction');
+            } else if (isCombined) {
+                result = await generateCombinedSvgDataUrl(id, activeTypes);
+            } else {
+                result = await getToothSrc(id, baseType);
+            }
+            
+            if (isMounted) setSrc(result);
+        };
+        
+        loadSrc();
+        return () => { isMounted = false; };
+    }, [id, isPendingExtraction, isCombined, baseType, JSON.stringify(activeTypes)]);
 
     const shouldScale = TEETH_TO_SCALE.includes(id);
-
-    if (!src) return <div className="w-10 h-14 bg-red-100 text-xs flex items-center justify-center">{id}</div>;
 
     const NumberLabel = (
         <span className={`text-[10px] md:text-xs font-black transition-colors z-20 ${isActuallyExtracted ? 'text-red-600' : 'text-slate-400 group-hover:text-slate-600 dark:text-slate-500'}`}>
@@ -61,12 +74,18 @@ function FrontalTooth({ id, isPendingExtraction, globalState, hasBracket, hasTad
             <div className={`relative h-14 md:h-38 transition-all duration-200 
                 ${isActuallyExtracted ? '' : 'hover:scale-110 drop-shadow-lg'}`}
             >
-                <img
-                    src={src}
-                    alt={`Tooth ${id}`}
-                    className="w-full h-full object-contain pointer-events-none"
-                    draggable="false"
-                />
+                {src ? (
+                    <img
+                        src={src}
+                        alt={`Tooth ${id}`}
+                        className="w-full h-full object-contain pointer-events-none"
+                        draggable="false"
+                    />
+                ) : (
+                    <div className="w-10 h-14 md:w-14 md:h-20 bg-slate-100 dark:bg-slate-800 animate-pulse rounded flex items-center justify-center">
+                        <span className="text-[10px] text-slate-400 font-bold">{id}</span>
+                    </div>
+                )}
 
                 {/* Brackets Overlay (Contextual) */}
                 {hasBracket && !isActuallyExtracted && (

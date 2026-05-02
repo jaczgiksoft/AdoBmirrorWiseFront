@@ -195,10 +195,10 @@ export default function AppointmentList() {
 
     // WebSocket Listener
     useEffect(() => {
-        console.log("🔌 [AppointmentList] Hook de socket disparado. Estado:", { 
-            existe: !!socket, 
-            conectado: socket?.connected, 
-            id: socket?.id 
+        console.log("🔌 [AppointmentList] Hook de socket disparado. Estado:", {
+            existe: !!socket,
+            conectado: socket?.connected,
+            id: socket?.id
         });
 
         if (!socket) {

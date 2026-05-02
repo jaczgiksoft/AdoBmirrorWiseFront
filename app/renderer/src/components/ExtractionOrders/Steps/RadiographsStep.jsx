@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Upload, Plus, X } from 'lucide-react';
+import { Upload, Plus, X, Loader2 } from 'lucide-react';
 
 /* ============================================================
    🔹 CONFIG
@@ -123,14 +123,34 @@ const RadiographsStep = ({ files, setFiles }) => {
 ============================================================ */
 
 function DropzoneCard({ label, image, onRemove }) {
+    const [src, setSrc] = useState(null);
+
+    useEffect(() => {
+        let isMounted = true;
+        if (image instanceof Promise) {
+            image.then(result => {
+                if (isMounted) setSrc(result);
+            });
+        } else {
+            setSrc(image);
+        }
+        return () => { isMounted = false; };
+    }, [image]);
+
     return (
         <div className="relative aspect-[4/3] rounded-xl border-2 border-transparent shadow-sm bg-white dark:bg-slate-800 group overflow-hidden">
 
-            <img
-                src={image}
-                alt={label}
-                className="w-full h-full object-cover"
-            />
+            {src ? (
+                <img
+                    src={src}
+                    alt={label}
+                    className="w-full h-full object-cover"
+                />
+            ) : (
+                <div className="w-full h-full flex items-center justify-center bg-slate-50 dark:bg-slate-900/50">
+                    <Loader2 className="w-6 h-6 text-slate-400 animate-spin" />
+                </div>
+            )}
 
             {/* Hover Overlay */}
             <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2">

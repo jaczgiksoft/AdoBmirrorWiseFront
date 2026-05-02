@@ -53,10 +53,13 @@ export default function PatientRepresentativeModal({ open, onClose, onSave, repr
                 ].filter(Boolean).join(", ");
             }
 
+            const phoneVal = patientData?.phone_number || "";
             setForm({
                 ...initialForm,
                 temp_id: `REP-${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
-                phone: patientData?.phone_number || "",
+                phone: phoneVal,
+                username: initialForm.can_login ? phoneVal : "",
+                password: initialForm.can_login ? phoneVal : "",
                 email: patientData?.email || "",
                 address: addr || ""
             });
@@ -72,16 +75,7 @@ export default function PatientRepresentativeModal({ open, onClose, onSave, repr
         }
     }, [open]);
 
-    // Autocompletar credenciales cuando can_login = true
-    useEffect(() => {
-        if (form.can_login && form.phone.trim()) {
-            setForm((f) => ({
-                ...f,
-                username: f.phone,
-                password: f.phone,
-            }));
-        }
-    }, [form.can_login, form.phone]);
+
 
     const hasFormChanges = () =>
         JSON.stringify(form) !== JSON.stringify(initialForm);
@@ -240,9 +234,15 @@ export default function PatientRepresentativeModal({ open, onClose, onSave, repr
                                     name="phone"
                                     value={form.phone}
                                     placeholder="Ej: 55-1234-5678"
-                                    onChange={(e) =>
-                                        setForm((f) => ({ ...f, phone: e.target.value }))
-                                    }
+                                    onChange={(e) => {
+                                        const val = e.target.value;
+                                        setForm((f) => ({
+                                            ...f,
+                                            phone: val,
+                                            username: f.can_login ? val : f.username,
+                                            password: f.can_login ? val : f.password
+                                        }));
+                                    }}
                                     className={`input ${errors.phone ? "border-error ring-1 ring-error/50" : ""}`}
                                 />
                                 {errors.phone && (
@@ -304,12 +304,15 @@ export default function PatientRepresentativeModal({ open, onClose, onSave, repr
                                 border border-slate-300 dark:border-slate-700
                             "
                             onClick={() =>
-                                setForm((f) => ({
-                                    ...f,
-                                    can_login: !f.can_login,
-                                    username: "",
-                                    password: "",
-                                }))
+                                setForm((f) => {
+                                    const nextCanLogin = !f.can_login;
+                                    return {
+                                        ...f,
+                                        can_login: nextCanLogin,
+                                        username: nextCanLogin ? f.phone : "",
+                                        password: nextCanLogin ? f.phone : "",
+                                    };
+                                })
                             }
                         >
                             <span className="text-sm flex items-center gap-2">

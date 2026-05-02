@@ -30,7 +30,7 @@ export default function SplashScreen() {
                 setTimeout(() => {
                     setVisible(false);
                     setTimeout(() => {
-                        navigate(isAuthenticated ? "/dashboard" : "/login");
+                        navigate(isAuthenticated ? "/appointments" : "/login");
                     }, 400);
                 }, SPLASH_DURATION);
             }

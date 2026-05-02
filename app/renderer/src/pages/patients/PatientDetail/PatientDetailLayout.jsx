@@ -59,12 +59,12 @@ export default function PatientDetailLayout({ sidebar, children }) {
     };
 
     return (
-        <PatientLayoutContext.Provider value={{ 
-            openViewer, 
-            closeViewer, 
-            openCreator, 
-            closeCreator, 
-            refreshTrigger, 
+        <PatientLayoutContext.Provider value={{
+            openViewer,
+            closeViewer,
+            openCreator,
+            closeCreator,
+            refreshTrigger,
             triggerRefresh,
             updateViewerCollections,
             isRefreshingGallery,

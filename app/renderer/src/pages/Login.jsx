@@ -26,7 +26,7 @@ export default function LoginPage() {
     // 🧭 Redirigir si ya está autenticado (antes de cualquier return condicional)
     useEffect(() => {
         if (isAuthenticated) {
-            navigate("/dashboard", { replace: true });
+            navigate("/appointments", { replace: true });
         }
     }, [isAuthenticated, navigate]);
 
@@ -106,7 +106,7 @@ export default function LoginPage() {
             setSession(userData);
             setMessage("🔄 Cargando entorno POS...");
             await new Promise((r) => setTimeout(r, 1200));
-            navigate("/dashboard");
+            navigate("/appointments");
         } catch (err) {
             const errorMsg =
                 err.response?.data?.message ||
