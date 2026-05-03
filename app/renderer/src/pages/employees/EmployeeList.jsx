@@ -9,6 +9,7 @@ import { PageHeader } from "@/components/layout";
 import { getEmployees, deleteEmployee } from "@/services/employee.service";
 import EmployeeFormModal from "./EmployeeFormModal";
 import EmployeeFilterDropdown from "./components/EmployeeFilterDropdown";
+import { API_BASE } from "@/utils/apiBase";
 
 export default function EmployeeList() {
     const navigate = useNavigate();
@@ -63,6 +64,7 @@ export default function EmployeeList() {
     };
 
     const handleEditClick = (employee) => {
+        console.log(employee);
         setSelectedEmployee(employee);
         setShowForm(true);
     };
@@ -164,7 +166,11 @@ export default function EmployeeList() {
             render: (row) => (
                 <div className="flex items-center gap-3">
                     {row.profile_image ? (
-                        <img src={row.profile_image} alt="" className="w-10 h-10 rounded-full object-cover border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800" />
+                        <img
+                            src={row.profile_image.startsWith("http") ? row.profile_image : `${API_BASE}/${row.profile_image}`}
+                            alt=""
+                            className="w-10 h-10 rounded-full object-cover border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800"
+                        />
                     ) : (
                         <div className={`w-10 h-10 flex items-center justify-center rounded-full border border-slate-200 dark:border-slate-700 text-primary ${row.user ? "bg-primary/10 shadow-[0_0_10px_rgba(14,165,233,0.3)]" : "bg-slate-100 dark:bg-slate-800"}`}>
                             <User size={20} />
@@ -194,13 +200,13 @@ export default function EmployeeList() {
                     <div className="flex flex-wrap gap-1">
                         {row.positions && row.positions.length > 0 ? (
                             row.positions.map(p => (
-                                <span 
-                                    key={p.id} 
+                                <span
+                                    key={p.id}
                                     className="text-[10px] px-2 py-0.5 rounded-full border font-medium flex items-center gap-1"
-                                    style={{ 
-                                        backgroundColor: `${p.color}15`, 
+                                    style={{
+                                        backgroundColor: `${p.color}15`,
                                         borderColor: `${p.color}40`,
-                                        color: p.color 
+                                        color: p.color
                                     }}
                                 >
                                     <Briefcase size={8} />

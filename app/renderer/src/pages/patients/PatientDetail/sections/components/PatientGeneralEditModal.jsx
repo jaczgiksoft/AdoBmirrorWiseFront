@@ -117,15 +117,12 @@ export default function PatientGeneralEditModal({ open, onClose, profile, refres
     const handlePhotoChange = (e) => {
         const file = e.target.files[0];
         if (file) {
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                setForm(prev => ({
-                    ...prev,
-                    photo_file: file,
-                    photo_preview: reader.result
-                }));
-            };
-            reader.readAsDataURL(file);
+            const previewURL = URL.createObjectURL(file);
+            setForm(prev => ({
+                ...prev,
+                photo_file: file,
+                photo_preview: previewURL
+            }));
         }
     };
 
