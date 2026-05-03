@@ -289,7 +289,8 @@ export default function PatientForm({ open, onClose, onCreated, patientType }) {
         setSaving(true);
 
         try {
-            let payload = { ...form };
+            // Preparar el payload
+            const { photo_preview, ...payload } = form;
             delete payload.confirm_password;
 
             // Limpiar email si está vacío para evitar errores de validación
@@ -300,13 +301,7 @@ export default function PatientForm({ open, onClose, onCreated, patientType }) {
                 delete payload.email;
             }
 
-            if (form.photo_file) {
-                payload.photo_file = form.photo_file;
-            }
-
-            delete payload.photo_preview;
-
-            console.log("📨 Datos enviados a la API:", payload);
+            console.log("📨 Datos enviados a la API (Multipart):", payload);
             await createPatient(payload);
 
             addToast({
@@ -705,7 +700,7 @@ export default function PatientForm({ open, onClose, onCreated, patientType }) {
                         <div className="grid grid-cols-2 gap-3">
                             {/* Estado civil */}
                             <div>
-                                <label className="block text-sm mb-1">Estado civil</label>
+                                <label className="block text-sm mb-1 label-required">Estado civil</label>
                                 <select
                                     name="marital_status"
                                     value={form.marital_status}

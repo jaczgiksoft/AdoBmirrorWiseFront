@@ -8,6 +8,7 @@ import { getPositions } from "@/services/position.service";
 import { createEmployee, updateEmployee } from "@/services/employee.service";
 import { createUser, updateUser } from "@/services/user.service";
 import PositionForm from "../positions/PositionForm";
+import { API_BASE } from "@/utils/apiBase";
 
 const initialForm = {
     first_name: "",
@@ -61,7 +62,14 @@ export default function EmployeeFormModal({ open, onClose, employee, onSuccess, 
                     username: employee.user?.username || "",
                     password: "",
                 });
-                setPreview(employee.profile_image);
+                if (employee.profile_image) {
+                    const imageUrl = employee.profile_image.startsWith("http")
+                        ? employee.profile_image
+                        : `${API_BASE}/${employee.profile_image}`;
+                    setPreview(imageUrl);
+                } else {
+                    setPreview(null);
+                }
             } else {
                 setForm({
                     ...initialForm,
@@ -143,13 +151,8 @@ export default function EmployeeFormModal({ open, onClose, employee, onSuccess, 
 
         if (name === "profile_image" && files?.[0]) {
             const file = files[0];
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                const base64String = reader.result;
-                setForm((f) => ({ ...f, profile_image: base64String }));
-                setPreview(base64String);
-            };
-            reader.readAsDataURL(file);
+            setForm((f) => ({ ...f, profile_image: file }));
+            setPreview(URL.createObjectURL(file));
             return;
         }
 

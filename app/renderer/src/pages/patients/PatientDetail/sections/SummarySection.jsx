@@ -267,7 +267,7 @@ export default function SummarySection() {
                         <div className="mt-4">
                             <p className="text-xs uppercase text-slate-500 dark:text-slate-400">Avance estimado</p>
                             <div className="mt-1 w-full h-3 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
-                                <div className="h-full bg-primary rounded-full" style={{ width: "70%" }} />
+                                <div className="h-full bg-primary rounded-full" style={{ width: "0%" }} />
                             </div>
                         </div>
                     </div>
@@ -308,24 +308,24 @@ export default function SummarySection() {
                         <div className="mt-3">
                             <p className="text-xs text-slate-500 mb-1">Avance del pago</p>
                             <div className="h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
-                                <div className="h-full bg-green-500 rounded-full" style={{ width: "30%" }} />
+                                <div className="h-full bg-green-500 rounded-full" style={{ width: "0%" }} />
                             </div>
                         </div>
 
                         <div className="grid grid-cols-3 gap-4 pt-2">
                             <div>
                                 <p className="text-xs uppercase text-slate-500">Pagos</p>
-                                <p className="font-medium">3 hechos</p>
+                                <p className="font-medium">...</p>
                             </div>
 
                             <div>
                                 <p className="text-xs uppercase text-slate-500">Restantes</p>
-                                <p className="font-medium">8</p>
+                                <p className="font-medium">...</p>
                             </div>
 
                             <div>
                                 <p className="text-xs uppercase text-slate-500">Próximo pago</p>
-                                <p className="font-medium">15 Ene 2025</p>
+                                <p className="font-medium">...</p>
                             </div>
                         </div>
 

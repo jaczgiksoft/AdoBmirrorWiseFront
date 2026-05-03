@@ -44,9 +44,35 @@ export async function getEmployee(id) {
 /**
  * Crear un nuevo empleado
  */
-export async function createEmployee(data) {
+export async function createEmployee(payload) {
     try {
-        const res = await api.post("/employees", data);
+        const formData = new FormData();
+
+        for (const key in payload) {
+            const value = payload[key];
+
+            // 🔹 ARCHIVO
+            if (key === "profile_image" && value instanceof File) {
+                formData.append("profile_image", value);
+                continue;
+            }
+
+            // 🔹 CAMPOS JSON
+            if (key === "positionIds") {
+                formData.append(key, JSON.stringify(value || []));
+                continue;
+            }
+
+            // 🔹 NO ENVIAR profile_image SI ES STRING (base64 vieja o path)
+            if (key === "profile_image" && typeof value === "string") {
+                continue;
+            }
+
+            // 🔹 VALORES NORMALES
+            formData.append(key, value ?? "");
+        }
+
+        const res = await api.post("/employees", formData);
         return res.data;
     } catch (err) {
         console.error("❌ Error al crear empleado:", err);
@@ -57,9 +83,35 @@ export async function createEmployee(data) {
 /**
  * Actualizar un empleado existente
  */
-export async function updateEmployee(id, data) {
+export async function updateEmployee(id, payload) {
     try {
-        const res = await api.put(`/employees/${id}`, data);
+        const formData = new FormData();
+
+        for (const key in payload) {
+            const value = payload[key];
+
+            // 🔹 ARCHIVO
+            if (key === "profile_image" && value instanceof File) {
+                formData.append("profile_image", value);
+                continue;
+            }
+
+            // 🔹 CAMPOS JSON
+            if (key === "positionIds") {
+                formData.append(key, JSON.stringify(value || []));
+                continue;
+            }
+
+            // 🔹 NO ENVIAR profile_image SI ES STRING (base64 vieja o path)
+            if (key === "profile_image" && typeof value === "string") {
+                continue;
+            }
+
+            // 🔹 VALORES NORMALES
+            formData.append(key, value ?? "");
+        }
+
+        const res = await api.put(`/employees/${id}`, formData);
         return res.data;
     } catch (err) {
         console.error(`❌ Error al actualizar empleado ${id}:`, err);
