@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { X, Square, Circle, Minus, MousePointer2, Pen, Type, Undo2, ArrowUpRight, Trash2, Download, Save } from 'lucide-react';
+import { X, Square, Circle, Minus, MousePointer2, Pen, Type, Undo2, ArrowUpRight, Trash2, Download, Save, EyeOff } from 'lucide-react';
 import { fabric } from 'fabric';
 import * as PIXI from 'pixi.js';
 
@@ -14,10 +14,16 @@ export default function ImageEditorModal({ imageSrc, imageName, onClose, onSave 
     // Mesh Warp state
     const pixiContainerRef = useRef(null);
     const pixiAppRef = useRef(null);
+    const pixiGeometryRef = useRef(null);
+    const meshWarpActiveRef = useRef(false);
     const [meshWarpActive, setMeshWarpActive] = useState(false);
     const [warpRadius, setWarpRadius] = useState(50);
     const [warpIntensity, setWarpIntensity] = useState(0.5);
     const warpParams = useRef({ radius: 50, intensity: 0.5 });
+    const brushGraphicRef = useRef(null);
+
+    // Keep meshWarpActiveRef in sync
+    useEffect(() => { meshWarpActiveRef.current = meshWarpActive; }, [meshWarpActive]);
 
     useEffect(() => {
         warpParams.current = { radius: warpRadius, intensity: warpIntensity };
@@ -32,7 +38,7 @@ export default function ImageEditorModal({ imageSrc, imageName, onClose, onSave 
         textLabel: null // Para las medidas
     });
 
-    // Inicializar Canvas
+    // Inicializar Canvas Fabric (capa superior, sin backgroundImage — PixiJS muestra la imagen)
     useEffect(() => {
         if (!canvasRef.current || !containerRef.current) return;
 
@@ -45,38 +51,29 @@ export default function ImageEditorModal({ imageSrc, imageName, onClose, onSave 
             height,
             selection: true,
             preserveObjectStacking: true,
+            backgroundColor: 'transparent',
         });
+
+        // Canvas transparente: PixiJS (z-index:1) es visible por debajo
+        canvas.backgroundColor = 'transparent';
+        canvas.renderAll();
+
+        // Posicionar el wrapper de Fabric correctamente (z-index: 2)
+        if (canvas.wrapperEl) {
+            canvas.wrapperEl.style.position = 'absolute';
+            canvas.wrapperEl.style.top = '0';
+            canvas.wrapperEl.style.left = '0';
+            canvas.wrapperEl.style.zIndex = '2';
+            canvas.wrapperEl.style.pointerEvents = 'auto';
+        }
 
         // Configuración de pincel por defecto
         canvas.freeDrawingBrush.color = color;
         canvas.freeDrawingBrush.width = brushSize;
 
-        // Cargar imagen de fondo
-        fabric.Image.fromURL(imageSrc, (img) => {
-            // Escalar imagen para que encaje en el canvas
-            const scale = Math.min(width / img.width, height / img.height);
-
-            img.set({
-                scaleX: scale,
-                scaleY: scale,
-                originX: 'center',
-                originY: 'center',
-                left: width / 2,
-                top: height / 2,
-            });
-
-            canvas.setBackgroundImage(img, canvas.renderAll.bind(canvas));
-        }, { crossOrigin: 'anonymous' });
-
         setFabricCanvas(canvas);
 
-        const handleResize = () => {
-            if (container && canvas) {
-                // Aquí se podría implementar una lógica de redimensionamiento más compleja
-                // Por ahora, mantenemos el tamaño inicial
-            }
-        };
-
+        const handleResize = () => {};
         window.addEventListener('resize', handleResize);
 
         return () => {
@@ -195,6 +192,20 @@ export default function ImageEditorModal({ imageSrc, imageName, onClose, onSave 
                         fill: 'transparent',
                     });
                     break;
+                case 'censorship':
+                    shape = new fabric.Rect({
+                        ...strokeOptions,
+                        fill: 'rgba(255, 255, 255, 0.1)',
+                        stroke: 'transparent',
+                        strokeDashArray: [],
+                        left: pointer.x,
+                        top: pointer.y,
+                        width: 1,
+                        height: 1,
+                        selectable: false,
+                        evented: false
+                    });
+                    break;
             }
 
             if (shape) {
@@ -231,7 +242,7 @@ export default function ImageEditorModal({ imageSrc, imageName, onClose, onSave 
             } else if (activeTool === 'circle') {
                 const radius = Math.hypot(pointer.x - startX, pointer.y - startY);
                 shape.set({ radius });
-            } else if (activeTool === 'square') {
+            } else if (activeTool === 'square' || activeTool === 'censorship') {
                 shape.set({
                     width: Math.abs(pointer.x - startX),
                     height: Math.abs(pointer.y - startY),
@@ -269,7 +280,95 @@ export default function ImageEditorModal({ imageSrc, imageName, onClose, onSave 
 
         const handleMouseUp = () => {
             if (drawingState.current.isDrawing) {
+                const tool = activeTool;
                 drawingState.current.isDrawing = false;
+
+                // Caso especial para censura: snapshot de PixiJS como fuente visual
+                if (tool === 'censorship' && drawingState.current.shape) {
+                    const guideRect = drawingState.current.shape;
+                    const width = guideRect.width;
+                    const height = guideRect.height;
+
+                    if (width > 5 && height > 5 && pixiAppRef.current) {
+                        // Snapshot de la capa Pixi (imagen real/deformada) como referencia
+                        pixiAppRef.current.renderer.extract.base64(
+                            pixiAppRef.current.stage, 'image/jpeg', 1.0
+                        ).then((pixiB64) => {
+                            // Corregir flip vertical del WebGL
+                            const flipImg = new Image();
+                            flipImg.onload = () => {
+                                const tmpC = document.createElement('canvas');
+                                tmpC.width = flipImg.width; tmpC.height = flipImg.height;
+                                const tmpCtx = tmpC.getContext('2d');
+                                tmpCtx.translate(0, flipImg.height);
+                                tmpCtx.scale(1, -1);
+                                tmpCtx.drawImage(flipImg, 0, 0);
+                                const snapshotURL = tmpC.toDataURL('image/jpeg', 1.0);
+
+                                // 1. Rect de control (lente interactiva)
+                                const lensRect = new fabric.Rect({
+                                    left: guideRect.left,
+                                    top: guideRect.top,
+                                    width, height,
+                                    fill: 'transparent',
+                                    stroke: 'transparent',
+                                    strokeWidth: 0,
+                                    originX: 'center', originY: 'center',
+                                    cornerColor: '#3b82f6',
+                                    cornerSize: 8,
+                                    transparentCorners: false,
+                                    isLensController: true
+                                });
+
+                                // 2. Máscara de recorte
+                                const clipMask = new fabric.Rect({
+                                    left: guideRect.left, top: guideRect.top,
+                                    width, height,
+                                    fill: 'white',
+                                    originX: 'center', originY: 'center',
+                                    absolutePositioned: true
+                                });
+
+                                // 3. Imagen pixelada desde el snapshot de Pixi
+                                fabric.Image.fromURL(snapshotURL, (pixiImg) => {
+                                    // Alinear la imagen del snapshot con el canvas de Fabric
+                                    const pixiCanvas = pixiAppRef.current?.canvas;
+                                    const offsetX = pixiCanvas
+                                        ? (fabricCanvas.width - pixiCanvas.width) / 2
+                                        : 0;
+                                    const offsetY = pixiCanvas
+                                        ? (fabricCanvas.height - pixiCanvas.height) / 2
+                                        : 0;
+
+                                    pixiImg.set({
+                                        left: offsetX,
+                                        top: offsetY,
+                                        selectable: false,
+                                        evented: false,
+                                        clipPath: clipMask
+                                    });
+
+                                    const pixelateFilter = new fabric.Image.filters.Pixelate({ blocksize: 15 });
+                                    pixiImg.filters = [pixelateFilter];
+                                    pixiImg.applyFilters();
+
+                                    lensRect.pixelatedClone = pixiImg;
+                                    fabricCanvas.add(pixiImg);
+                                    fabricCanvas.add(lensRect);
+                                    fabricCanvas.setActiveObject(lensRect);
+                                    fabricCanvas.renderAll();
+                                });
+                            };
+                            flipImg.src = pixiB64;
+                        });
+                    }
+
+                    fabricCanvas.remove(guideRect);
+                    drawingState.current.shape = null;
+                    setActiveTool('select');
+                    return;
+                }
+
 
                 // Hacer el objeto seleccionable una vez terminado
                 if (drawingState.current.shape) {
@@ -304,14 +403,44 @@ export default function ImageEditorModal({ imageSrc, imageName, onClose, onSave 
             }
         };
 
+        const handleObjectUpdate = (e) => {
+            const obj = e.target;
+            if (obj && obj.isLensController && obj.pixelatedClone) {
+                const mask = obj.pixelatedClone.clipPath;
+                if (mask) {
+                    mask.set({
+                        left: obj.left,
+                        top: obj.top,
+                        scaleX: obj.scaleX,
+                        scaleY: obj.scaleY,
+                        width: obj.width,
+                        height: obj.height,
+                        angle: obj.angle,
+                        skewX: obj.skewX,
+                        skewY: obj.skewY,
+                        originX: obj.originX,
+                        originY: obj.originY
+                    });
+                    mask.setCoords();
+                }
+                fabricCanvas.renderAll();
+            }
+        };
+
         fabricCanvas.on('mouse:down', handleMouseDown);
         fabricCanvas.on('mouse:move', handleMouseMove);
         fabricCanvas.on('mouse:up', handleMouseUp);
+        fabricCanvas.on('object:moving', handleObjectUpdate);
+        fabricCanvas.on('object:scaling', handleObjectUpdate);
+        fabricCanvas.on('object:rotating', handleObjectUpdate);
 
         return () => {
             fabricCanvas.off('mouse:down', handleMouseDown);
             fabricCanvas.off('mouse:move', handleMouseMove);
             fabricCanvas.off('mouse:up', handleMouseUp);
+            fabricCanvas.off('object:moving', handleObjectUpdate);
+            fabricCanvas.off('object:scaling', handleObjectUpdate);
+            fabricCanvas.off('object:rotating', handleObjectUpdate);
         };
     }, [fabricCanvas, activeTool, color, brushSize]);
 
@@ -326,239 +455,186 @@ export default function ImageEditorModal({ imageSrc, imageName, onClose, onSave 
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [fabricCanvas, meshWarpActive]);
 
-    // Mesh Warp Logic
+    // ── Inicializar PixiJS UNA VEZ al montar (capa base, z-index: 1) ───────────
     useEffect(() => {
-        if (!fabricCanvas || !pixiContainerRef.current) return;
+        if (!pixiContainerRef.current || !containerRef.current) return;
 
-        if (meshWarpActive) {
-            // Aplanar Fabric
-            fabricCanvas.discardActiveObject().renderAll();
+        let cleanupFn = null;
 
-            // Si no hay imagen de fondo, no podemos exportar bien
-            if (!fabricCanvas.backgroundImage) return;
+        const container = containerRef.current;
+        const imgEl = new Image();
+        imgEl.crossOrigin = 'anonymous';
+        imgEl.onload = async () => {
+            if (!pixiContainerRef.current) return;
 
-            const bgImage = fabricCanvas.backgroundImage;
-            // Guardamos el estado actual como imagen
-            const dataURL = fabricCanvas.toDataURL({
-                format: 'jpeg',
-                quality: 1.0,
-                left: bgImage.left - bgImage.getScaledWidth() / 2,
-                top: bgImage.top - bgImage.getScaledHeight() / 2,
-                width: bgImage.getScaledWidth(),
-                height: bgImage.getScaledHeight()
+            const cW = container.clientWidth;
+            const cH = container.clientHeight;
+            const scale = Math.min(cW / imgEl.width, cH / imgEl.height);
+            const w = Math.round(imgEl.width * scale);
+            const h = Math.round(imgEl.height * scale);
+            const left = Math.round((cW - w) / 2);
+            const top = Math.round((cH - h) / 2);
+
+            const app = new PIXI.Application();
+            await app.init({ width: w, height: h, backgroundAlpha: 0, preserveDrawingBuffer: true });
+
+            app.canvas.style.position = 'absolute';
+            app.canvas.style.left = `${left}px`;
+            app.canvas.style.top = `${top}px`;
+            app.canvas.style.zIndex = '1';
+            // Empieza sin recibir eventos (Fabric los gestiona por defecto)
+            app.canvas.style.pointerEvents = meshWarpActiveRef.current ? 'auto' : 'none';
+
+            pixiContainerRef.current.appendChild(app.canvas);
+            pixiAppRef.current = app;
+
+            const texture = await PIXI.Assets.load(imageSrc);
+            const rows = 20, cols = 20;
+            const vCount = (rows + 1) * (cols + 1);
+            const vertices = new Float32Array(vCount * 2);
+            const uvs = new Float32Array(vCount * 2);
+            const indices = [];
+
+            let i = 0;
+            for (let y = 0; y <= rows; y++) {
+                for (let x = 0; x <= cols; x++) {
+                    vertices[i * 2] = (x / cols) * w;
+                    vertices[i * 2 + 1] = (y / rows) * h;
+                    uvs[i * 2] = x / cols;
+                    uvs[i * 2 + 1] = y / rows;
+                    i++;
+                }
+            }
+            for (let y = 0; y < rows; y++) {
+                for (let x = 0; x < cols; x++) {
+                    const idx = y * (cols + 1) + x;
+                    indices.push(idx, idx + 1, idx + cols + 1, idx + 1, idx + cols + 2, idx + cols + 1);
+                }
+            }
+
+            const geometry = new PIXI.MeshGeometry({
+                positions: vertices,
+                uvs,
+                indices: new Uint32Array(indices)
+            });
+            pixiGeometryRef.current = geometry;
+
+            const shader = PIXI.Shader.from({
+                gl: {
+                    vertex: `
+                        precision mediump float;
+                        attribute vec2 aPosition;
+                        attribute vec2 aUV;
+                        varying vec2 vUV;
+                        void main() {
+                          vec2 pos = aPosition / vec2(${w.toFixed(1)}, ${h.toFixed(1)});
+                          gl_Position = vec4(pos * 2.0 - 1.0, 0.0, 1.0);
+                          gl_Position.y *= -1.0;
+                          vUV = aUV;
+                        }`,
+                    fragment: `
+                        precision mediump float;
+                        varying vec2 vUV;
+                        uniform sampler2D uSampler;
+                        void main() { gl_FragColor = texture2D(uSampler, vUV); }`
+                },
+                resources: { uSampler: texture.source }
             });
 
-            // Limpiar canvas de fabric (anotaciones se aplanan en la imagen)
-            fabricCanvas.clear();
+            const mesh = new PIXI.Mesh({ geometry, shader });
+            app.stage.addChild(mesh);
 
-            const initPixi = async () => {
-                const app = new PIXI.Application();
-                await app.init({
-                    width: bgImage.getScaledWidth(),
-                    height: bgImage.getScaledHeight(),
-                    backgroundAlpha: 0
-                });
+            const brushGraphic = new PIXI.Graphics();
+            app.stage.addChild(brushGraphic);
+            brushGraphicRef.current = brushGraphic;
 
-                // Centrar el canvas de PixiJS como la imagen original
-                app.canvas.style.position = 'absolute';
-                app.canvas.style.left = `${bgImage.left - bgImage.getScaledWidth() / 2}px`;
-                app.canvas.style.top = `${bgImage.top - bgImage.getScaledHeight() / 2}px`;
+            let isDragging = false, sx = 0, sy = 0;
+            const onDown = (e) => {
+                const b = app.canvas.getBoundingClientRect();
+                sx = e.clientX - b.left; sy = e.clientY - b.top;
+                isDragging = true;
+            };
+            const onUp = () => { isDragging = false; };
+            const onLeave = () => {
+                isDragging = false;
+                if (brushGraphic) brushGraphic.visible = false;
+            };
+            const onMove = (e) => {
+                const b = app.canvas.getBoundingClientRect();
+                const cx = e.clientX - b.left, cy = e.clientY - b.top;
 
-                pixiContainerRef.current.appendChild(app.canvas);
-                pixiAppRef.current = app;
-
-                const texture = await PIXI.Assets.load(dataURL);
-                const rows = 20;
-                const cols = 20;
-                const width = app.screen.width;
-                const height = app.screen.height;
-
-                const vertexCount = (rows + 1) * (cols + 1);
-                const vertices = new Float32Array(vertexCount * 2);
-                const uvs = new Float32Array(vertexCount * 2);
-                const original = new Float32Array(vertexCount * 2);
-
-                const indices = [];
-
-                let i = 0;
-                for (let y = 0; y <= rows; y++) {
-                    for (let x = 0; x <= cols; x++) {
-                        const px = (x / cols) * width;
-                        const py = (y / rows) * height;
-
-                        vertices[i * 2] = px;
-                        vertices[i * 2 + 1] = py;
-                        original[i * 2] = px;
-                        original[i * 2 + 1] = py;
-                        uvs[i * 2] = x / cols;
-                        uvs[i * 2 + 1] = y / rows;
-                        i++;
-                    }
+                // Actualizar indicador de brocha
+                if (brushGraphic && meshWarpActiveRef.current) {
+                    brushGraphic.clear()
+                        .circle(0, 0, warpParams.current.radius)
+                        .stroke({ width: 1, color: 0xffffff, alpha: 0.8 });
+                    brushGraphic.position.set(cx, cy);
+                    brushGraphic.visible = true;
                 }
 
-                for (let y = 0; y < rows; y++) {
-                    for (let x = 0; x < cols; x++) {
-                        const idx = y * (cols + 1) + x;
-                        const a = idx;
-                        const b = idx + 1;
-                        const c = idx + cols + 1;
-                        const d = idx + cols + 2;
+                if (!isDragging) return;
 
-                        indices.push(a, b, c);
-                        indices.push(b, d, c);
+                const dx = cx - sx, dy = cy - sy;
+                const p = warpParams.current;
+                const fX = dx * p.intensity * 0.2;
+                const fY = dy * p.intensity * 0.2;
+                const verts = geometry.buffers[0].data;
+                let modified = false;
+                for (let i = 0; i < verts.length; i += 2) {
+                    const dist = Math.hypot(verts[i] - sx, verts[i + 1] - sy);
+                    if (dist < p.radius) {
+                        const weight = (p.radius - dist) / p.radius;
+                        verts[i] += fX * weight;
+                        verts[i + 1] += fY * weight;
+                        modified = true;
                     }
                 }
-
-                const geometry = new PIXI.MeshGeometry({
-                    positions: vertices,
-                    uvs: uvs,
-                    indices: new Uint32Array(indices)
-                });
-
-                const shader = PIXI.Shader.from({
-                    gl: {
-                        vertex: `
-                    precision mediump float;
-                    attribute vec2 aPosition;
-                    attribute vec2 aUV;
-                    varying vec2 vUV;
-                    void main() {
-                      vec2 position = aPosition / vec2(${app.screen.width.toFixed(1)}, ${app.screen.height.toFixed(1)});
-                      gl_Position = vec4(position * 2.0 - 1.0, 0.0, 1.0);
-                      gl_Position.y *= -1.0; 
-                      vUV = aUV;
-                    }
-                  `,
-                        fragment: `
-                    precision mediump float;
-                    varying vec2 vUV;
-                    uniform sampler2D uSampler;
-                    void main() {
-                      gl_FragColor = texture2D(uSampler, vUV);
-                    }
-                  `
-                    },
-                    resources: {
-                        uSampler: texture.source
-                    }
-                });
-
-                const mesh = new PIXI.Mesh({ geometry, shader });
-                mesh.position.set(0, 0);
-                mesh.eventMode = 'dynamic';
-                mesh.cursor = 'pointer';
-
-                app.stage.addChild(mesh);
-
-                let isDragging = false;
-                let startX = 0;
-                let startY = 0;
-
-                app.view.addEventListener('pointerdown', (event) => {
-                    const bounds = app.view.getBoundingClientRect();
-                    startX = event.clientX - bounds.left;
-                    startY = event.clientY - bounds.top;
-                    isDragging = true;
-                });
-
-                app.view.addEventListener('pointerup', () => {
-                    isDragging = false;
-                });
-
-                app.view.addEventListener('pointerleave', () => {
-                    isDragging = false;
-                });
-
-                app.view.addEventListener('pointermove', (event) => {
-                    if (!isDragging) return;
-
-                    const bounds = app.view.getBoundingClientRect();
-                    const currentX = event.clientX - bounds.left;
-                    const currentY = event.clientY - bounds.top;
-
-                    const dx = currentX - startX;
-                    const dy = currentY - startY;
-
-                    const p = warpParams.current;
-                    const fuerzaX = dx * p.intensity * 0.2;
-                    const fuerzaY = dy * p.intensity * 0.2;
-
-                    const verts = geometry.buffers[0].data;
-                    let modified = false;
-
-                    for (let i = 0; i < verts.length; i += 2) {
-                        const vx = verts[i];
-                        const vy = verts[i + 1];
-                        const dist = Math.hypot(vx - startX, vy - startY);
-
-                        if (dist < p.radius) {
-                            const peso = (p.radius - dist) / p.radius;
-                            verts[i] += fuerzaX * peso;
-                            verts[i + 1] += fuerzaY * peso;
-                            modified = true;
-                        }
-                    }
-
-                    if (modified) geometry.buffers[0].update();
-
-                    startX = currentX;
-                    startY = currentY;
-                });
+                if (modified) geometry.buffers[0].update();
+                sx = cx; sy = cy;
             };
 
-            initPixi();
+            app.canvas.addEventListener('pointerdown', onDown);
+            app.canvas.addEventListener('pointerup', onUp);
+            app.canvas.addEventListener('pointerleave', onLeave);
+            app.canvas.addEventListener('pointermove', onMove);
 
-        } else if (!meshWarpActive && pixiAppRef.current) {
-            // Exportar PixiJS a Fabric
-            const app = pixiAppRef.current;
-            app.renderer.extract.base64(app.stage, 'image/jpeg', 1.0).then((pixiDataURL) => {
-                // Corregir inversión vertical antes de volver a Fabric
-                const imgFlip = new Image();
-                imgFlip.onload = () => {
-                    const canvas = document.createElement('canvas');
-                    canvas.width = imgFlip.width;
-                    canvas.height = imgFlip.height;
-                    const ctx = canvas.getContext('2d');
-                    ctx.translate(0, imgFlip.height);
-                    ctx.scale(1, -1);
-                    ctx.drawImage(imgFlip, 0, 0);
-                    const correctedDataURL = canvas.toDataURL('image/jpeg', 1.0);
-
-                    fabric.Image.fromURL(correctedDataURL, (img) => {
-                        const width = containerRef.current.clientWidth;
-                        const height = containerRef.current.clientHeight;
-
-                        // Mantener la escala original de la imagen
-                        img.set({
-                            scaleX: 1,
-                            scaleY: 1,
-                            originX: 'center',
-                            originY: 'center',
-                            left: width / 2,
-                            top: height / 2,
-                        });
-
-                        fabricCanvas.setBackgroundImage(img, fabricCanvas.renderAll.bind(fabricCanvas));
-                    });
-                };
-                imgFlip.src = pixiDataURL;
-
-                // Cleanup PixiJS
-                app.destroy(true, { children: true, texture: true, baseTexture: true });
+            cleanupFn = () => {
+                app.canvas.removeEventListener('pointerdown', onDown);
+                app.canvas.removeEventListener('pointerup', onUp);
+                app.canvas.removeEventListener('pointerleave', onLeave);
+                app.canvas.removeEventListener('pointermove', onMove);
+                app.destroy(true, { children: true, texture: true });
                 pixiAppRef.current = null;
-                if (pixiContainerRef.current) {
-                    pixiContainerRef.current.innerHTML = '';
-                }
-            });
-        }
+                pixiGeometryRef.current = null;
+                brushGraphicRef.current = null;
+            };
+        };
+        imgEl.src = imageSrc;
 
         return () => {
-            // Cleanup on unmount or deps change if active
-            if (pixiAppRef.current && meshWarpActive === false) {
-                pixiAppRef.current.destroy(true, { children: true, texture: true, baseTexture: true });
+            if (cleanupFn) cleanupFn();
+            else if (pixiAppRef.current) {
+                pixiAppRef.current.destroy(true, { children: true, texture: true });
                 pixiAppRef.current = null;
             }
         };
+    }, [imageSrc]);
+
+    // ── Alternar pointer-events según modo activo ─────────────────────────────
+    useEffect(() => {
+        // Pixi recibe eventos solo cuando meshWarpActive=true
+        if (pixiAppRef.current?.canvas) {
+            pixiAppRef.current.canvas.style.pointerEvents = meshWarpActive ? 'auto' : 'none';
+        }
+        // Fabric recibe eventos solo cuando meshWarpActive=false
+        if (fabricCanvas?.wrapperEl) {
+            fabricCanvas.wrapperEl.style.pointerEvents = meshWarpActive ? 'none' : 'auto';
+        }
+
+        // Asegurar que el indicador de brocha se oculte si desactivamos el modo
+        if (!meshWarpActive && brushGraphicRef.current) {
+            brushGraphicRef.current.visible = false;
+        }
     }, [meshWarpActive, fabricCanvas]);
 
     const deleteSelected = () => {
@@ -567,60 +643,65 @@ export default function ImageEditorModal({ imageSrc, imageName, onClose, onSave 
         if (activeObjects.length) {
             fabricCanvas.discardActiveObject();
             activeObjects.forEach(function (object) {
+                if (object.isLensController && object.pixelatedClone) {
+                    fabricCanvas.remove(object.pixelatedClone);
+                }
                 fabricCanvas.remove(object);
             });
         }
     };
 
+    // ── Guardar: compositar capa Pixi (imagen) + capa Fabric (anotaciones) ────
     const handleSave = async () => {
-        if (!fabricCanvas) return;
+        if (!fabricCanvas || !pixiAppRef.current) return;
 
-        let dataURL;
+        fabricCanvas.discardActiveObject().renderAll();
 
-        // Si el mesh está activo, exportamos desde PixiJS porque el canvas de Fabric está vacío/limpio
-        if (meshWarpActive && pixiAppRef.current) {
-            const app = pixiAppRef.current;
-            // Exportamos el stage de Pixi que contiene la imagen deformada
-            const pixiDataURL = await app.renderer.extract.base64(app.stage, 'image/jpeg', 0.9);
+        const app = pixiAppRef.current;
 
-            // Corregir inversión vertical (PixiJS WebGL flip)
-            dataURL = await new Promise(resolve => {
-                const img = new Image();
-                img.onload = () => {
-                    const canvas = document.createElement('canvas');
-                    canvas.width = img.width;
-                    canvas.height = img.height;
-                    const ctx = canvas.getContext('2d');
-                    ctx.translate(0, img.height);
-                    ctx.scale(1, -1);
-                    ctx.drawImage(img, 0, 0);
-                    resolve(canvas.toDataURL('image/jpeg', 0.9));
+        // 1. Exportar PixiJS (imagen deformada) y corregir flip vertical
+        const pixiB64 = await app.renderer.extract.base64(app.stage, 'image/jpeg', 1.0);
+        const pixiDataURL = await new Promise(resolve => {
+            const img = new Image();
+            img.onload = () => {
+                const c = document.createElement('canvas');
+                c.width = img.width; c.height = img.height;
+                const ctx = c.getContext('2d');
+                ctx.translate(0, img.height);
+                ctx.scale(1, -1);
+                ctx.drawImage(img, 0, 0);
+                resolve(c.toDataURL('image/jpeg', 1.0));
+            };
+            img.src = pixiB64;
+        });
+
+        // 2. Exportar Fabric (anotaciones, fondo transparente)
+        const fabricDataURL = fabricCanvas.toDataURL({ format: 'png', quality: 1, multiplier: 1 });
+
+        // 3. Compositar en un canvas temporal
+        const dataURL = await new Promise(resolve => {
+            const bgImg = new Image();
+            bgImg.onload = () => {
+                const c = document.createElement('canvas');
+                c.width = app.screen.width;
+                c.height = app.screen.height;
+                const ctx = c.getContext('2d');
+
+                // Dibujar imagen/deformación como base
+                ctx.drawImage(bgImg, 0, 0, c.width, c.height);
+
+                const fgImg = new Image();
+                fgImg.onload = () => {
+                    // Calcular offset para alinear Fabric (centrado) sobre Pixi
+                    const offsetX = (fabricCanvas.width - c.width) / 2;
+                    const offsetY = (fabricCanvas.height - c.height) / 2;
+                    ctx.drawImage(fgImg, -offsetX, -offsetY);
+                    resolve(c.toDataURL('image/jpeg', 0.9));
                 };
-                img.src = pixiDataURL;
-            });
-        } else {
-            // Deseleccionar todo para que no aparezcan los controles en la imagen final
-            fabricCanvas.discardActiveObject().renderAll();
-
-            // Extraer como dataURL (solo el area de la imagen de fondo si es posible)
-            const bgImage = fabricCanvas.backgroundImage;
-
-            if (bgImage) {
-                // Recortar la exportación al área de la imagen
-                dataURL = fabricCanvas.toDataURL({
-                    format: 'jpeg',
-                    quality: 0.9,
-                    left: bgImage.left - bgImage.getScaledWidth() / 2,
-                    top: bgImage.top - bgImage.getScaledHeight() / 2,
-                    width: bgImage.getScaledWidth(),
-                    height: bgImage.getScaledHeight()
-                });
-            } else {
-                dataURL = fabricCanvas.toDataURL({ format: 'jpeg', quality: 0.9 });
-            }
-        }
-
-        if (!dataURL) return;
+                fgImg.src = fabricDataURL;
+            };
+            bgImg.src = pixiDataURL;
+        });
 
         // Convertir dataURL a Blob
         const res = await fetch(dataURL);
@@ -629,6 +710,7 @@ export default function ImageEditorModal({ imageSrc, imageName, onClose, onSave 
         onSave(blob);
     };
 
+
     const tools = [
         { id: 'select', icon: MousePointer2, label: 'Seleccionar' },
         { id: 'draw', icon: Pen, label: 'Mano alzada' },
@@ -636,6 +718,7 @@ export default function ImageEditorModal({ imageSrc, imageName, onClose, onSave 
         { id: 'arrow', icon: ArrowUpRight, label: 'Flecha' },
         { id: 'circle', icon: Circle, label: 'Círculo' },
         { id: 'square', icon: Square, label: 'Cuadrado' },
+        { id: 'censorship', icon: EyeOff, label: 'Censura (Pixelar)' },
         { id: 'text', icon: Type, label: 'Texto' },
     ];
 
@@ -756,24 +839,36 @@ export default function ImageEditorModal({ imageSrc, imageName, onClose, onSave 
                 </div>
             </div>
 
-            {/* Editor Container */}
+            {/* Editor Container — sistema de capas superpuestas */}
             <div
-                className="flex-1 bg-slate-800 relative flex items-center justify-center overflow-hidden"
+                className="flex-1 bg-slate-800 relative overflow-hidden"
                 ref={containerRef}
             >
-                {/* Canvas de Fabric.js */}
-                <canvas ref={canvasRef} style={{ display: meshWarpActive ? 'none' : 'block' }} />
-
-                {/* Container para PixiJS */}
+                {/*
+                  * CAPA BASE (z-index: 1) — PixiJS: renderiza la imagen original/deformada.
+                  * pointer-events: auto solo cuando meshWarpActive=true (gestionado por useEffect).
+                  */}
                 <div
                     ref={pixiContainerRef}
-                    className="absolute inset-0 pointer-events-auto"
                     style={{
-                        display: meshWarpActive ? 'block' : 'none',
-                        zIndex: 10
+                        position: 'absolute',
+                        inset: 0,
+                        zIndex: 1,
+                        pointerEvents: 'none' /* el useEffect lo togglea dinámicamente */
                     }}
                 />
+
+                {/*
+                  * CAPA SUPERIOR (z-index: 2) — Fabric.js: anotaciones y censura.
+                  * background: transparent para que la capa Pixi sea visible debajo.
+                  * pointer-events: none cuando meshWarpActive=true (gestionado por useEffect).
+                  */}
+                <canvas
+                    ref={canvasRef}
+                    style={{ position: 'relative', zIndex: 2 }}
+                />
             </div>
+
         </div>
     );
 }
