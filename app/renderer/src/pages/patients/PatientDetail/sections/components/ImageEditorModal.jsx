@@ -1,5 +1,5 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { X, Square, Circle, Minus, MousePointer2, Pen, Type, Undo2, ArrowUpRight, Trash2, Download, Save, EyeOff } from 'lucide-react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { X, Square, Circle, Minus, MousePointer2, Pen, Type, Undo2, Redo2, ArrowUpRight, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Trash2, Download, Save, EyeOff, Lasso, PenLine } from 'lucide-react';
 import { fabric } from 'fabric';
 import * as PIXI from 'pixi.js';
 
@@ -10,6 +10,12 @@ export default function ImageEditorModal({ imageSrc, imageName, onClose, onSave 
     const [activeTool, setActiveTool] = useState('select'); // select, draw, line, arrow, circle, square, text
     const [color, setColor] = useState('#ff0000');
     const [brushSize, setBrushSize] = useState(3);
+
+    // History state
+    const historyRef = useRef([]);
+    const historyIndexRef = useRef(-1);
+    const isRestoring = useRef(false);
+    const [, forceUpdate] = useState({});
 
     // Mesh Warp state
     const pixiContainerRef = useRef(null);
@@ -22,8 +28,27 @@ export default function ImageEditorModal({ imageSrc, imageName, onClose, onSave 
     const warpParams = useRef({ radius: 50, intensity: 0.5 });
     const brushGraphicRef = useRef(null);
 
+    // Lasso selection state (sub-mode within meshWarp)
+    const [lassoMode, setLassoMode] = useState(false);
+    const lassoModeRef = useRef(false);
+    const [lassoPoints, setLassoPoints] = useState([]);
+    const [lassoFinished, setLassoFinished] = useState(false);
+    const [lassoCursor, setLassoCursor] = useState({ x: 0, y: 0 });
+    const lassoRef = useRef({ points: [], finished: false });
+
+    // Freehand lasso state (draw by dragging, mutually exclusive with point lasso)
+    const [freehandMode, setFreehandMode] = useState(false);
+    const freehandModeRef = useRef(false);
+    const isFreehandDrawingRef = useRef(false);
+
     // Keep meshWarpActiveRef in sync
     useEffect(() => { meshWarpActiveRef.current = meshWarpActive; }, [meshWarpActive]);
+
+    // Keep lassoModeRef in sync
+    useEffect(() => { lassoModeRef.current = lassoMode; }, [lassoMode]);
+
+    // Keep freehandModeRef in sync
+    useEffect(() => { freehandModeRef.current = freehandMode; }, [freehandMode]);
 
     useEffect(() => {
         warpParams.current = { radius: warpRadius, intensity: warpIntensity };
@@ -109,6 +134,195 @@ export default function ImageEditorModal({ imageSrc, imageName, onClose, onSave 
         }
 
     }, [activeTool, color, brushSize, fabricCanvas]);
+
+    // ── Lasso utilities ─────────────────────────────────────────────────────────
+    const pointInPolygon = (px, py, poly) => {
+        let inside = false;
+        for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+            const xi = poly[i].x, yi = poly[i].y;
+            const xj = poly[j].x, yj = poly[j].y;
+            const intersect = ((yi > py) !== (yj > py)) && (px < (xj - xi) * (py - yi) / (yj - yi) + xi);
+            if (intersect) inside = !inside;
+        }
+        return inside;
+    };
+
+    const applyLassoWarp = useCallback((dx, dy) => {
+        if (!lassoRef.current.finished || !pixiGeometryRef.current || !pixiAppRef.current) return;
+        const verts = pixiGeometryRef.current.buffers[0].data;
+        const poly = lassoRef.current.points;
+        // Offset: pixi canvas is positioned within container via CSS left/top
+        const pixiCanvas = pixiAppRef.current.canvas;
+        const offsetX = parseFloat(pixiCanvas.style.left) || 0;
+        const offsetY = parseFloat(pixiCanvas.style.top) || 0;
+        let modified = false;
+        for (let i = 0; i < verts.length; i += 2) {
+            const vx = verts[i] + offsetX;
+            const vy = verts[i + 1] + offsetY;
+            if (pointInPolygon(vx, vy, poly)) {
+                verts[i] += dx;
+                verts[i + 1] += dy;
+                modified = true;
+            }
+        }
+        if (modified) pixiGeometryRef.current.buffers[0].update();
+    }, []);
+
+    const clearLasso = useCallback(() => {
+        lassoRef.current = { points: [], finished: false };
+        isFreehandDrawingRef.current = false;
+        setLassoPoints([]);
+        setLassoFinished(false);
+        setLassoCursor({ x: 0, y: 0 });
+    }, []);
+
+    const handleLassoClick = useCallback((e) => {
+        if (!lassoModeRef.current || lassoRef.current.finished) return;
+        const rect = e.currentTarget.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        const points = lassoRef.current.points;
+        // Close if clicking near first point (≥3 existing points)
+        if (points.length >= 3) {
+            const dist = Math.hypot(x - points[0].x, y - points[0].y);
+            if (dist < 15) {
+                lassoRef.current.finished = true;
+                setLassoFinished(true);
+                setLassoPoints([...points]);
+                return;
+            }
+        }
+        const newPoints = [...points, { x, y }];
+        lassoRef.current.points = newPoints;
+        setLassoPoints(newPoints);
+    }, []);
+
+    const handleLassoDoubleClick = useCallback((e) => {
+        if (!lassoModeRef.current || lassoRef.current.finished) return;
+        // Remove the duplicate point added by the second click of the double-click
+        const trimmed = lassoRef.current.points.slice(0, -1);
+        if (trimmed.length < 3) return;
+        lassoRef.current.points = trimmed;
+        lassoRef.current.finished = true;
+        setLassoPoints(trimmed);
+        setLassoFinished(true);
+    }, []);
+
+    const handleLassoMouseMove = useCallback((e) => {
+        if (!lassoModeRef.current || lassoRef.current.finished) return;
+        const rect = e.currentTarget.getBoundingClientRect();
+        setLassoCursor({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+    }, []);
+
+    // ── Freehand lasso handlers ────────────────────────────────────────────────
+    const handleFreehandMouseDown = useCallback((e) => {
+        if (!freehandModeRef.current || lassoRef.current.finished) return;
+        // Start fresh on each new drag
+        lassoRef.current = { points: [], finished: false };
+        setLassoPoints([]);
+        setLassoFinished(false);
+        const rect = e.currentTarget.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        lassoRef.current.points = [{ x, y }];
+        setLassoPoints([{ x, y }]);
+        isFreehandDrawingRef.current = true;
+        // Prevent text selection while dragging
+        e.preventDefault();
+    }, []);
+
+    const handleFreehandMouseMove = useCallback((e) => {
+        if (!freehandModeRef.current || !isFreehandDrawingRef.current) return;
+        const rect = e.currentTarget.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        const points = lassoRef.current.points;
+        if (points.length === 0) return;
+        const last = points[points.length - 1];
+        // Throttle: only add a point if >5px from the last
+        if (Math.hypot(x - last.x, y - last.y) < 5) return;
+        const newPoints = [...points, { x, y }];
+        lassoRef.current.points = newPoints;
+        setLassoPoints(newPoints);
+    }, []);
+
+    const handleFreehandMouseUp = useCallback(() => {
+        if (!freehandModeRef.current || !isFreehandDrawingRef.current) return;
+        isFreehandDrawingRef.current = false;
+        const points = lassoRef.current.points;
+        if (points.length < 3) {
+            // Not enough points — reset
+            lassoRef.current = { points: [], finished: false };
+            setLassoPoints([]);
+            return;
+        }
+        lassoRef.current.finished = true;
+        setLassoFinished(true);
+        setLassoPoints([...points]);
+    }, []);
+
+    const saveHistory = useCallback(() => {
+
+        if (!fabricCanvas || !pixiGeometryRef.current || isRestoring.current) return;
+
+        const currentState = {
+            fabric: fabricCanvas.toJSON(['isLensController', 'pixelatedClone']),
+            pixi: pixiGeometryRef.current.buffers[0].data.slice()
+        };
+
+        const newHistory = [...historyRef.current.slice(0, historyIndexRef.current + 1), currentState];
+        if (newHistory.length > 6) { // 1 base + 5 steps
+            newHistory.shift();
+        }
+        
+        historyRef.current = newHistory;
+        historyIndexRef.current = newHistory.length - 1;
+        forceUpdate({});
+    }, [fabricCanvas]);
+
+    const undo = useCallback(() => {
+        if (historyIndexRef.current <= 0 || isRestoring.current) return;
+        
+        isRestoring.current = true;
+        historyIndexRef.current--;
+        const state = historyRef.current[historyIndexRef.current];
+        
+        // Restore Fabric
+        fabricCanvas.loadFromJSON(state.fabric, () => {
+            fabricCanvas.renderAll();
+            
+            // Restore Pixi
+            if (pixiGeometryRef.current) {
+                pixiGeometryRef.current.buffers[0].data.set(state.pixi);
+                pixiGeometryRef.current.buffers[0].update();
+            }
+            
+            isRestoring.current = false;
+            forceUpdate({});
+        });
+    }, [fabricCanvas]);
+
+    const redo = useCallback(() => {
+        if (historyIndexRef.current >= historyRef.current.length - 1 || isRestoring.current) return;
+        
+        isRestoring.current = true;
+        historyIndexRef.current++;
+        const state = historyRef.current[historyIndexRef.current];
+        
+        // Restore Fabric
+        fabricCanvas.loadFromJSON(state.fabric, () => {
+            fabricCanvas.renderAll();
+            
+            // Restore Pixi
+            if (pixiGeometryRef.current) {
+                pixiGeometryRef.current.buffers[0].data.set(state.pixi);
+                pixiGeometryRef.current.buffers[0].update();
+            }
+            
+            isRestoring.current = false;
+            forceUpdate({});
+        });
+    }, [fabricCanvas]);
 
     // Lógica de dibujo con el ratón
     useEffect(() => {
@@ -396,6 +610,8 @@ export default function ImageEditorModal({ imageSrc, imageName, onClose, onSave 
                 drawingState.current.shape = null;
                 drawingState.current.textLabel = null;
 
+                saveHistory();
+
                 // Volver a la herramienta de selección después de dibujar una forma (opcional, ayuda al UX)
                 if (activeTool !== 'draw') {
                     setActiveTool('select');
@@ -433,6 +649,7 @@ export default function ImageEditorModal({ imageSrc, imageName, onClose, onSave 
         fabricCanvas.on('object:moving', handleObjectUpdate);
         fabricCanvas.on('object:scaling', handleObjectUpdate);
         fabricCanvas.on('object:rotating', handleObjectUpdate);
+        fabricCanvas.on('object:modified', saveHistory);
 
         return () => {
             fabricCanvas.off('mouse:down', handleMouseDown);
@@ -441,19 +658,36 @@ export default function ImageEditorModal({ imageSrc, imageName, onClose, onSave 
             fabricCanvas.off('object:moving', handleObjectUpdate);
             fabricCanvas.off('object:scaling', handleObjectUpdate);
             fabricCanvas.off('object:rotating', handleObjectUpdate);
+            fabricCanvas.off('object:modified', saveHistory);
         };
     }, [fabricCanvas, activeTool, color, brushSize]);
 
-    // Handle Keyboard events (Delete)
+    // Handle Keyboard events (Delete, Undo, Redo, Lasso arrows)
     useEffect(() => {
         const handleKeyDown = (e) => {
             if (e.key === 'Backspace' || e.key === 'Delete') {
                 deleteSelected();
+                saveHistory();
+            } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+                e.preventDefault();
+                undo();
+            } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
+                e.preventDefault();
+                redo();
+            } else if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key) && lassoRef.current.finished) {
+                e.preventDefault();
+                const step = Math.max(1, (warpParams.current?.intensity ?? 0.5) * 5);
+                const dirs = { ArrowUp: [0, -step], ArrowDown: [0, step], ArrowLeft: [-step, 0], ArrowRight: [step, 0] };
+                const [dx, dy] = dirs[e.key];
+                applyLassoWarp(dx, dy);
+                saveHistory();
+            } else if (e.key === 'Escape' && lassoRef.current.points.length > 0) {
+                clearLasso();
             }
         };
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [fabricCanvas, meshWarpActive]);
+    }, [fabricCanvas, meshWarpActive, undo, redo, saveHistory, applyLassoWarp, clearLasso]);
 
     // ── Inicializar PixiJS UNA VEZ al montar (capa base, z-index: 1) ───────────
     useEffect(() => {
@@ -550,11 +784,16 @@ export default function ImageEditorModal({ imageSrc, imageName, onClose, onSave 
 
             let isDragging = false, sx = 0, sy = 0;
             const onDown = (e) => {
+                // Block free-drag when lasso mode is active
+                if (lassoModeRef.current) return;
                 const b = app.canvas.getBoundingClientRect();
                 sx = e.clientX - b.left; sy = e.clientY - b.top;
                 isDragging = true;
             };
-            const onUp = () => { isDragging = false; };
+            const onUp = () => { 
+                if (isDragging) saveHistory();
+                isDragging = false; 
+            };
             const onLeave = () => {
                 isDragging = false;
                 if (brushGraphic) brushGraphic.visible = false;
@@ -611,7 +850,13 @@ export default function ImageEditorModal({ imageSrc, imageName, onClose, onSave 
         };
         imgEl.src = imageSrc;
 
+        // Save initial state once everything is loaded
+        const timer = setTimeout(() => {
+            saveHistory();
+        }, 1000);
+
         return () => {
+            clearTimeout(timer);
             if (cleanupFn) cleanupFn();
             else if (pixiAppRef.current) {
                 pixiAppRef.current.destroy(true, { children: true, texture: true });
@@ -635,7 +880,15 @@ export default function ImageEditorModal({ imageSrc, imageName, onClose, onSave 
         if (!meshWarpActive && brushGraphicRef.current) {
             brushGraphicRef.current.visible = false;
         }
-    }, [meshWarpActive, fabricCanvas]);
+        // Reset lasso & freehand when alteracion mode is deactivated
+        if (!meshWarpActive) {
+            setLassoMode(false);
+            lassoModeRef.current = false;
+            setFreehandMode(false);
+            freehandModeRef.current = false;
+            clearLasso();
+        }
+    }, [meshWarpActive, fabricCanvas, clearLasso]);
 
     const deleteSelected = () => {
         if (!fabricCanvas) return;
@@ -770,13 +1023,37 @@ export default function ImageEditorModal({ imageSrc, imageName, onClose, onSave 
                             <div className="w-px h-6 bg-slate-600 mx-2" />
 
                             <button
-                                onClick={deleteSelected}
+                                onClick={() => {
+                                    deleteSelected();
+                                    saveHistory();
+                                }}
                                 disabled={meshWarpActive}
                                 className={`p-2 rounded-md transition-colors ${meshWarpActive ? 'text-slate-600 cursor-not-allowed' : 'text-slate-400 hover:bg-red-500/20 hover:text-red-500'}`}
                                 title="Eliminar elemento seleccionado (Supr)"
                             >
                                 <Trash2 size={20} />
                             </button>
+
+                            <div className="w-px h-6 bg-slate-600 mx-2" />
+
+                            <div className="flex items-center gap-1">
+                                <button
+                                    onClick={undo}
+                                    disabled={historyIndexRef.current <= 0}
+                                    className={`p-2 rounded-md transition-colors ${historyIndexRef.current <= 0 ? 'text-slate-600 cursor-not-allowed' : 'text-slate-400 hover:bg-slate-700 hover:text-white'}`}
+                                    title="Deshacer (Ctrl+Z)"
+                                >
+                                    <Undo2 size={20} />
+                                </button>
+                                <button
+                                    onClick={redo}
+                                    disabled={historyIndexRef.current >= historyRef.current.length - 1}
+                                    className={`p-2 rounded-md transition-colors ${historyIndexRef.current >= historyRef.current.length - 1 ? 'text-slate-600 cursor-not-allowed' : 'text-slate-400 hover:bg-slate-700 hover:text-white'}`}
+                                    title="Rehacer (Ctrl+Y)"
+                                >
+                                    <Redo2 size={20} />
+                                </button>
+                            </div>
 
                             <div className="w-px h-6 bg-slate-600 mx-2" />
                         </>
@@ -816,6 +1093,120 @@ export default function ImageEditorModal({ imageSrc, imageName, onClose, onSave 
                                         className="w-20"
                                     />
                                 </label>
+
+                                <div className="w-px h-6 bg-slate-600" />
+
+                                {/* Undo/Redo inside Alteration section */}
+                                <div className="flex items-center bg-slate-800/50 rounded-md border border-slate-600 p-0.5">
+                                    <button
+                                        onClick={undo}
+                                        disabled={historyIndexRef.current <= 0}
+                                        className={`p-1.5 rounded transition-colors ${historyIndexRef.current <= 0 ? 'text-slate-600 cursor-not-allowed' : 'text-slate-300 hover:bg-slate-700 hover:text-white'}`}
+                                        title="Deshacer (Ctrl+Z)"
+                                    >
+                                        <Undo2 size={16} />
+                                    </button>
+                                    <div className="w-px h-4 bg-slate-600 mx-0.5" />
+                                    <button
+                                        onClick={redo}
+                                        disabled={historyIndexRef.current >= historyRef.current.length - 1}
+                                        className={`p-1.5 rounded transition-colors ${historyIndexRef.current >= historyRef.current.length - 1 ? 'text-slate-600 cursor-not-allowed' : 'text-slate-300 hover:bg-slate-700 hover:text-white'}`}
+                                        title="Rehacer (Ctrl+Y)"
+                                    >
+                                        <Redo2 size={16} />
+                                    </button>
+                                </div>
+
+                                <div className="w-px h-6 bg-slate-600" />
+
+                                {/* Point-by-point lasso toggle */}
+                                <button
+                                    onClick={() => {
+                                        const next = !lassoMode;
+                                        setLassoMode(next);
+                                        lassoModeRef.current = next;
+                                        // Deactivate freehand if activating point lasso
+                                        if (next) {
+                                            setFreehandMode(false);
+                                            freehandModeRef.current = false;
+                                        }
+                                        clearLasso();
+                                    }}
+                                    className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-all ${
+                                        lassoMode
+                                            ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30'
+                                            : 'text-slate-300 hover:bg-slate-700 border border-slate-600'
+                                    }`}
+                                    title="Lazo por puntos — haz clic punto a punto para definir el área"
+                                >
+                                    <Lasso size={14} />
+                                    Lazo
+                                </button>
+
+                                {/* Freehand lasso toggle */}
+                                <button
+                                    onClick={() => {
+                                        const next = !freehandMode;
+                                        setFreehandMode(next);
+                                        freehandModeRef.current = next;
+                                        // Deactivate point lasso if activating freehand
+                                        if (next) {
+                                            setLassoMode(false);
+                                            lassoModeRef.current = false;
+                                        }
+                                        clearLasso();
+                                    }}
+                                    className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-all ${
+                                        freehandMode
+                                            ? 'bg-violet-600 text-white shadow-lg shadow-violet-500/30'
+                                            : 'text-slate-300 hover:bg-slate-700 border border-slate-600'
+                                    }`}
+                                    title="Lazo libre — dibuja el área arrastrando el mouse"
+                                >
+                                    <PenLine size={14} />
+                                    Libre
+                                </button>
+
+                                {/* D-pad: only when lasso is closed */}
+                                {lassoFinished && (
+                                    <>
+                                        <div className="w-px h-6 bg-slate-600" />
+                                        <div className="flex items-center gap-1.5">
+                                            <span className="text-xs text-slate-400">Mover:</span>
+                                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 26px)', gridTemplateRows: 'repeat(3, 26px)', gap: '2px' }}>
+                                                <span />
+                                                <button
+                                                    onMouseDown={() => { applyLassoWarp(0, -Math.max(1, warpIntensity * 5)); saveHistory(); }}
+                                                    className="flex items-center justify-center rounded bg-slate-700 hover:bg-blue-600 active:bg-blue-700 text-white transition-colors"
+                                                    title="Mover arriba (↑)"
+                                                ><ArrowUp size={13} /></button>
+                                                <span />
+                                                <button
+                                                    onMouseDown={() => { applyLassoWarp(-Math.max(1, warpIntensity * 5), 0); saveHistory(); }}
+                                                    className="flex items-center justify-center rounded bg-slate-700 hover:bg-blue-600 active:bg-blue-700 text-white transition-colors"
+                                                    title="Mover izquierda (←)"
+                                                ><ArrowLeft size={13} /></button>
+                                                <button
+                                                    onMouseDown={() => clearLasso()}
+                                                    className="flex items-center justify-center rounded bg-red-500/70 hover:bg-red-500 active:bg-red-600 text-white text-xs font-bold transition-colors"
+                                                    title="Limpiar lazo (Escape)"
+                                                >✕</button>
+                                                <button
+                                                    onMouseDown={() => { applyLassoWarp(Math.max(1, warpIntensity * 5), 0); saveHistory(); }}
+                                                    className="flex items-center justify-center rounded bg-slate-700 hover:bg-blue-600 active:bg-blue-700 text-white transition-colors"
+                                                    title="Mover derecha (→)"
+                                                ><ArrowRight size={13} /></button>
+                                                <span />
+                                                <button
+                                                    onMouseDown={() => { applyLassoWarp(0, Math.max(1, warpIntensity * 5)); saveHistory(); }}
+                                                    className="flex items-center justify-center rounded bg-slate-700 hover:bg-blue-600 active:bg-blue-700 text-white transition-colors"
+                                                    title="Mover abajo (↓)"
+                                                ><ArrowDown size={13} /></button>
+                                                <span />
+                                            </div>
+                                        </div>
+                                    </>
+                                )}
                             </div>
                         )}
                     </div>
@@ -867,6 +1258,112 @@ export default function ImageEditorModal({ imageSrc, imageName, onClose, onSave 
                     ref={canvasRef}
                     style={{ position: 'relative', zIndex: 2 }}
                 />
+
+                {/*
+                  * CAPA LAZO (z-index: 3) — SVG overlay: dibuja el polígono de selección.
+                  * Activo para lazo por puntos (lassoMode) y lazo libre (freehandMode).
+                  */}
+                {meshWarpActive && (
+                    <svg
+                        style={{
+                            position: 'absolute',
+                            inset: 0,
+                            width: '100%',
+                            height: '100%',
+                            zIndex: 3,
+                            pointerEvents: (lassoMode || freehandMode) ? 'all' : 'none',
+                            cursor: (lassoMode || freehandMode) && !lassoFinished ? 'crosshair' : 'default',
+                            overflow: 'visible',
+                            userSelect: 'none',
+                        }}
+                        // Point lasso events
+                        onClick={lassoMode ? handleLassoClick : undefined}
+                        onDoubleClick={lassoMode ? handleLassoDoubleClick : undefined}
+                        // Freehand lasso events
+                        onMouseDown={freehandMode ? handleFreehandMouseDown : undefined}
+                        onMouseUp={freehandMode ? handleFreehandMouseUp : undefined}
+                        // Shared move: preview line for point lasso / path tracking for freehand
+                        onMouseMove={(e) => {
+                            if (freehandMode) handleFreehandMouseMove(e);
+                            else if (lassoMode) handleLassoMouseMove(e);
+                        }}
+                    >
+                        {/* Filled polygon when lasso is closed (shared by both modes) */}
+                        {lassoFinished && lassoPoints.length >= 3 && (
+                            <polygon
+                                points={lassoPoints.map(p => `${p.x},${p.y}`).join(' ')}
+                                fill={freehandMode ? 'rgba(139,92,246,0.12)' : 'rgba(59,130,246,0.12)'}
+                                stroke={freehandMode ? '#8b5cf6' : '#3b82f6'}
+                                strokeWidth="1.5"
+                                strokeDasharray="6,3"
+                            />
+                        )}
+
+                        {/* Freehand path in progress (continuous polyline, violet) */}
+                        {freehandMode && !lassoFinished && lassoPoints.length >= 2 && (
+                            <polyline
+                                points={lassoPoints.map(p => `${p.x},${p.y}`).join(' ')}
+                                fill="none"
+                                stroke="#8b5cf6"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                            />
+                        )}
+
+                        {/* Point lasso: polyline during construction */}
+                        {lassoMode && !lassoFinished && lassoPoints.length >= 2 && (
+                            <polyline
+                                points={lassoPoints.map(p => `${p.x},${p.y}`).join(' ')}
+                                fill="none"
+                                stroke="#3b82f6"
+                                strokeWidth="1.5"
+                                strokeDasharray="6,3"
+                            />
+                        )}
+
+                        {/* Point lasso: live preview line from last point to cursor */}
+                        {lassoMode && !lassoFinished && lassoPoints.length >= 1 && (
+                            <line
+                                x1={lassoPoints[lassoPoints.length - 1].x}
+                                y1={lassoPoints[lassoPoints.length - 1].y}
+                                x2={lassoCursor.x}
+                                y2={lassoCursor.y}
+                                stroke="#3b82f6"
+                                strokeWidth="1.5"
+                                strokeDasharray="4,4"
+                                opacity="0.6"
+                            />
+                        )}
+
+                        {/* Freehand: start dot and end-dot only */}
+                        {freehandMode && lassoPoints.length >= 1 && !lassoFinished && (
+                            <circle cx={lassoPoints[0].x} cy={lassoPoints[0].y} r={5} fill="#8b5cf6" stroke="white" strokeWidth="1.5" />
+                        )}
+
+                        {/* Point lasso: vertex dots with close indicator */}
+                        {lassoMode && lassoPoints.map((p, idx) => {
+                            const isFirst = idx === 0;
+                            const canClose = isFirst && lassoPoints.length >= 3 && !lassoFinished;
+                            const nearFirst = canClose && Math.hypot(lassoCursor.x - p.x, lassoCursor.y - p.y) < 15;
+                            return (
+                                <g key={idx}>
+                                    {nearFirst && (
+                                        <circle cx={p.x} cy={p.y} r={12} fill="rgba(59,130,246,0.25)" stroke="#3b82f6" strokeWidth="1" />
+                                    )}
+                                    <circle
+                                        cx={p.x}
+                                        cy={p.y}
+                                        r={isFirst ? 6 : 4}
+                                        fill={isFirst ? '#3b82f6' : 'white'}
+                                        stroke="#3b82f6"
+                                        strokeWidth="2"
+                                    />
+                                </g>
+                            );
+                        })}
+                    </svg>
+                )}
             </div>
 
         </div>

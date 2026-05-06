@@ -14,6 +14,8 @@ import VoiceSettingsModal from './VoiceSettingsModal';
 import * as odontogramService from '@/services/odontogram.service';
 import { useToastStore } from '@/store/useToastStore';
 import { cleanupOdontogramCache } from "./components/toothSvgHelpers";
+import AlignerOverlay from './components/AlignerOverlay';
+
 // ========================================== 
 // 1. Asset Loading & Helpers
 // ==========================================
@@ -142,6 +144,55 @@ const BRACKET_HOOK_CONFIG = {
     }
 };
 const INACTIVE_TYPES = ['extraction', 'missing', 'unerupted'];
+// DEFAULT_ATTACHMENT: coordenadas relativas al punto de anclaje del diente
+// x: desplazamiento horizontal desde el centro del diente
+// y: desplazamiento vertical desde el punto de anclaje (0 = en el borde de la corona)
+// width/height: tamaño en px del rectángulo
+// rotation: grados de rotación (0 = horizontal)
+const DEFAULT_ATTACHMENT = { x: 0, y: 0, width: 8, height: 4, rotation: 0 };
+const ATTACHMENTS_INITIAL_CONFIG = {};
+const ATTACHMENT_CUSTOM_CONFIG = {
+    // Aquí puedes personalizar la posición y tamaño por diente.
+    // x: desplazamiento horizontal (px, 0 = centrado en el diente)
+    // y: desplazamiento vertical desde el ancla (px, positivo = hacia abajo)
+    // width: ancho del rectángulo en px
+    // height: alto del rectángulo en px
+    // rotation: rotación en grados
+    //
+    // Ejemplo: 11: { x: 0, y: 2, width: 8, height: 4 },
+    11: { x: 0, y: 0, width: 8, height: 4 },
+    12: { x: 0, y: 0, width: 8, height: 4 },
+    13: { x: 0, y: 0, width: 8, height: 4 },
+    14: { x: 0, y: 0, width: 8, height: 4 },
+    15: { x: 0, y: 0, width: 8, height: 4 },
+    16: { x: 0, y: 0, width: 8, height: 4 },
+    17: { x: 0, y: 0, width: 8, height: 4 },
+    18: { x: 0, y: 0, width: 8, height: 4 },
+    21: { x: 0, y: 0, width: 8, height: 4 },
+    22: { x: 0, y: 0, width: 8, height: 4 },
+    23: { x: 0, y: 0, width: 8, height: 4 },
+    24: { x: 0, y: 0, width: 8, height: 4 },
+    25: { x: 0, y: 0, width: 8, height: 4 },
+    26: { x: 0, y: 0, width: 8, height: 4 },
+    27: { x: 0, y: 0, width: 8, height: 4 },
+    28: { x: 0, y: 0, width: 8, height: 4 },
+    31: { x: 0, y: 15, width: 8, height: 4 },
+    32: { x: 0, y: 15, width: 8, height: 4 },
+    33: { x: 0, y: 15, width: 8, height: 4 },
+    34: { x: 0, y: 15, width: 8, height: 4 },
+    35: { x: 0, y: 15, width: 8, height: 4 },
+    36: { x: 0, y: 15, width: 8, height: 4 },
+    37: { x: 0, y: 15, width: 8, height: 4 },
+    38: { x: 0, y: 15, width: 8, height: 4 },
+    41: { x: 0, y: 15, width: 8, height: 4 },
+    42: { x: 0, y: 15, width: 8, height: 4 },
+    43: { x: 0, y: 15, width: 8, height: 4 },
+    44: { x: 0, y: 15, width: 8, height: 4 },
+    45: { x: 0, y: 15, width: 8, height: 4 },
+    46: { x: 0, y: 15, width: 8, height: 4 },
+    47: { x: 0, y: 15, width: 8, height: 4 },
+    48: { x: 0, y: 15, width: 8, height: 4 },
+};
 const DENTAL_TYPES = [
     { id: 'original', label: 'Diente Base', color: 'text-emerald-700 bg-emerald-50 dark:bg-emerald-900/20 dark:text-emerald-400' },
     { id: 'root-canal', label: 'Tratamiento de Endodoncia', color: 'text-pink-700 bg-pink-50 dark:bg-pink-900/20 dark:text-pink-400' },
@@ -691,7 +742,7 @@ function RadialToothIcon({ toothId, typeId, customRotation, label, isCombined, t
 }
 
 // Individual Tooth Component (Frontal) - Unchanged visuals
-function Tooth({ id, type, hasBracket, isBroken, repairCount = 0, isSelectedBracket, isBracketMode, isTadMode, onToothClick, onToothRightClick, currentClinicalAction, onResize, hideLabel, hoveredPreviewType, hasNote, onNoteClick }) {
+function Tooth({ id, type, hasBracket, isBroken, repairCount = 0, isSelectedBracket, isBracketMode, isTadMode, isAttachmentMode, onToothClick, onToothRightClick, currentClinicalAction, onResize, hideLabel, hoveredPreviewType, hasNote, onNoteClick, toothAttachments }) {
     const isImplantCrown = type === 'implant-crown';
     const activeTypes = isImplantCrown ? ['implant', 'crown'] : (type ? type.split('+') : ['original']);
     const isCombined = activeTypes.length > 1 || isImplantCrown;
@@ -800,7 +851,7 @@ function Tooth({ id, type, hasBracket, isBroken, repairCount = 0, isSelectedBrac
     const wrapperClasses = `flex flex-col items-center gap-2 group relative -mx-[2px] transition-all transform-gpu will-change-transform
         ${isInvalidDeciduous
             ? 'opacity-20 grayscale cursor-not-allowed'
-            : `hover:z-20 ${isBracketMode ? 'cursor-pointer' : 'cursor-pointer'}`}`;
+            : `hover:z-20 ${isBracketMode || isAttachmentMode ? 'cursor-pointer' : 'cursor-pointer'}`}`;
 
     const labelClasses = `text-[10px] md:text-xs font-bold transition-colors${isInvalidDeciduous
         ? 'text-slate-200 dark:text-slate-700'
@@ -828,8 +879,9 @@ function Tooth({ id, type, hasBracket, isBroken, repairCount = 0, isSelectedBrac
                 className={`
                     relative h-40
                     flex items-end justify-center
-                    transition-transform duration-300
-                    ${!isInvalidDeciduous && (isBracketMode ? 'hover:scale-105' : 'hover:scale-105')}
+                    transition-all duration-300
+                    ${!isInvalidDeciduous && (isBracketMode || isAttachmentMode ? 'hover:scale-105' : 'hover:scale-105')}
+                    ${isAttachmentMode && !isInvalidDeciduous ? 'ring-2 ring-orange-400/30 rounded-lg bg-orange-50/10' : ''}
                     z-10
                 `}>
                 <img
@@ -875,6 +927,44 @@ function Tooth({ id, type, hasBracket, isBroken, repairCount = 0, isSelectedBrac
                                     <span className="font-bold text-sky-300">{repairCount}</span>
                                 </div>
                             )}
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+
+                {/* Attachment Overlay — rendered like bracket so it scales with hover */}
+                <AnimatePresence>
+                    {toothAttachments && toothAttachments.length > 0 && !isInvalidDeciduous && (!hoveredPreviewType || !INACTIVE_TYPES.includes(hoveredPreviewType)) && (
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.5 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.5 }}
+                            className={`absolute left-1/2 -translate-x-1/2 z-[22] pointer-events-none ${isMaxillary ? 'top-[80%]' : 'top-[8%]'
+                                }`}
+                        >
+                            {toothAttachments.map((att, idx) => {
+                                const w = att.width || 8;
+                                const h = att.height || 4;
+                                const offX = att.x || 0;
+                                const offY = att.y || 0;
+                                const rot = att.rotation || 0;
+                                return (
+                                    <div
+                                        key={idx}
+                                        style={{
+                                            position: 'absolute',
+                                            width: `${w}px`,
+                                            height: `${h}px`,
+                                            left: `calc(50% + ${offX}px)`,
+                                            top: `${offY}px`,
+                                            transform: `translate(-50%, -50%) rotate(${rot}deg)`,
+                                            backgroundColor: 'white',
+                                            border: '1px solid #94a3b8',
+                                            borderRadius: '2px',
+                                            boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+                                        }}
+                                    />
+                                );
+                            })}
                         </motion.div>
                     )}
                 </AnimatePresence>
@@ -1036,7 +1126,7 @@ const getDynamicOffset = (
     return base;
 };
 
-function ArchRow({ activeRadialTooth, teethIds, toothStates, brackets, bracketWires, tadWires, selectedBracket, tads, periodontalData, isBracketMode, isTadMode, isPeriodontalMode, periodontalUpperY, periodontalLowerY, periodontalUpperThickness, periodontalLowerThickness, onToothClick, onToothRightClick, onTadClick, currentClinicalAction, onToothResize, toothWidths, baseToothWidths, isUpper, hoveredPreviewType, toothNotes, onNoteClick }) {
+function ArchRow({ activeRadialTooth, teethIds, toothStates, brackets, bracketWires, tadWires, selectedBracket, tads, periodontalData, isBracketMode, isTadMode, isAttachmentMode, isPeriodontalMode, periodontalUpperY, periodontalLowerY, periodontalUpperThickness, periodontalLowerThickness, onToothClick, onToothRightClick, onTadClick, currentClinicalAction, onToothResize, toothWidths, baseToothWidths, isUpper, hoveredPreviewType, toothNotes, onNoteClick, alignerVisible, attachments }) {
     // Generate TAD slots based on teeth list
     // Iterate through pairable teeth (e.g. 18-17, 17-16...)
     // Since teethIds includes both Left and Right, we need to be careful not to create a TAD across the midline (11-21) if not desired.
@@ -1232,6 +1322,11 @@ function ArchRow({ activeRadialTooth, teethIds, toothStates, brackets, bracketWi
         );
     };
 
+    // Wrap getDynamicOffset with the current arch context for AlignerOverlay
+    const getOffsetForAligner = useCallback((id) => {
+        return getDynamicOffset(id, toothStates, toothWidths, baseToothWidths);
+    }, [toothStates, toothWidths, baseToothWidths]);
+
     return (
         <div className={`relative w-full ${isUpper ? 'h-48 flex items-end' : 'h-48 flex items-start'} mb-1`}>
             {renderWires()}
@@ -1300,6 +1395,7 @@ function ArchRow({ activeRadialTooth, teethIds, toothStates, brackets, bracketWi
                             isSelectedBracket={selectedBracket === id}
                             isBracketMode={isBracketMode}
                             isTadMode={isTadMode}
+                            isAttachmentMode={isAttachmentMode}
                             onToothClick={isTadMode ? () => { } : onToothClick}
                             onToothRightClick={isTadMode ? undefined : onToothRightClick}
                             currentClinicalAction={currentClinicalAction}
@@ -1308,6 +1404,7 @@ function ArchRow({ activeRadialTooth, teethIds, toothStates, brackets, bracketWi
                             hoveredPreviewType={activeRadialTooth === id ? hoveredPreviewType : null}
                             hasNote={!!(toothNotes && toothNotes[id])}
                             onNoteClick={onNoteClick}
+                            toothAttachments={attachments ? (attachments[id] || null) : null}
                         />
 
                     </div>
@@ -1316,6 +1413,17 @@ function ArchRow({ activeRadialTooth, teethIds, toothStates, brackets, bracketWi
 
             {/* Render TADs */}
             {renderTads()}
+
+            {/* Aligner Overlay — z-[20]: above teeth, below attachments (z-25) */}
+            <AlignerOverlay
+                isVisible={!!alignerVisible}
+                isUpper={isUpper}
+                teethIds={teethIds}
+                toothStates={toothStates}
+                brackets={brackets}
+                getDynamicOffset={getOffsetForAligner}
+            />
+
         </div>
     );
 }
@@ -1917,6 +2025,7 @@ function ModeCheckbox({ checked, onChange, label, color = 'blue' }) {
 function ActionPanel({
     isBracketMode, setBracketMode,
     isTadMode, setTadMode,
+    isAttachmentMode, setAttachmentMode,
     isPeriodontalMode, setPeriodontalMode,
     onApplyAll, selectedToothType, setSelectedToothType, onReset,
     onOpenVoiceSettings, hasVoiceSupport,
@@ -2064,6 +2173,42 @@ function ActionPanel({
                         </AnimatePresence>
                     </div>
                 )}
+
+                {/* Attachments Mode Toggle */}
+                <div className="relative">
+                    <button
+                        type="button"
+                        onClick={() => setAttachmentMode(!isAttachmentMode)}
+                        onMouseEnter={() => setHoveredAction('attachments')}
+                        onMouseLeave={() => setHoveredAction(null)}
+                        className={`btn btn-sm md:btn-md border shadow-sm transition-all whitespace-nowrap flex items-center gap-2 ${isAttachmentMode
+                            ? 'bg-orange-500 hover:bg-orange-600 text-white border-orange-600 ring-2 ring-orange-500/20'
+                            : 'bg-white dark:bg-slate-700 hover:bg-orange-50 dark:hover:bg-orange-900/20 text-orange-600 dark:text-orange-400 border-orange-300 dark:border-orange-700'
+                            }`}
+                    >
+                        <svg className={`w-4 h-4 ${isAttachmentMode ? 'text-white' : 'text-orange-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <rect x="4" y="8" width="16" height="8" rx="1" strokeWidth={2} />
+                        </svg>
+                        Attachments
+                    </button>
+                    <AnimatePresence>
+                        {hoveredAction === 'attachments' && (
+                            <motion.div
+                                initial={{ opacity: 0, y: 5 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: 5 }}
+                                className="
+                                    absolute bottom-full left-1/2 -translate-x-1/2 mb-2
+                                    px-2 py-1 rounded text-[10px] font-medium
+                                    bg-orange-600 text-white shadow-xl whitespace-nowrap
+                                    z-50
+                                "
+                            >
+                                Modo colocación de aditamentos (Click para agregar, Click derecho para quitar)
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+                </div>
             </div>
         </div>
     );
@@ -2105,6 +2250,12 @@ export default function OdontogramSection() {
     const [activePeriodontalTooth, setActivePeriodontalTooth] = useState(null);
     const [toothNotes, setToothNotes] = useState({});
     const [activeNoteTooth, setActiveNoteTooth] = useState(null);
+
+    const [isAttachmentMode, setIsAttachmentMode] = useState(false);
+    const [attachments, setAttachments] = useState(ATTACHMENTS_INITIAL_CONFIG);
+
+    // Aligner state: controls visibility per arch
+    const [aligners, setAligners] = useState({ upper: false, lower: false });
 
     const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false);
     const [voiceSettings, setVoiceSettings] = useState({ isMuted: true, selectedVoiceURI: '' });
@@ -2257,8 +2408,26 @@ export default function OdontogramSection() {
         if (val) {
             setIsBracketMode(false);
             setIsTadMode(false);
+            setIsAttachmentMode(false);
         }
     };
+
+    const setAttachmentMode = (val) => {
+        setIsAttachmentMode(val);
+        if (val) {
+            setIsBracketMode(false);
+            setIsTadMode(false);
+            setIsPeriodontalMode(false);
+        }
+    };
+
+    // Dev Helper: Sincronizar cambios manuales en la config inicial con el estado (HMR)
+    useEffect(() => {
+        setAttachments(prev => ({
+            ...prev,
+            ...ATTACHMENTS_INITIAL_CONFIG
+        }));
+    }, [ATTACHMENTS_INITIAL_CONFIG]);
 
     const [selectedToothType, setSelectedToothType] = useState('original');
     const [surfaceStates, setSurfaceStates] = useState({});
@@ -2400,14 +2569,14 @@ export default function OdontogramSection() {
             isUndoRedoAction.current = false;
             return;
         }
-        const newState = { toothStates, brackets, bracketWires, tads, tadWires, surfaceStates, periodontalData, toothNotes };
+        const newState = { toothStates, brackets, bracketWires, tads, tadWires, surfaceStates, periodontalData, toothNotes, attachments };
         setHistoryState(prev => {
             if (JSON.stringify(prev.present) === JSON.stringify(newState)) return prev;
             const newPast = [...prev.past, prev.present].slice(-50);
             //const newPast = []; // TEMP
             return { past: newPast, present: newState, future: [] };
         });
-    }, [toothStates, brackets, bracketWires, tads, tadWires, surfaceStates, periodontalData, toothNotes]);
+    }, [toothStates, brackets, bracketWires, tads, tadWires, surfaceStates, periodontalData, toothNotes, attachments]);
 
     const handleUndo = useCallback(() => {
         setHistoryState(prev => {
@@ -2424,6 +2593,7 @@ export default function OdontogramSection() {
             setSurfaceStates(previousState.surfaceStates);
             setPeriodontalData(previousState.periodontalData || {});
             setToothNotes(previousState.toothNotes || {});
+            setAttachments(previousState.attachments || {});
 
             setSelectedBracket(null);
 
@@ -2446,6 +2616,7 @@ export default function OdontogramSection() {
             setSurfaceStates(nextState.surfaceStates);
             setPeriodontalData(nextState.periodontalData || {});
             setToothNotes(nextState.toothNotes || {});
+            setAttachments(nextState.attachments || {});
 
             setSelectedBracket(null);
 
@@ -2535,6 +2706,19 @@ export default function OdontogramSection() {
     }, [toothStates]);
 
     const handleToothRightClick = (id, x, y) => {
+        if (isAttachmentMode) {
+            setAttachments(prev => {
+                const toothAtts = prev[id] || [];
+                if (toothAtts.length === 0) return prev;
+                const next = { ...prev };
+                next[id] = toothAtts.slice(0, -1); // Remove last
+                if (next[id].length === 0) delete next[id];
+                return next;
+            });
+            console.log(`[DEBUG] Attachment removed from tooth ${id}`);
+            return;
+        }
+
         if (isBracketMode || isTadMode || isPeriodontalMode) return;
         setRadialState({
             toothId: id,
@@ -2663,6 +2847,26 @@ export default function OdontogramSection() {
             setActivePeriodontalTooth(id);
         } else if (isTadMode) {
             // Handled via onTadClick
+        } else if (isAttachmentMode) {
+            if (INACTIVE_TYPES.includes(toothStates[id])) return;
+
+            setAttachments(prev => {
+                const next = { ...prev };
+                if (next[id] && next[id].length > 0) {
+                    // Toggle off: remove attachments for this tooth
+                    delete next[id];
+                    console.log(`[DEBUG] Attachment removed from tooth ${id}`);
+                } else {
+                    // Toggle on: add default attachment with custom config if available
+                    const custom = ATTACHMENT_CUSTOM_CONFIG[id] || {};
+                    next[id] = [{
+                        ...DEFAULT_ATTACHMENT,
+                        ...custom
+                    }];
+                    console.log(`[DEBUG] Attachment added to tooth ${id}:`, next[id][0]);
+                }
+                return next;
+            });
         } else {
             const currentType = toothStates[id] || 'original';
             const finalType = getToggledToothState(currentType, selectedToothType);
@@ -3966,6 +4170,8 @@ export default function OdontogramSection() {
                             */}
                             <ModeCheckbox label="Colocar TADs" checked={isTadMode} onChange={(e) => setTadMode(e.target.checked)} color="sky" />
                             <ModeCheckbox label="Colocar Brackets" checked={isBracketMode} onChange={(e) => setBracketMode(e.target.checked)} color="blue" />
+                            <ModeCheckbox label="Alineador Superior" checked={aligners.upper} onChange={(e) => setAligners(prev => ({ ...prev, upper: e.target.checked }))} color="blue" />
+                            <ModeCheckbox label="Alineador Inferior" checked={aligners.lower} onChange={(e) => setAligners(prev => ({ ...prev, lower: e.target.checked }))} color="blue" />
 
                             <AnimatePresence>
                                 {isBracketMode && (
@@ -4176,6 +4382,9 @@ export default function OdontogramSection() {
                                 hoveredPreviewType={hoveredPreviewType}
                                 toothNotes={toothNotes}
                                 onNoteClick={(id) => setActiveNoteTooth(id)}
+                                alignerVisible={aligners.upper}
+                                attachments={attachments}
+                                isAttachmentMode={isAttachmentMode}
                             />
 
                             {/* ROW 2: OCCLUSAL */}
@@ -4238,13 +4447,14 @@ export default function OdontogramSection() {
                                 toothWidths={toothWidths}
                                 baseToothWidths={baseToothWidths}
                                 isUpper={false}
+                                alignerVisible={aligners.lower}
                                 hoveredPreviewType={hoveredPreviewType}
                                 toothNotes={toothNotes}
                                 onNoteClick={(id) => setActiveNoteTooth(id)}
+                                attachments={attachments}
+                                isAttachmentMode={isAttachmentMode}
                             />
                         </div>
-
-                        {/* Labels */}
                         <div className="text-center mt-2 mb-15 text-[15px] font-bold tracking-[0.2em] text-slate-600 dark:text-white uppercase select-none">
                             Inferior (Mandíbula)
                         </div>
@@ -4269,6 +4479,8 @@ export default function OdontogramSection() {
                         setBracketMode={setBracketMode}
                         isTadMode={isTadMode}
                         setTadMode={setTadMode}
+                        isAttachmentMode={isAttachmentMode}
+                        setAttachmentMode={setAttachmentMode}
                         isPeriodontalMode={isPeriodontalMode}
                         setPeriodontalMode={setPeriodontalMode}
                         onApplyAll={handleApplyAllBrackets}
