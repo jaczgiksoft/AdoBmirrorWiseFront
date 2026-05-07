@@ -8,7 +8,7 @@ import { API_BASE } from "@/utils/apiBase";
 
 export default function InternalChat({ isOpen, onClose }) {
     const { user } = useAuthStore();
-    const { socket, connectSocket } = useNotificationStore();
+    const { socket } = useNotificationStore();
     const {
         chats,
         employees,
@@ -20,7 +20,6 @@ export default function InternalChat({ isOpen, onClose }) {
         fetchHistory,
         sendChatMessage,
         setupSocketListeners,
-        removeSocketListeners,
         clearSelectedChat,
         selectedChatId
     } = useChatStore();
@@ -32,27 +31,20 @@ export default function InternalChat({ isOpen, onClose }) {
 
     const scrollRef = useRef(null);
 
-    // Inicializar datos y socket
+    // Inicializar datos al abrir
     useEffect(() => {
         if (isOpen) {
             fetchChats();
             fetchEmployees();
-            
-            if (!socket || !socket.connected) {
-                console.log("📡 Intentando conectar socket desde Chat...");
-                connectSocket();
-            } else {
-                setupSocketListeners(socket);
-            }
         }
+    }, [isOpen]);
 
-        // Cleanup: remover listeners al cerrar el chat o desmontar
-        return () => {
-            if (socket) {
-                removeSocketListeners(socket);
-            }
-        };
-    }, [isOpen, socket, socket?.connected]);
+    // Configurar listeners del socket globalmente (incluso si está cerrado)
+    useEffect(() => {
+        if (socket) {
+            setupSocketListeners(socket);
+        }
+    }, [socket, setupSocketListeners]);
 
     // Auto-scroll al final
     useEffect(() => {

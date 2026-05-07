@@ -75,41 +75,49 @@ export const useChatStore = create((set, get) => ({
 
     // 🔌 Configurar listeners de Socket.io
     setupSocketListeners: (socket) => {
-        if (!socket || !socket.connected) {
-            console.warn("⚠️ El socket no está conectado. No se pueden activar los listeners del chat.");
+        if (!socket) {
+            console.warn("⚠️ [Chat] Socket no disponible al intentar registrar listeners.");
             return;
         }
 
-        console.log("🔌 Configurando listeners de Chat en Socket:", socket.id);
+        if (!socket.connected) {
+            console.warn("⚠️ [Chat] El socket existe pero NO está conectado aún. ID:", socket.id);
+        } else {
+            console.log("🔌 [Chat] Socket conectado y listeners registrados. ID:", socket.id);
+        }
 
-        // Limpiar para evitar duplicidad
-        socket.off("chat:new_message");
-        socket.off("chat:notification");
-
-        socket.on("chat:new_message", (data) => {
-            console.log("📩 Nuevo mensaje recibido:", data);
+        // ✅ Usar handlers nombrados para no eliminar listeners de otros stores
+        const onNewMessage = (data) => {
             const { chatId, message } = data;
-            
+            console.log("💬 [Chat] Mensaje recibido por socket:", data);
+
             if (get().selectedChatId === chatId) {
-                set((state) => ({
-                    history: [...state.history, message]
-                }));
+                set((state) => {
+                    // Evitar duplicados (por si ya se agregó vía API)
+                    const exists = state.history.some(m => m.id === message.id);
+                    if (exists) return state;
+
+                    return {
+                        history: [...state.history, message]
+                    };
+                });
                 markAsRead(chatId);
             }
-            get().fetchChats();
-        });
 
-        socket.on("chat:notification", (data) => {
-            console.log("🔔 Notificación de chat:", data);
             get().fetchChats();
-        });
-    },
+        };
 
-    removeSocketListeners: (socket) => {
-        if (!socket) return;
-        console.log("🧹 Limpiando listeners de Chat");
-        socket.off("chat:new_message");
-        socket.off("chat:notification");
+        const onNotification = (data) => {
+            console.log("🔔 [Chat] Notificación de chat recibida:", data);
+            get().fetchChats();
+        };
+
+        // Limpiar SOLO los listeners propios del chat antes de volver a registrar
+        socket.off("chat:new_message", onNewMessage);
+        socket.off("chat:notification", onNotification);
+
+        socket.on("chat:new_message", onNewMessage);
+        socket.on("chat:notification", onNotification);
     },
 
     // 🧹 Limpiar chat seleccionado
