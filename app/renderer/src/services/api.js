@@ -20,6 +20,10 @@ api.interceptors.request.use(async (config) => {
             config.headers["Content-Type"] = "application/json";
         }
 
+        // 🔗 Bypass de la pantalla de advertencia de ngrok (plan gratuito)
+        // ngrok intercepta requests y responde con HTML propio si no se envía este header
+        config.headers["ngrok-skip-browser-warning"] = "true";
+
         // 🔑 Agrega token desde Keytar (manejador seguro en preload)
         const token = await window.electronAPI.getToken();
         if (token) {
