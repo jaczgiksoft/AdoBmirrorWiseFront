@@ -16,10 +16,10 @@ export const useChatStore = create((set, get) => ({
         try {
             set({ loading: true });
             const data = await getUserChats();
-            set({ 
+            set({
                 chats: data,
                 unreadTotal: data.reduce((acc, chat) => acc + (chat.unreadCount || 0), 0),
-                loading: false 
+                loading: false
             });
         } catch (err) {
             console.error("Error fetching chats:", err);
@@ -43,7 +43,7 @@ export const useChatStore = create((set, get) => ({
             set({ historyLoading: true, selectedChatId: chatId });
             const data = await getChatHistory(chatId);
             set({ history: data.reverse(), historyLoading: false }); // Invertimos para que el más nuevo esté al final
-            
+
             // Marcar como leído al abrir
             await markAsRead(chatId);
             get().fetchChats(); // Recargar para actualizar contadores
@@ -75,35 +75,41 @@ export const useChatStore = create((set, get) => ({
 
     // 🔌 Configurar listeners de Socket.io
     setupSocketListeners: (socket) => {
-        if (!socket) return;
+        if (!socket || !socket.connected) {
+            console.warn("⚠️ El socket no está conectado. No se pueden activar los listeners del chat.");
+            return;
+        }
 
-        // Limpiar previos si los hay (opcional)
+        console.log("🔌 Configurando listeners de Chat en Socket:", socket.id);
+
+        // Limpiar para evitar duplicidad
         socket.off("chat:new_message");
         socket.off("chat:notification");
 
-        // Nuevo mensaje en un chat
         socket.on("chat:new_message", (data) => {
+            console.log("📩 Nuevo mensaje recibido:", data);
             const { chatId, message } = data;
             
-            // Si el mensaje es para el chat que tengo abierto, lo agrego al historial
             if (get().selectedChatId === chatId) {
                 set((state) => ({
                     history: [...state.history, message]
                 }));
-                // Marcar como leído automáticamente si está abierto
                 markAsRead(chatId);
             }
-
-            // Recargar lista de chats para actualizar último mensaje y unread counts
             get().fetchChats();
         });
 
-        // Notificación de chat (si no estamos en ese chat específicamente)
         socket.on("chat:notification", (data) => {
-            // Esto se puede usar para mostrar un toast o similar si se desea
-            console.log("Chat Notification:", data);
+            console.log("🔔 Notificación de chat:", data);
             get().fetchChats();
         });
+    },
+
+    removeSocketListeners: (socket) => {
+        if (!socket) return;
+        console.log("🧹 Limpiando listeners de Chat");
+        socket.off("chat:new_message");
+        socket.off("chat:notification");
     },
 
     // 🧹 Limpiar chat seleccionado
