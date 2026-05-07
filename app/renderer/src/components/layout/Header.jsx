@@ -1,10 +1,12 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Bell, LogOut, User, Sun, Moon, Bot } from "lucide-react";
+import { Bell, LogOut, User, Sun, Moon, Bot, MessageSquare } from "lucide-react";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useNotificationStore } from "@/store/useNotificationStore";
+import { useChatStore } from "@/store/useChatStore";
 import { NotificationPanel, ConfirmDialog } from "@/components/feedback";
 import BwiseChatbot from "@/components/ai/BwiseChatbot";
+import { InternalChat } from "@/components/chat";
 import { useToastStore } from "@/store/useToastStore";
 import { useAppUpdate } from "@/hooks/useAppUpdate";
 import { API_BASE } from "@/utils/apiBase";
@@ -40,6 +42,10 @@ export default function Header() {
     const [dismissed, setDismissed] = useState(false);
     const [showChatbot, setShowChatbot] = useState(false);
     const [hoverChat, setHoverChat] = useState(false);
+    const [showInternalChat, setShowInternalChat] = useState(false);
+    const [hoverInternalChat, setHoverInternalChat] = useState(false);
+
+    const { unreadTotal, fetchChats } = useChatStore();
 
     const handleUpdate = async () => {
         try {
@@ -70,6 +76,7 @@ export default function Header() {
     useEffect(() => {
         if (!user?.id) return;
         fetchNotifications();
+        fetchChats();
         connectSocket();
         return () => disconnectSocket();
     }, [user]);
@@ -326,6 +333,56 @@ export default function Header() {
                         </button>
                     </div>
 
+                    {/* INTERNAL CHAT */}
+                    <div className="relative">
+                        <button
+                            onMouseEnter={() => setHoverInternalChat(true)}
+                            onMouseLeave={() => setHoverInternalChat(false)}
+                            onClick={() => setShowInternalChat(true)}
+                            className="
+                                relative transition cursor-pointer p-[2px]
+                                text-slate-600 hover:text-primary
+                                dark:text-slate-400 dark:hover:text-primary
+                            "
+                        >
+                            <motion.div
+                                whileHover={{
+                                    scale: [1, 1.2, 1],
+                                    transition: { duration: 1, repeat: Infinity, repeatType: "loop" },
+                                }}
+                            >
+                                <MessageSquare size={20} />
+                            </motion.div>
+
+                            {unreadTotal > 0 && (
+                                <span className="absolute -top-1 -right-1 bg-red-500 text-[10px] w-4 h-4 flex items-center justify-center rounded-full text-white shadow-md">
+                                    {unreadTotal}
+                                </span>
+                            )}
+
+                            {/* TOOLTIP */}
+                            <AnimatePresence>
+                                {hoverInternalChat && (
+                                    <motion.div
+                                        initial={{ opacity: 0, y: 5 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        exit={{ opacity: 0, y: 5 }}
+                                        transition={{ duration: 0.15 }}
+                                        className="
+                                            absolute right-8 top-1/2 -translate-y-1/2
+                                            bg-white text-slate-700
+                                            dark:bg-slate-800 dark:text-white
+                                            text-[10px] px-2 py-1 rounded-lg shadow-lg
+                                            whitespace-nowrap z-50
+                                        "
+                                    >
+                                        Chat Interno
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+                        </button>
+                    </div>
+
                     {/* THEME SWITCH */}
                     <div className="relative">
                         <button
@@ -452,9 +509,15 @@ export default function Header() {
             />
 
             {/* AI CHATBOT DRAWER */}
-            <BwiseChatbot 
-                isOpen={showChatbot} 
-                onClose={() => setShowChatbot(false)} 
+            <BwiseChatbot
+                isOpen={showChatbot}
+                onClose={() => setShowChatbot(false)}
+            />
+
+            {/* INTERNAL CHAT DRAWER */}
+            <InternalChat
+                isOpen={showInternalChat}
+                onClose={() => setShowInternalChat(false)}
             />
         </div>
     );
