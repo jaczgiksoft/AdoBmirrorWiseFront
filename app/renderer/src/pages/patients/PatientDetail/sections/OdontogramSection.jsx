@@ -4155,7 +4155,7 @@ export default function OdontogramSection() {
                             {!isBracketMode && "Odontograma Actual"}
                             {isBracketMode && <span className="badge badge-sm badge-info gap-1 font-normal">Modo Ortodoncia (Brackets)</span>}
                             {isTadMode && <span className="badge badge-sm badge-info gap-1 font-normal">Modo Ortodoncia (TADs)</span>}
-                            {/* {isPeriodontalMode && <span className="badge badge-sm badge-error gap-1 font-normal">Bolsas Periodontales</span>} */}
+                            {isPeriodontalMode && <span className="badge badge-sm badge-error gap-1 font-normal">Bolsas Periodontales</span>}
                         </h2>
                         {!isBracketMode && <p className="text-sm text-slate-500 dark:text-slate-400">Vista general del estado dental del paciente.</p>}
                     </div>
@@ -4165,9 +4165,7 @@ export default function OdontogramSection() {
 
                         {/* Checkboxes de Modos y Botón Aplicar a Todos */}
                         <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800/50 rounded-lg p-1 border border-slate-200 dark:border-slate-700 shadow-sm">
-                            {/*  desactivado temporalmente jhasta quese tenga el priocedimiento bien
-                            <ModeCheckbox label="Bolsas Periodontales" checked={isPeriodontalMode} onChange={(e) => setPeriodontalMode(e.target.checked)} color="red" /> 
-                            */}
+                            <ModeCheckbox label="Bolsas Periodontales" checked={isPeriodontalMode} onChange={(e) => setPeriodontalMode(e.target.checked)} color="red" />
                             <ModeCheckbox label="Colocar TADs" checked={isTadMode} onChange={(e) => setTadMode(e.target.checked)} color="sky" />
                             <ModeCheckbox label="Colocar Brackets" checked={isBracketMode} onChange={(e) => setBracketMode(e.target.checked)} color="blue" />
                             <ModeCheckbox label="Alineador Superior" checked={aligners.upper} onChange={(e) => setAligners(prev => ({ ...prev, upper: e.target.checked }))} color="blue" />
