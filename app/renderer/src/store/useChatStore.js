@@ -60,9 +60,15 @@ export const useChatStore = create((set, get) => ({
             const newMessage = res.data;
 
             // Si es un chat nuevo o ya estamos en él, actualizamos localmente
-            set((state) => ({
-                history: [...state.history, newMessage]
-            }));
+            set((state) => {
+                // Evitar duplicados si el socket ya lo agregó
+                const exists = state.history.some(m => String(m.id) === String(newMessage.id));
+                if (exists) return state;
+
+                return {
+                    history: [...state.history, newMessage]
+                };
+            });
 
             // Recargar chats para ver el último mensaje en la lista
             get().fetchChats();
@@ -94,7 +100,7 @@ export const useChatStore = create((set, get) => ({
             if (get().selectedChatId === chatId) {
                 set((state) => {
                     // Evitar duplicados (por si ya se agregó vía API)
-                    const exists = state.history.some(m => m.id === message.id);
+                    const exists = state.history.some(m => String(m.id) === String(message.id));
                     if (exists) return state;
 
                     return {

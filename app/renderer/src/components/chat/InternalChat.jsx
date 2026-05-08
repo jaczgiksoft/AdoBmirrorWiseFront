@@ -171,11 +171,11 @@ export default function InternalChat({ isOpen, onClose }) {
                                                 <p className="text-sm">Cargando chats...</p>
                                             </div>
                                         ) : filteredEmployees.length > 0 ? (
-                                            filteredEmployees.map((emp) => {
+                                            filteredEmployees.map((emp, idx) => {
                                                 const chat = chats.find(c => c.participants.some(p => p.user_id === emp.user?.id));
                                                 return (
                                                     <button
-                                                        key={emp.id}
+                                                        key={`emp-${emp.id}-${idx}`}
                                                         onClick={() => handleSelectEmployee(emp)}
                                                         className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-white dark:hover:bg-slate-800 transition-all group border border-transparent hover:border-slate-200 dark:hover:border-slate-700 shadow-sm hover:shadow-md"
                                                     >
@@ -241,7 +241,7 @@ export default function InternalChat({ isOpen, onClose }) {
                                                     <motion.div
                                                         initial={{ opacity: 0, y: 10 }}
                                                         animate={{ opacity: 1, y: 0 }}
-                                                        key={msg.id || idx}
+                                                        key={`msg-${msg.id || 'temp'}-${idx}`}
                                                         className={`flex ${isMine ? "justify-end" : "justify-start"}`}
                                                     >
                                                         <div className={`flex gap-2 max-w-[85%] ${isMine ? "flex-row-reverse" : "flex-row"}`}>

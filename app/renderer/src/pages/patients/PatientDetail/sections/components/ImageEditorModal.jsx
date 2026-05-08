@@ -63,6 +63,65 @@ export default function ImageEditorModal({ imageSrc, imageName, onClose, onSave 
         textLabel: null // Para las medidas
     });
 
+    // Viewport Zoom & Pan
+    const [zoom, setZoom] = useState(1);
+    const [offset, setOffset] = useState({ x: 0, y: 0 });
+    const [isPanning, setIsPanning] = useState(false);
+    const panStartRef = useRef({ x: 0, y: 0 });
+
+    // Zoom and pan handlers
+    const handleWheel = useCallback((e) => {
+        if (!containerRef.current) return;
+        
+        e.preventDefault();
+        const zoomStep = 0.1;
+        const delta = e.deltaY > 0 ? 0.9 : 1.1;
+        const newZoom = Math.min(Math.max(zoom * delta, 0.5), 8);
+        
+        if (newZoom === zoom) return;
+
+        const rect = containerRef.current.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+        
+        const newOffsetX = mouseX - (mouseX - offset.x) * (newZoom / zoom);
+        const newOffsetY = mouseY - (mouseY - offset.y) * (newZoom / zoom);
+        
+        setZoom(newZoom);
+        setOffset({ x: newOffsetX, y: newOffsetY });
+    }, [zoom, offset]);
+
+    const handleMouseDown = (e) => {
+        // Panning con botón central o Alt + Click izquierdo
+        if (e.button === 1 || (e.button === 0 && e.altKey)) {
+            setIsPanning(true);
+            panStartRef.current = { x: e.clientX - offset.x, y: e.clientY - offset.y };
+            e.preventDefault();
+        }
+    };
+
+    const handleMouseMove = useCallback((e) => {
+        if (isPanning) {
+            setOffset({
+                x: e.clientX - panStartRef.current.x,
+                y: e.clientY - panStartRef.current.y
+            });
+        }
+    }, [isPanning]);
+
+    const handleMouseUp = useCallback(() => {
+        setIsPanning(false);
+    }, []);
+
+    useEffect(() => {
+        const container = containerRef.current;
+        if (!container) return;
+
+        const onWheel = (e) => handleWheel(e);
+        container.addEventListener('wheel', onWheel, { passive: false });
+        return () => container.removeEventListener('wheel', onWheel);
+    }, [handleWheel]);
+
     // Inicializar Canvas Fabric (capa superior, sin backgroundImage — PixiJS muestra la imagen)
     useEffect(() => {
         if (!canvasRef.current || !containerRef.current) return;
@@ -98,7 +157,7 @@ export default function ImageEditorModal({ imageSrc, imageName, onClose, onSave 
 
         setFabricCanvas(canvas);
 
-        const handleResize = () => {};
+        const handleResize = () => { };
         window.addEventListener('resize', handleResize);
 
         return () => {
@@ -274,7 +333,7 @@ export default function ImageEditorModal({ imageSrc, imageName, onClose, onSave 
         if (newHistory.length > 6) { // 1 base + 5 steps
             newHistory.shift();
         }
-        
+
         historyRef.current = newHistory;
         historyIndexRef.current = newHistory.length - 1;
         forceUpdate({});
@@ -282,21 +341,21 @@ export default function ImageEditorModal({ imageSrc, imageName, onClose, onSave 
 
     const undo = useCallback(() => {
         if (historyIndexRef.current <= 0 || isRestoring.current) return;
-        
+
         isRestoring.current = true;
         historyIndexRef.current--;
         const state = historyRef.current[historyIndexRef.current];
-        
+
         // Restore Fabric
         fabricCanvas.loadFromJSON(state.fabric, () => {
             fabricCanvas.renderAll();
-            
+
             // Restore Pixi
             if (pixiGeometryRef.current) {
                 pixiGeometryRef.current.buffers[0].data.set(state.pixi);
                 pixiGeometryRef.current.buffers[0].update();
             }
-            
+
             isRestoring.current = false;
             forceUpdate({});
         });
@@ -304,21 +363,21 @@ export default function ImageEditorModal({ imageSrc, imageName, onClose, onSave 
 
     const redo = useCallback(() => {
         if (historyIndexRef.current >= historyRef.current.length - 1 || isRestoring.current) return;
-        
+
         isRestoring.current = true;
         historyIndexRef.current++;
         const state = historyRef.current[historyIndexRef.current];
-        
+
         // Restore Fabric
         fabricCanvas.loadFromJSON(state.fabric, () => {
             fabricCanvas.renderAll();
-            
+
             // Restore Pixi
             if (pixiGeometryRef.current) {
                 pixiGeometryRef.current.buffers[0].data.set(state.pixi);
                 pixiGeometryRef.current.buffers[0].update();
             }
-            
+
             isRestoring.current = false;
             forceUpdate({});
         });
@@ -790,9 +849,9 @@ export default function ImageEditorModal({ imageSrc, imageName, onClose, onSave 
                 sx = e.clientX - b.left; sy = e.clientY - b.top;
                 isDragging = true;
             };
-            const onUp = () => { 
+            const onUp = () => {
                 if (isDragging) saveHistory();
-                isDragging = false; 
+                isDragging = false;
             };
             const onLeave = () => {
                 isDragging = false;
@@ -1132,11 +1191,10 @@ export default function ImageEditorModal({ imageSrc, imageName, onClose, onSave 
                                         }
                                         clearLasso();
                                     }}
-                                    className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-all ${
-                                        lassoMode
+                                    className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-all ${lassoMode
                                             ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30'
                                             : 'text-slate-300 hover:bg-slate-700 border border-slate-600'
-                                    }`}
+                                        }`}
                                     title="Lazo por puntos — haz clic punto a punto para definir el área"
                                 >
                                     <Lasso size={14} />
@@ -1156,11 +1214,10 @@ export default function ImageEditorModal({ imageSrc, imageName, onClose, onSave 
                                         }
                                         clearLasso();
                                     }}
-                                    className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-all ${
-                                        freehandMode
+                                    className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-all ${freehandMode
                                             ? 'bg-violet-600 text-white shadow-lg shadow-violet-500/30'
                                             : 'text-slate-300 hover:bg-slate-700 border border-slate-600'
-                                    }`}
+                                        }`}
                                     title="Lazo libre — dibuja el área arrastrando el mouse"
                                 >
                                     <PenLine size={14} />
@@ -1234,7 +1291,24 @@ export default function ImageEditorModal({ imageSrc, imageName, onClose, onSave 
             <div
                 className="flex-1 bg-slate-800 relative overflow-hidden"
                 ref={containerRef}
+                onMouseDown={handleMouseDown}
+                onMouseMove={handleMouseMove}
+                onMouseUp={handleMouseUp}
+                onMouseLeave={handleMouseUp}
+                style={{ cursor: isPanning ? 'grabbing' : 'default' }}
             >
+                <div 
+                    id="viewport"
+                    style={{
+                        transform: `translate(${offset.x}px, ${offset.y}px) scale(${zoom})`,
+                        transformOrigin: '0 0',
+                        width: '100%',
+                        height: '100%',
+                        position: 'absolute',
+                        inset: 0,
+                        willChange: 'transform'
+                    }}
+                >
                 {/*
                   * CAPA BASE (z-index: 1) — PixiJS: renderiza la imagen original/deformada.
                   * pointer-events: auto solo cuando meshWarpActive=true (gestionado por useEffect).
@@ -1364,6 +1438,7 @@ export default function ImageEditorModal({ imageSrc, imageName, onClose, onSave 
                         })}
                     </svg>
                 )}
+                </div>
             </div>
 
         </div>
