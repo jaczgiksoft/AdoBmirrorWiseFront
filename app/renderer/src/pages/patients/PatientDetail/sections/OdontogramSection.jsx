@@ -1640,6 +1640,17 @@ export default function OdontogramSection() {
     // Aligner state: controls visibility per arch
     const [aligners, setAligners] = useState({ upper: false, lower: false });
 
+    // Auto-sync aligners visibility based on attachments presence
+    useEffect(() => {
+        const hasUpper = UPPER_ARCH_IDS.some(id => attachments[id] && attachments[id].length > 0);
+        const hasLower = LOWER_ARCH_IDS.some(id => attachments[id] && attachments[id].length > 0);
+
+        setAligners(prev => {
+            if (prev.upper === hasUpper && prev.lower === hasLower) return prev;
+            return { upper: hasUpper, lower: hasLower };
+        });
+    }, [attachments]);
+
     const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false);
     const [voiceSettings, setVoiceSettings] = useState({ isMuted: true, selectedVoiceURI: '' });
     const [hasVoiceSupport, setHasVoiceSupport] = useState(false);
@@ -2233,9 +2244,11 @@ export default function OdontogramSection() {
         } else if (isAttachmentMode) {
             if (INACTIVE_TYPES.includes(toothStates[id])) return;
 
+            const isRemoving = attachments[id] && attachments[id].length > 0;
+
             setAttachments(prev => {
                 const next = { ...prev };
-                if (next[id] && next[id].length > 0) {
+                if (isRemoving) {
                     // Toggle off: remove attachments for this tooth
                     delete next[id];
                     console.log(`[DEBUG] Attachment removed from tooth ${id}`);
@@ -2656,8 +2669,6 @@ export default function OdontogramSection() {
                             <ModeCheckbox label="Bolsas Periodontales" checked={isPeriodontalMode} onChange={(e) => setPeriodontalMode(e.target.checked)} color="red" />
                             <ModeCheckbox label="Colocar TADs" checked={isTadMode} onChange={(e) => setTadMode(e.target.checked)} color="sky" />
                             <ModeCheckbox label="Colocar Brackets" checked={isBracketMode} onChange={(e) => setBracketMode(e.target.checked)} color="blue" />
-                            <ModeCheckbox label="Alineador Superior" checked={aligners.upper} onChange={(e) => setAligners(prev => ({ ...prev, upper: e.target.checked }))} color="blue" />
-                            <ModeCheckbox label="Alineador Inferior" checked={aligners.lower} onChange={(e) => setAligners(prev => ({ ...prev, lower: e.target.checked }))} color="blue" />
 
                             <AnimatePresence>
                                 {isBracketMode && (
