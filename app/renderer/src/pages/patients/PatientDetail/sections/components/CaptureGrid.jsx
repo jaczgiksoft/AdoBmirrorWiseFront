@@ -15,7 +15,7 @@ export default function CaptureGrid({ view, teeth, odontogramStates, onUpdate, o
             <h4 className="text-[10px] font-bold uppercase text-slate-400 mb-2 px-2">
                 Arco {label} ({view === 'vestibular' ? 'Frente' : 'Atrás'})
             </h4>
-            
+
             <div className="flex items-start">
                 {/* Etiquetas de Fila (Opcional, se pueden poner a la izquierda) */}
                 <div className="flex flex-col gap-1 pr-3 sticky left-0 bg-white dark:bg-secondary z-10">
@@ -26,13 +26,13 @@ export default function CaptureGrid({ view, teeth, odontogramStates, onUpdate, o
                     <div className="h-8 flex items-center text-[9px] font-bold text-slate-400 uppercase">Mar</div>
                     <div className="h-8 flex items-center text-[9px] font-bold text-slate-400 uppercase font-bold text-slate-600 dark:text-slate-200">Pro</div>
                     <div className="h-8 flex items-center text-[9px] font-bold text-slate-400 uppercase text-primary">CAL</div>
-                    <div className="h-16 flex items-center text-[9px] font-bold text-slate-400 uppercase">ID</div>
+                    <div className="h-24 flex items-center text-[9px] font-bold text-slate-400 uppercase">ID</div>
                 </div>
 
                 {/* Dientes */}
                 <div className="flex">
                     {teethIds.map(id => (
-                        <ToothColumn 
+                        <ToothColumn
                             key={id}
                             id={id}
                             view={view}
@@ -80,10 +80,10 @@ function ToothColumn({ id, view, data, odontogramState, onUpdate, onGeneralUpdat
 
     return (
         <div className="flex flex-col gap-1 w-[100px] border-r border-slate-50 dark:border-slate-800/50 last:border-0 items-center transition-colors hover:bg-slate-50/50 dark:hover:bg-slate-800/30">
-            
+
             {/* Movilidad */}
             <div className="h-8 flex items-center">
-                <input 
+                <input
                     type="number"
                     min="0"
                     max="3"
@@ -95,7 +95,7 @@ function ToothColumn({ id, view, data, odontogramState, onUpdate, onGeneralUpdat
 
             {/* Furca */}
             <div className="h-8 flex items-center">
-                <input 
+                <input
                     type="number"
                     min="0"
                     max="3"
@@ -113,9 +113,8 @@ function ToothColumn({ id, view, data, odontogramState, onUpdate, onGeneralUpdat
                     <button
                         key={idx}
                         onClick={() => onUpdate(id, view, idx, 'sangrado', !val)}
-                        className={`w-7 h-6 rounded-sm border transition-all ${
-                            val ? 'bg-red-500 border-red-600 shadow-sm' : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700'
-                        }`}
+                        className={`w-7 h-6 rounded-sm border transition-all ${val ? 'bg-red-500 border-red-600 shadow-sm' : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700'
+                            }`}
                     />
                 ))}
             </div>
@@ -126,9 +125,8 @@ function ToothColumn({ id, view, data, odontogramState, onUpdate, onGeneralUpdat
                     <button
                         key={idx}
                         onClick={() => onUpdate(id, view, idx, 'placa', !val)}
-                        className={`w-7 h-6 rounded-sm border transition-all ${
-                            val ? 'bg-amber-400 border-amber-500 shadow-sm' : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700'
-                        }`}
+                        className={`w-7 h-6 rounded-sm border transition-all ${val ? 'bg-amber-400 border-amber-500 shadow-sm' : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700'
+                            }`}
                     />
                 ))}
             </div>
@@ -136,7 +134,7 @@ function ToothColumn({ id, view, data, odontogramState, onUpdate, onGeneralUpdat
             {/* Margen */}
             <div className={`h-8 flex items-center ${tripleInputContainer}`}>
                 {faceData.margenGingival.map((val, idx) => (
-                    <input 
+                    <input
                         key={idx}
                         type="number"
                         value={val}
@@ -149,7 +147,7 @@ function ToothColumn({ id, view, data, odontogramState, onUpdate, onGeneralUpdat
             {/* Profundidad */}
             <div className={`h-8 flex items-center ${tripleInputContainer}`}>
                 {faceData.profundidadSondaje.map((val, idx) => (
-                    <input 
+                    <input
                         key={idx}
                         type="number"
                         min="0"
@@ -163,7 +161,7 @@ function ToothColumn({ id, view, data, odontogramState, onUpdate, onGeneralUpdat
             {/* CAL */}
             <div className={`h-8 flex items-center ${tripleInputContainer}`}>
                 {calValues.map((val, idx) => (
-                    <div 
+                    <div
                         key={idx}
                         className="w-7 h-8 flex items-center justify-center text-xs font-black text-primary"
                     >
@@ -173,15 +171,15 @@ function ToothColumn({ id, view, data, odontogramState, onUpdate, onGeneralUpdat
             </div>
 
             {/* Diente e ID */}
-            <div className="h-16 flex flex-col items-center justify-center gap-1 opacity-80 hover:opacity-100 transition-opacity">
+            <div className="h-24 flex flex-col items-center justify-center gap-1 transition-opacity">
                 {toothSrc ? (
-                    <img 
-                        src={toothSrc} 
+                    <img
+                        src={toothSrc}
                         alt={`Diente ${id}`}
-                        className="h-8 w-auto object-contain drop-shadow-sm grayscale brightness-125"
+                        className="h-24 w-auto object-contain drop-shadow-sm"
                     />
                 ) : (
-                    <div className="h-8 w-8 bg-slate-100 dark:bg-slate-800 rounded-full animate-pulse" />
+                    <div className="h-24 w-24 bg-slate-100 dark:bg-slate-800 rounded-full animate-pulse" />
                 )}
                 <span className="text-[10px] font-black text-slate-400">{id}</span>
             </div>
