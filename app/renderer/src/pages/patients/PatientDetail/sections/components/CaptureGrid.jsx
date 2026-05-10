@@ -15,12 +15,12 @@ const MOLARS = [18, 17, 16, 26, 27, 28, 36, 37, 38, 46, 47, 48];
  */
 const ARCH_CONFIG = {
     superior: {
-        bottom: -50,           // Sube (+) o baja (-) la gráfica respecto a los dientes
-        left: 0,             // Desplazamiento horizontal
-        pointOffsets: [20, 50, 80] // Posición X de los 3 puntos dentro de cada diente (100px)
+        bottom: 46,           // Ajustado para que 0mm (ahora abajo) coincida con la corona
+        left: 0,
+        pointOffsets: [20, 50, 80]
     },
     inferior: {
-        bottom: 70,
+        bottom: -26,          // Ajustado para que 0mm (ahora arriba) coincida con la corona
         left: 0,
         pointOffsets: [20, 50, 80]
     }
@@ -87,7 +87,9 @@ const MAX_MM = 15;  // profundidad máxima clínica en mm
 const toY = (value, isUpper) => {
     const v = Math.max(0, Math.min(MAX_MM, Number(value) || 0));
     const ratio = v / MAX_MM;
-    return isUpper ? ratio * TOOTH_HEIGHT : (1 - ratio) * TOOTH_HEIGHT;
+    // Superior: 0mm abajo (96), 15mm arriba (0)
+    // Inferior: 0mm arriba (0), 15mm abajo (96)
+    return isUpper ? (1 - ratio) * TOOTH_HEIGHT : ratio * TOOTH_HEIGHT;
 };
 
 /**
@@ -116,7 +118,7 @@ const buildPoints = (teethIds, teeth, view, field1, field2, isUpper, config) => 
 
             pts.push({
                 x: i * TOOTH_WIDTH + xOff + microX,
-                y: toY(v1 + v2, isUpper) + (isUpper ? microY : -microY)
+                y: toY(v1 + v2, isUpper) + microY
             });
         });
     });
