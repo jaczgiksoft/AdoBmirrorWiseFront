@@ -15,12 +15,12 @@ const MOLARS = [18, 17, 16, 26, 27, 28, 36, 37, 38, 46, 47, 48];
  */
 const ARCH_CONFIG = {
     superior: {
-        bottom: 46,           // Ajustado para que 0mm (ahora abajo) coincida con la corona
+        bottom: 22,           // Ajustado para compensar el margen de valores negativos
         left: 0,
         pointOffsets: [20, 50, 80]
     },
     inferior: {
-        bottom: -26,          // Ajustado para que 0mm (ahora arriba) coincida con la corona
+        bottom: -2,          // Ajustado para compensar el margen de valores negativos
         left: 0,
         pointOffsets: [20, 50, 80]
     }
@@ -85,11 +85,20 @@ const MAX_MM = 15;  // profundidad máxima clínica en mm
  * - Arco INFERIOR (isUpper=false): 0mm → bottom (y=H),    crecen hacia ARRIBA → enfermedad sube
  */
 const toY = (value, isUpper) => {
-    const v = Math.max(0, Math.min(MAX_MM, Number(value) || 0));
-    const ratio = v / MAX_MM;
-    // Superior: 0mm abajo (96), 15mm arriba (0)
-    // Inferior: 0mm arriba (0), 15mm abajo (96)
-    return isUpper ? (1 - ratio) * TOOTH_HEIGHT : ratio * TOOTH_HEIGHT;
+    const v = Number(value) || 0;
+    // Definimos un rango visual que permita valores negativos (ej: -5 a 15)
+    // 20 unidades totales en 96px -> 4.8px por mm
+    const scale = TOOTH_HEIGHT / (MAX_MM + 5); 
+    
+    if (isUpper) {
+        // 0mm estará a unos 24px del borde inferior del SVG
+        const baseline = TOOTH_HEIGHT - (5 * scale); 
+        return baseline - (v * scale);
+    } else {
+        // 0mm estará a unos 24px del borde superior del SVG
+        const baseline = 5 * scale;
+        return baseline + (v * scale);
+    }
 };
 
 /**
