@@ -97,33 +97,30 @@ export default function PeriodontogramSection() {
                 <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl w-full md:w-auto gap-1">
                     <button
                         onClick={() => { setActiveMode('capture'); setViewMode('capture'); }}
-                        className={`flex-1 md:flex-none px-5 py-2 rounded-lg text-sm font-semibold transition-all flex items-center justify-center gap-2 ${
-                            viewMode === 'capture' && activeMode === 'capture'
+                        className={`flex-1 md:flex-none px-5 py-2 rounded-lg text-sm font-semibold transition-all flex items-center justify-center gap-2 ${viewMode === 'capture' && activeMode === 'capture'
                                 ? 'bg-white dark:bg-slate-700 text-primary shadow-sm'
                                 : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
-                        }`}
+                            }`}
                     >
                         <Camera size={16} />
                         Modo Captura
                     </button>
                     <button
                         onClick={() => { setActiveMode('report'); setViewMode('capture'); }}
-                        className={`flex-1 md:flex-none px-5 py-2 rounded-lg text-sm font-semibold transition-all flex items-center justify-center gap-2 ${
-                            viewMode === 'capture' && activeMode === 'report'
+                        className={`flex-1 md:flex-none px-5 py-2 rounded-lg text-sm font-semibold transition-all flex items-center justify-center gap-2 ${viewMode === 'capture' && activeMode === 'report'
                                 ? 'bg-white dark:bg-slate-700 text-primary shadow-sm'
                                 : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
-                        }`}
+                            }`}
                     >
                         <FileText size={16} />
                         Modo Reporte
                     </button>
                     <button
                         onClick={() => setViewMode(v => v === 'history' ? 'capture' : 'history')}
-                        className={`flex-1 md:flex-none px-5 py-2 rounded-lg text-sm font-semibold transition-all flex items-center justify-center gap-2 ${
-                            viewMode === 'history'
+                        className={`flex-1 md:flex-none px-5 py-2 rounded-lg text-sm font-semibold transition-all flex items-center justify-center gap-2 ${viewMode === 'history'
                                 ? 'bg-white dark:bg-slate-700 text-primary shadow-sm'
                                 : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
-                        }`}
+                            }`}
                     >
                         <History size={16} />
                         Ver Historial
@@ -241,6 +238,26 @@ export default function PeriodontogramSection() {
                                 animate={{ opacity: 1, x: 0 }}
                                 exit={{ opacity: 0, x: -20 }}
                             >
+                                {/* Banner de registro cargado (Reporte) */}
+                                <AnimatePresence>
+                                    {selectedRecord && (
+                                        <motion.div
+                                            initial={{ opacity: 0, y: -6 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            exit={{ opacity: 0, y: -6 }}
+                                            className="mb-4 flex items-center justify-between bg-blue-500/10 border border-blue-500/20 text-blue-600 dark:text-blue-400 rounded-2xl px-5 py-3"
+                                        >
+                                            <div className="flex items-center gap-2">
+                                                <History size={15} />
+                                                <span className="text-xs font-bold">
+                                                    Reporte del registro del {new Intl.DateTimeFormat('es-MX', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date(selectedRecord.date))}
+                                                </span>
+                                            </div>
+
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
+
                                 <ReportGrid
                                     teeth={teeth}
                                     odontogramStates={odontogramStates}
