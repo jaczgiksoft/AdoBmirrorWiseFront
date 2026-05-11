@@ -376,8 +376,8 @@ export default function CaptureGrid({ view, teeth, odontogramStates, onUpdate, o
                     <div className="h-8 flex items-center text-[9px] font-bold text-slate-400 uppercase">Fur</div>
                     <div className="h-8 flex items-center text-[9px] font-bold text-slate-400 uppercase">Pron</div>
                     <div className="h-8 flex items-center text-[9px] font-bold text-slate-400 uppercase text-red-500">BOP</div>
-                    <div className="h-8 flex items-center text-[9px] font-bold text-slate-400 uppercase text-amber-500">Plq</div>
-                    <div className="h-8 flex items-center text-[9px] font-bold text-slate-400 uppercase text-blue-500">Sup</div>
+                    <div className="h-8 flex items-center text-[9px] font-bold text-slate-400 uppercase text-blue-500">Plq</div>
+                    <div className="h-8 flex items-center text-[9px] font-bold text-slate-400 uppercase text-amber-500">Sup</div>
                     <div className="h-8 flex items-center text-[9px] font-bold text-slate-400 uppercase">Mar</div>
                     <div className="h-8 flex items-center text-[9px] font-bold text-slate-400 uppercase font-bold text-slate-600 dark:text-slate-200">Pro</div>
                     <div className="h-8 flex items-center text-[9px] font-bold text-slate-400 uppercase text-primary">CAL</div>
@@ -575,7 +575,7 @@ function ToothColumn({ id, view, data, odontogramState, onUpdate, onGeneralUpdat
                     <button
                         key={idx}
                         onClick={() => onUpdate(id, view, idx, 'placa', !val)}
-                        className={`w-7 h-6 rounded-sm border transition-all ${val ? 'bg-amber-400 border-amber-500 shadow-sm' : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700'
+                        className={`w-7 h-6 rounded-sm border transition-all ${val ? 'bg-blue-400 border-blue-500 shadow-sm' : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700'
                             }`}
                     />
                 ))}
@@ -587,7 +587,7 @@ function ToothColumn({ id, view, data, odontogramState, onUpdate, onGeneralUpdat
                     <button
                         key={idx}
                         onClick={() => onUpdate(id, view, idx, 'supuracion', !val)}
-                        className={`w-7 h-6 rounded-sm border transition-all ${val ? 'bg-blue-400 border-blue-500 shadow-sm' : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700'
+                        className={`w-7 h-6 rounded-sm border transition-all ${val ? 'bg-amber-400 border-amber-500 shadow-sm' : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700'
                             }`}
                     />
                 ))}
