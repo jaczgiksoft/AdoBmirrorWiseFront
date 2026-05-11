@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Eye } from 'lucide-react';
+import { Eye, Save, RefreshCw } from 'lucide-react';
 import { useToastStore } from '@/store/useToastStore';
 import { getToothSrc } from './toothSvgHelpers';
 
@@ -258,9 +258,69 @@ function ArchSvgOverlay({ archId, isUpper, teethIds, teeth, view }) {
     );
 }
 
-export default function CaptureGrid({ view, teeth, odontogramStates, onUpdate, onGeneralUpdate }) {
+const LS_KEY = 'bwise_periodonto_history';
+
+export default function CaptureGrid({ view, teeth, odontogramStates, onUpdate, onGeneralUpdate, selectedRecord, onRecordSaved, patientId }) {
     const { addToast } = useToastStore();
     const [noteModal, setNoteModal] = useState({ isOpen: false, toothId: null, initialNote: '' });
+    const [isSaving, setIsSaving] = useState(false);
+
+    /**
+     * Persiste el periodontograma en localStorage bajo la clave bwise_periodonto_history.
+     * Si existe un selectedRecord, reemplaza el registro por id; si no, crea uno nuevo.
+     */
+    const handleSave = useCallback(() => {
+        setIsSaving(true);
+        try {
+            const raw = localStorage.getItem(LS_KEY);
+            const history = raw ? JSON.parse(raw) : [];
+
+            const entry = {
+                id: selectedRecord?.id ?? `periodonto_${Date.now()}`,
+                date: new Date().toISOString(),
+                patientId: patientId ?? null,
+                data: teeth,
+            };
+
+            let updatedHistory;
+            if (selectedRecord?.id) {
+                // Actualización: reemplazar el registro existente
+                const idx = history.findIndex(r => r.id === selectedRecord.id);
+                if (idx !== -1) {
+                    updatedHistory = [...history];
+                    updatedHistory[idx] = entry;
+                } else {
+                    updatedHistory = [...history, entry];
+                }
+            } else {
+                // Nuevo registro
+                updatedHistory = [...history, entry];
+            }
+
+            localStorage.setItem(LS_KEY, JSON.stringify(updatedHistory));
+
+            addToast({
+                type: 'success',
+                title: selectedRecord?.id ? 'Registro actualizado' : 'Periodontograma guardado',
+                message: selectedRecord?.id
+                    ? 'Los cambios han sido guardados correctamente.'
+                    : 'El periodontograma se guardó en el historial local.',
+            });
+
+            if (typeof onRecordSaved === 'function') {
+                onRecordSaved(entry);
+            }
+        } catch (err) {
+            console.error('[CaptureGrid] Error al guardar en localStorage:', err);
+            addToast({
+                type: 'error',
+                title: 'Error al guardar',
+                message: 'No se pudo guardar el periodontograma. Intenta de nuevo.',
+            });
+        } finally {
+            setIsSaving(false);
+        }
+    }, [teeth, selectedRecord, patientId, addToast, onRecordSaved]);
 
     const openNoteModal = (id, note) => {
         setNoteModal({ isOpen: true, toothId: id, initialNote: note });
@@ -316,8 +376,8 @@ export default function CaptureGrid({ view, teeth, odontogramStates, onUpdate, o
                     <div className="h-8 flex items-center text-[9px] font-bold text-slate-400 uppercase">Fur</div>
                     <div className="h-8 flex items-center text-[9px] font-bold text-slate-400 uppercase">Pron</div>
                     <div className="h-8 flex items-center text-[9px] font-bold text-slate-400 uppercase text-red-500">BOP</div>
-                    <div className="h-8 flex items-center text-[9px] font-bold text-slate-400 uppercase text-amber-500">Plq</div>
-                    <div className="h-8 flex items-center text-[9px] font-bold text-slate-400 uppercase text-blue-500">Sup</div>
+                    <div className="h-8 flex items-center text-[9px] font-bold text-slate-400 uppercase text-blue-500">Plq</div>
+                    <div className="h-8 flex items-center text-[9px] font-bold text-slate-400 uppercase text-amber-500">Sup</div>
                     <div className="h-8 flex items-center text-[9px] font-bold text-slate-400 uppercase">Mar</div>
                     <div className="h-8 flex items-center text-[9px] font-bold text-slate-400 uppercase font-bold text-slate-600 dark:text-slate-200">Pro</div>
                     <div className="h-8 flex items-center text-[9px] font-bold text-slate-400 uppercase text-primary">CAL</div>
@@ -371,6 +431,43 @@ export default function CaptureGrid({ view, teeth, odontogramStates, onUpdate, o
                     />
                 )}
             </AnimatePresence>
+
+            {/* ── Botón Flotante de Guardado ── */}
+            <motion.button
+                onClick={handleSave}
+                disabled={isSaving}
+                title={selectedRecord?.id ? 'Actualizar Registro' : 'Guardar Periodontograma'}
+                initial={{ opacity: 0, scale: 0.8, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                whileHover={{ scale: 1.07, y: -2 }}
+                whileTap={{ scale: 0.96 }}
+                transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+                style={{
+                    position: 'fixed',
+                    bottom: '2.5rem',
+                    right: '2.5rem',
+                    zIndex: 9999,
+                }}
+                className="
+                    flex items-center gap-2.5
+                    bg-primary hover:brightness-110
+                    text-white
+                    font-bold text-sm
+                    px-5 py-3
+                    rounded-2xl
+                    shadow-xl shadow-primary/30
+                    border border-white/10
+                    disabled:opacity-60 disabled:cursor-not-allowed
+                    transition-all
+                "
+            >
+                {isSaving ? (
+                    <RefreshCw size={16} className="animate-spin" />
+                ) : (
+                    <Save size={16} />
+                )}
+                {selectedRecord?.id ? 'Actualizar Registro' : 'Guardar Periodontograma'}
+            </motion.button>
         </div>
     );
 }
@@ -404,11 +501,10 @@ function ToothColumn({ id, view, data, odontogramState, onUpdate, onGeneralUpdat
             <div className="h-8 flex items-center">
                 <button
                     onClick={onNoteClick}
-                    className={`w-8 h-8 flex items-center justify-center rounded-lg transition-all ${
-                        data.note 
-                            ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400' 
+                    className={`w-8 h-8 flex items-center justify-center rounded-lg transition-all ${data.note
+                            ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400'
                             : 'text-slate-300 hover:text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'
-                    }`}
+                        }`}
                     title={data.note ? "Ver nota" : "Agregar nota"}
                 >
                     <Eye size={18} strokeWidth={data.note ? 3 : 2} />
@@ -479,7 +575,7 @@ function ToothColumn({ id, view, data, odontogramState, onUpdate, onGeneralUpdat
                     <button
                         key={idx}
                         onClick={() => onUpdate(id, view, idx, 'placa', !val)}
-                        className={`w-7 h-6 rounded-sm border transition-all ${val ? 'bg-amber-400 border-amber-500 shadow-sm' : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700'
+                        className={`w-7 h-6 rounded-sm border transition-all ${val ? 'bg-blue-400 border-blue-500 shadow-sm' : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700'
                             }`}
                     />
                 ))}
@@ -491,7 +587,7 @@ function ToothColumn({ id, view, data, odontogramState, onUpdate, onGeneralUpdat
                     <button
                         key={idx}
                         onClick={() => onUpdate(id, view, idx, 'supuracion', !val)}
-                        className={`w-7 h-6 rounded-sm border transition-all ${val ? 'bg-blue-400 border-blue-500 shadow-sm' : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700'
+                        className={`w-7 h-6 rounded-sm border transition-all ${val ? 'bg-amber-400 border-amber-500 shadow-sm' : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700'
                             }`}
                     />
                 ))}
@@ -557,9 +653,9 @@ function ToothColumn({ id, view, data, odontogramState, onUpdate, onGeneralUpdat
                         {/* Overlay de Furca */}
                         {isMolar && data.furca > 0 && (
                             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 pointer-events-none">
-                                <FurcaIcon 
-                                    grade={data.furca} 
-                                    className="w-5 h-5 text-red-500 drop-shadow-[0_0_2px_rgba(255,255,255,0.8)]" 
+                                <FurcaIcon
+                                    grade={data.furca}
+                                    className="w-5 h-5 text-red-500 drop-shadow-[0_0_2px_rgba(255,255,255,0.8)]"
                                 />
                             </div>
                         )}
@@ -648,9 +744,9 @@ function ToothNoteModal({ isOpen, onClose, onSave, toothId, initialNote }) {
                     </div>
                     <div className="flex gap-3">
                         <button type="button" onClick={onClose} className="text-sm font-bold text-slate-500 px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-all">Cancelar</button>
-                        <button 
-                            type="button" 
-                            onClick={handleSave} 
+                        <button
+                            type="button"
+                            onClick={handleSave}
                             className="text-sm font-bold bg-primary text-white px-6 py-2 rounded-lg shadow-md shadow-primary/20 hover:brightness-110 transition-all"
                         >
                             Guardar Nota
