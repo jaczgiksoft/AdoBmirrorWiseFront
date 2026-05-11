@@ -52,6 +52,7 @@ const GallerySection = lazy(() => import("@/pages/patients/PatientDetail/section
 const ExtractionOrdersSection = lazy(() => import("@/pages/patients/PatientDetail/sections/ExtractionOrdersSection"));
 const OdontogramSection = lazy(() => import("@/pages/patients/PatientDetail/sections/OdontogramSection"));
 const ElasticsSection = lazy(() => import("@/pages/patients/PatientDetail/sections/ElasticsSection"));
+const PeriodontogramSection = lazy(() => import("@/pages/patients/PatientDetail/sections/PeriodontogramSection"));
 const AccountSection = lazy(() => import("@/pages/patients/PatientDetail/sections/AccountSection"));
 const RepresentativesSection = lazy(() => import("@/pages/patients/PatientDetail/sections/RepresentativesSection"));
 const BillingSection = lazy(() => import("@/pages/patients/PatientDetail/sections/BillingSection"));
@@ -364,6 +365,7 @@ export default function AppRouter() {
                     <Route path="extraction-orders" element={<ExtractionOrdersSection />} />
                     <Route path="odontogram" element={<OdontogramSection />} />
                     <Route path="elastics" element={<ElasticsSection />} />
+                    <Route path="periodontogram" element={<PeriodontogramSection />} />
                     <Route path="account" element={<AccountSection />} />
                 </Route>
 

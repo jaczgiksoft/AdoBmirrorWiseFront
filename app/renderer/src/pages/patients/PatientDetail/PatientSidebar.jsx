@@ -21,7 +21,8 @@ import {
     ShieldUser,
     FileUser,
     Smile,
-    Meh
+    Meh,
+    Activity
 } from "lucide-react";
 
 const links = [
@@ -47,6 +48,7 @@ const links = [
     { id: "extraction-orders", label: "Órdenes de tratamiento", icon: FileUser },
     { id: "odontogram", label: "Odontograma", icon: Scan },
     { id: "elastics", label: "Elásticos", icon: Orbit },
+    { id: "periodontogram", label: "Periodontograma", icon: Activity },
     { id: "account", label: "Cuenta", icon: ShieldUser },
 ];
 
