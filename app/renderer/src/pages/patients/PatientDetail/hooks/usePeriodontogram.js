@@ -21,7 +21,8 @@ const createInitialFaceState = () => ({
     margenGingival: [0, 0, 0],     // [mesial, central, distal]
     profundidadSondaje: [0, 0, 0], // [mesial, central, distal]
     sangrado: [false, false, false],
-    placa: [false, false, false]
+    placa: [false, false, false],
+    supuracion: [false, false, false]
 });
 
 const buildInitialState = () => {
@@ -31,6 +32,8 @@ const buildInitialState = () => {
             id,
             mobility: 0,
             furca: 0, // Solo relevante para molares
+            prognosis: '', // Bueno, Dudoso, Malo, Imposible
+            note: '', // Notas u observaciones por diente
             absent: false,
             vestibular: createInitialFaceState(),
             palatino: createInitialFaceState()

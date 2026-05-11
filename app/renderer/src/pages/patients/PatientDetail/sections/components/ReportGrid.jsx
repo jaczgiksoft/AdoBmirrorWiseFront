@@ -9,6 +9,31 @@ const UPPER_TEETH = [18, 17, 16, 15, 14, 13, 12, 11, 21, 22, 23, 24, 25, 26, 27,
 const LOWER_TEETH = [48, 47, 46, 45, 44, 43, 42, 41, 31, 32, 33, 34, 35, 36, 37, 38];
 const MOLARS = [18, 17, 16, 26, 27, 28, 36, 37, 38, 46, 47, 48];
 
+/**
+ * FurcaIcon - Renderiza un triángulo según el grado de furca (Estándar Clínico).
+ */
+const FurcaIcon = ({ grade, className = "w-4 h-4" }) => {
+    const g = Number(grade);
+    if (!g || g === 0) return null;
+
+    return (
+        <svg viewBox="0 0 100 100" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
+            {g === 1 && (
+                <path d="M50 15 L90 85 L10 85 Z" stroke="currentColor" strokeWidth="10" strokeLinejoin="round" />
+            )}
+            {g === 2 && (
+                <>
+                    <path d="M50 15 L90 85 L10 85 Z" stroke="currentColor" strokeWidth="10" strokeLinejoin="round" />
+                    <path d="M50 15 L10 85 L50 85 Z" fill="currentColor" />
+                </>
+            )}
+            {g === 3 && (
+                <path d="M50 15 L90 85 L10 85 Z" fill="currentColor" stroke="currentColor" strokeWidth="10" strokeLinejoin="round" />
+            )}
+        </svg>
+    );
+};
+
 export default function ReportGrid({ teeth, odontogramStates, getCAL }) {
     return (
         <div className="flex flex-col gap-8 bg-white dark:bg-secondary border border-slate-200 dark:border-slate-700 rounded-3xl p-8 shadow-sm overflow-x-auto print:p-0 print:border-0 print:shadow-none custom-scrollbar">
@@ -82,6 +107,7 @@ function ReportArchBlock({ title, teethIds, face, teeth, odontogramStates, getCA
                     <div className="h-8 flex items-center px-2 text-[8px] font-black text-slate-400 uppercase">MAR</div>
                     <div className="h-6 flex items-center px-2 text-[8px] font-black text-slate-400 uppercase">MOB</div>
                     <div className="h-6 flex items-center px-2 text-[8px] font-black text-slate-400 uppercase">FUR</div>
+                    <div className="h-6 flex items-center px-2 text-[8px] font-black text-slate-400 uppercase">PRON</div>
                 </div>
 
                 {/* Dientes */}
@@ -151,6 +177,10 @@ function ReportToothColumn({ id, face, data, odontogramState, cal }) {
                         {faceData.sangrado[i] && (
                             <div className="absolute -top-1 -right-0.5 w-1.5 h-1.5 bg-red-500 rounded-full border border-white dark:border-slate-900" />
                         )}
+                        {/* Punto de Supuración */}
+                        {faceData.supuracion?.[i] && (
+                            <div className="absolute -top-1 -left-0.5 w-1.5 h-1.5 bg-blue-500 rounded-full border border-white dark:border-slate-900" />
+                        )}
                     </div>
                 ))}
             </div>
@@ -175,7 +205,16 @@ function ReportToothColumn({ id, face, data, odontogramState, cal }) {
 
             {/* Furca (FUR) */}
             <div className="h-6 flex items-center justify-center w-full border-t border-slate-50 dark:border-slate-800/50">
-                <span className="text-[10px] font-bold text-slate-500">{isMolar ? (data.furca || '—') : ''}</span>
+                {isMolar && data.furca > 0 ? (
+                    <FurcaIcon grade={data.furca} className="w-3 h-3 text-slate-500" />
+                ) : (
+                    <span className="text-[10px] font-bold text-slate-500">{isMolar ? '—' : ''}</span>
+                )}
+            </div>
+
+            {/* Pronóstico (PRON) */}
+            <div className="h-6 flex items-center justify-center w-full border-t border-slate-50 dark:border-slate-800/50">
+                <span className="text-[9px] font-bold text-slate-700 dark:text-slate-300 capitalize">{data.prognosis || '—'}</span>
             </div>
 
         </div>
