@@ -481,29 +481,29 @@ export const MICRO_ADJUSTMENTS_DECIDUOUS = {
     11: -0,
     12: -3,
     13: -4,
-    14: -12,
-    15: -16,
+    14: -5,
+    15: -6,
 
     // UPPER LEFT (Q2)
     21: 0,
     22: 3,
     23: 4,
-    24: 12,
-    25: 16,
+    24: 5,
+    25: 6,
 
     // LOWER LEFT (Q3)
     31: -3,
     32: -10,
     33: -12,
-    34: -0,
-    35: 5,
+    34: -7,
+    35: -4,
 
     // LOWER RIGHT (Q4)
     41: 3,
     42: 10,
     43: 12,
-    44: 0,
-    45: -5,
+    44: 7,
+    45: 4,
 };
 
 export const TAD_MICRO_ADJUSTMENTS = {
