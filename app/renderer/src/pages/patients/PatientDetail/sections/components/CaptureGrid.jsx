@@ -518,6 +518,7 @@ function ToothColumn({ id, view, data, odontogramState, onUpdate, onGeneralUpdat
                     min="0"
                     max="3"
                     value={data.mobility}
+                    onFocus={(e) => e.target.select()}
                     onChange={(e) => onGeneralUpdate(id, 'mobility', e.target.value)}
                     className={`${inputClasses} bg-blue-50/30 border-blue-100 dark:border-blue-900/30 text-blue-600`}
                 />
@@ -602,7 +603,8 @@ function ToothColumn({ id, view, data, odontogramState, onUpdate, onGeneralUpdat
                         min="-9"
                         max="15"
                         placeholder="0"
-                        value={Number(val) === 0 ? '' : val}
+                        value={val}
+                        onFocus={(e) => e.target.select()}
                         onChange={(e) => onUpdate(id, view, idx, 'margenGingival', e.target.value)}
                         className={`${inputClasses} w-7`}
                     />
@@ -618,7 +620,8 @@ function ToothColumn({ id, view, data, odontogramState, onUpdate, onGeneralUpdat
                         min="-9"
                         max="15"
                         placeholder="0"
-                        value={Number(val) === 0 ? '' : val}
+                        value={val}
+                        onFocus={(e) => e.target.select()}
                         onChange={(e) => onUpdate(id, view, idx, 'profundidadSondaje', e.target.value)}
                         className={`${inputClasses} w-7 bg-slate-100 dark:bg-slate-700 border-slate-300 dark:border-slate-600`}
                     />
