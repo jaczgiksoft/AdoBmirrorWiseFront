@@ -500,7 +500,7 @@ function InterproximalZone({ t1, t2, hasTad, isTadMode, onClick, xPos, isUpper, 
     );
 }
 
-// ==========================================
+// ========================================== 
 // 4. Layout Components (New Coordinate System)
 // ==========================================
 
