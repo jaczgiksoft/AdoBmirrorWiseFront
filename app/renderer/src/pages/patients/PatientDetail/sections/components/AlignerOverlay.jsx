@@ -321,8 +321,8 @@ export default function AlignerOverlay({
                     <g mask={`url(#${maskId})`}>
                         <path
                             d={alignerShape}
-                            fill="rgba(147, 210, 255, 0.2)"
-                            stroke="rgba(100, 180, 255, 0.4)"
+                            fill="rgba(255, 255, 255, 0.3)"
+                            stroke="rgba(255, 255, 255, 0.5)"
                             strokeWidth="1.5"
                             strokeDasharray="6 4"
                             strokeLinejoin="round"
