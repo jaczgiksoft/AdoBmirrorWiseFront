@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { getUserChats, getChatHistory, sendMessage, markAsRead } from "@/services/chat.service";
+import { getUserChats, getChatHistory, sendMessage, markAsRead, createGroup } from "@/services/chat.service";
 import { getEmployees } from "@/services/employee.service";
 
 export const useChatStore = create((set, get) => ({
@@ -53,10 +53,10 @@ export const useChatStore = create((set, get) => ({
         }
     },
 
-    // ✉️ Enviar mensaje
-    sendChatMessage: async (receiverId, message) => {
+    // ✉️ Enviar mensaje (soporta receiver_id o chat_id)
+    sendChatMessage: async (payload) => {
         try {
-            const res = await sendMessage({ receiver_id: receiverId, message });
+            const res = await sendMessage(payload);
             const newMessage = res.data;
 
             // Si es un chat nuevo o ya estamos en él, actualizamos localmente
@@ -75,6 +75,17 @@ export const useChatStore = create((set, get) => ({
             return newMessage;
         } catch (err) {
             console.error("Error sending message:", err);
+            throw err;
+        }
+    },
+
+    // 👥 Crear un grupo de chat
+    createGroupChat: async (payload) => {
+        try {
+            await createGroup(payload);
+            get().fetchChats();
+        } catch (err) {
+            console.error("Error creating group:", err);
             throw err;
         }
     },
@@ -118,12 +129,38 @@ export const useChatStore = create((set, get) => ({
             get().fetchChats();
         };
 
+        const onMessagesSeen = (data) => {
+            const { chatId, readBy, readAt } = data;
+            console.log("👁️ [Chat] Mensajes vistos:", data);
+
+            if (get().selectedChatId === chatId) {
+                set((state) => ({
+                    history: state.history.map(msg => {
+                        // Si el mensaje NO fue enviado por la persona que lo leyó
+                        if (msg.sender_id !== readBy) {
+                            const hasRead = msg.reads?.some(r => r.user_id === readBy);
+                            if (!hasRead) {
+                                return {
+                                    ...msg,
+                                    reads: [...(msg.reads || []), { user_id: readBy, read_at: readAt }]
+                                };
+                            }
+                        }
+                        return msg;
+                    })
+                }));
+            }
+            get().fetchChats();
+        };
+
         // Limpiar SOLO los listeners propios del chat antes de volver a registrar
         socket.off("chat:new_message", onNewMessage);
         socket.off("chat:notification", onNotification);
+        socket.off("messages_seen", onMessagesSeen);
 
         socket.on("chat:new_message", onNewMessage);
         socket.on("chat:notification", onNotification);
+        socket.on("messages_seen", onMessagesSeen);
     },
 
     // 🧹 Limpiar chat seleccionado

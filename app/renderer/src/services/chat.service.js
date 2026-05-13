@@ -56,3 +56,18 @@ export async function markAsRead(chatId) {
         throw err.response?.data || err;
     }
 }
+
+/**
+ * Crear un nuevo grupo de chat
+ * Endpoint: /chats/group
+ * @param {Object} payload { name, participant_ids }
+ */
+export async function createGroup(payload) {
+    try {
+        const res = await api.post("/chats/group", payload);
+        return res.data;
+    } catch (err) {
+        console.error("❌ Error al crear grupo:", err);
+        throw err.response?.data || err;
+    }
+}
